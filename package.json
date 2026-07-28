@@ -1,0 +1,25 @@
+{
+  "name": "sitzrechner-lk-lueneburg",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "harvest": "node --experimental-strip-types scripts/harvest-sitzzahlen.ts",
+    "schuss": "node --experimental-strip-types scripts/schuss.ts"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^7.0.1",
+    "@sveltejs/kit": "^2.70.1",
+    "@sveltejs/vite-plugin-svelte": "^7.2.0",
+    "puppeteer-core": "^25.4.0",
+    "svelte": "^5.56.8",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}

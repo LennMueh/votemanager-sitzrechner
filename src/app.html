@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" href="data:," />
+		<script>
+			// Thema vor dem ersten Zeichnen setzen — sonst blitzt beim Laden die
+			// falsche Farbe auf, was auf einer Leinwand besonders stört.
+			try {
+				var t = localStorage.getItem('thema');
+				if (t === 'hell' || t === 'dunkel') document.documentElement.dataset.theme = t;
+			} catch (e) {
+				/* localStorage gesperrt: dann gilt die Systemeinstellung */
+			}
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

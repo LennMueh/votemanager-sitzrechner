@@ -1,0 +1,272 @@
+{
+	"_hinweis": "Aus dem amtlichen Endergebnis 2021 geerntet (npm run harvest). Vor dem 13.09.2026 gegen die Bekanntmachungen der Wahlleitungen prüfen — Einwohnerzahlen können Schwellen nach § 46 NKomVG überschritten haben.",
+	"_quelle": "https://votemanager.kdo.de/20210912/<ags>/api/praesentation/wahl_<id>/ergebnis_<gebiet>_0.json",
+	"_schluessel": "<ags>|<Titel der Wahl aus termin.json>",
+	"vertretungen": {
+		"03355000|Kreiswahl - Landkreises Lüneburg": {
+			"sitze": 58,
+			"behoerde": "Landkreis Lüneburg",
+			"gewaehlte2021": 58
+		},
+		"03355001|Gemeindewahl - Gemeinde Adendorf": {
+			"sitze": 26,
+			"behoerde": "Gemeinde Adendorf",
+			"gewaehlte2021": 26
+		},
+		"03355009|Stadtratswahl - Stadt Bleckede": {
+			"sitze": 24,
+			"behoerde": "Stadt Bleckede",
+			"gewaehlte2021": 24
+		},
+		"03355022|Wahl des Gemeinderates - Hansestadt Lüneburg": {
+			"sitze": 44,
+			"behoerde": "Hansestadt Lüneburg",
+			"gewaehlte2021": 44
+		},
+		"03355022|Wahl des Ortsrates - Ochtmissen": {
+			"sitze": 9,
+			"behoerde": "Hansestadt Lüneburg",
+			"gewaehlte2021": 9
+		},
+		"03355022|Wahl des Ortsrates - Oedeme": {
+			"sitze": 7,
+			"behoerde": "Hansestadt Lüneburg",
+			"gewaehlte2021": 6
+		},
+		"03355049|Gemeindewahl - Gemeinde Amt Neuhaus": {
+			"sitze": 14,
+			"behoerde": "Gemeinde Amt Neuhaus",
+			"gewaehlte2021": 14
+		},
+		"033555401|Samtgemeindewahl - Samtgemeinde Amelinghausen": {
+			"sitze": 22,
+			"behoerde": "Samtgemeinde Amelinghausen",
+			"gewaehlte2021": 22
+		},
+		"033555401|Gemeindewahl - Gemeinde Amelinghausen": {
+			"sitze": 15,
+			"behoerde": "Samtgemeinde Amelinghausen",
+			"gewaehlte2021": 15
+		},
+		"033555401|Gemeindewahl - Gemeinde Betzendorf": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Amelinghausen",
+			"gewaehlte2021": 11
+		},
+		"033555401|Gemeindewahl - Gemeinde Oldendorf/Luhe": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Amelinghausen",
+			"gewaehlte2021": 11
+		},
+		"033555401|Gemeindewahl - Gemeinde Rehlingen": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Amelinghausen",
+			"gewaehlte2021": 9
+		},
+		"033555401|Gemeindewahl - Gemeinde Soderstorf": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Amelinghausen",
+			"gewaehlte2021": 11
+		},
+		"033555402|Samtgemeindewahl - Samtgemeinde Bardowick": {
+			"sitze": 32,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 32
+		},
+		"033555402|Gemeindewahl - Flecken Bardowick": {
+			"sitze": 21,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 21
+		},
+		"033555402|Gemeindewahl - Gemeinde Barum": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 13
+		},
+		"033555402|Gemeindewahl - Gemeinde Handorf": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 13
+		},
+		"033555402|Gemeindewahl - Gemeinde Mechtersen": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 9
+		},
+		"033555402|Gemeindewahl - Gemeinde Radbruch": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 13
+		},
+		"033555402|Gemeindewahl - Gemeinde Vögelsen": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 13
+		},
+		"033555402|Gemeindewahl - Gemeinde Wittorf": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Bardowick",
+			"gewaehlte2021": 11
+		},
+		"033555403|Samtgemeinderatswahl - Samtgemeinde Dahlenburg": {
+			"sitze": 18,
+			"behoerde": "Samtgemeinde Dahlenburg",
+			"gewaehlte2021": 18
+		},
+		"033555403|Gemeinderatswahl - Gemeinde Boitze": {
+			"sitze": 7,
+			"behoerde": "Samtgemeinde Dahlenburg",
+			"gewaehlte2021": 7
+		},
+		"033555403|Gemeinderatswahl - Gemeinde Dahlem": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Dahlenburg",
+			"gewaehlte2021": 9
+		},
+		"033555403|Gemeinderatswahl - Flecken Dahlenburg": {
+			"sitze": 15,
+			"behoerde": "Samtgemeinde Dahlenburg",
+			"gewaehlte2021": 15
+		},
+		"033555403|Gemeinderatswahl - Gemeinde Nahrendorf": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Dahlenburg",
+			"gewaehlte2021": 11
+		},
+		"033555403|Gemeinderatswahl - Gemeinde Tosterglope": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Dahlenburg",
+			"gewaehlte2021": 9
+		},
+		"033555404|Samtgemeinderatswahl - Samtgemeinde Gellersen": {
+			"sitze": 30,
+			"behoerde": "Samtgemeinde Gellersen",
+			"gewaehlte2021": 30
+		},
+		"033555404|Wahl des Gemeinderates - Gemeinde Kirchgellersen": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Gellersen",
+			"gewaehlte2021": 13
+		},
+		"033555404|Wahl des Gemeinderates - Gemeinde Reppenstedt": {
+			"sitze": 21,
+			"behoerde": "Samtgemeinde Gellersen",
+			"gewaehlte2021": 21
+		},
+		"033555404|Wahl des Gemeinderates - Gemeinde Südergellersen": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Gellersen",
+			"gewaehlte2021": 11
+		},
+		"033555404|Wahl des Gemeinderates - Gemeinde Westergellersen": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Gellersen",
+			"gewaehlte2021": 12
+		},
+		"033555405|Wahl des Samtgemeinderates - Samtgemeinde Ilmenau": {
+			"sitze": 22,
+			"behoerde": "Samtgemeinde Ilmenau",
+			"gewaehlte2021": 22
+		},
+		"033555405|Wahl des Gemeinderates - Gemeinde Barnstedt": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Ilmenau",
+			"gewaehlte2021": 9
+		},
+		"033555405|Wahl des Gemeinderates - Gemeinde Deutsch Evern": {
+			"sitze": 15,
+			"behoerde": "Samtgemeinde Ilmenau",
+			"gewaehlte2021": 15
+		},
+		"033555405|Wahl des Gemeinderates - Gemeinde Embsen": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Ilmenau",
+			"gewaehlte2021": 13
+		},
+		"033555405|Wahl des Gemeinderates - Gemeinde Melbeck": {
+			"sitze": 15,
+			"behoerde": "Samtgemeinde Ilmenau",
+			"gewaehlte2021": 15
+		},
+		"033555406|Samtgemeindewahl - Samtgemeinde Ostheide": {
+			"sitze": 26,
+			"behoerde": "Samtgemeinde Ostheide",
+			"gewaehlte2021": 26
+		},
+		"033555406|Gemeindewahl - Gemeinde Barendorf": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Ostheide",
+			"gewaehlte2021": 12
+		},
+		"033555406|Gemeindewahl - Gemeinde Neetze": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Ostheide",
+			"gewaehlte2021": 13
+		},
+		"033555406|Gemeindewahl - Gemeinde Reinstorf": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Ostheide",
+			"gewaehlte2021": 11
+		},
+		"033555406|Gemeindewahl - Gemeinde Thomasburg": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Ostheide",
+			"gewaehlte2021": 11
+		},
+		"033555406|Gemeindewahl - Gemeinde Vastorf": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Ostheide",
+			"gewaehlte2021": 9
+		},
+		"033555406|Gemeindewahl - Gemeinde Wendisch Evern": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Ostheide",
+			"gewaehlte2021": 11
+		},
+		"033555407|Samtgemeindewahl - Samtgemeinde Scharnebeck": {
+			"sitze": 32,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 32
+		},
+		"033555407|Gemeindewahl - Flecken Artlenburg": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 11
+		},
+		"033555407|Gemeindewahl - Gemeinde Brietlingen": {
+			"sitze": 15,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 15
+		},
+		"033555407|Gemeindewahl - Gemeinde Echem": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 11
+		},
+		"033555407|Gemeindewahl - Gemeinde Hittbergen": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 9
+		},
+		"033555407|Gemeindewahl - Gemeinde Hohnstorf (Elbe)": {
+			"sitze": 13,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 13
+		},
+		"033555407|Gemeindewahl - Gemeinde Lüdersburg": {
+			"sitze": 9,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 9
+		},
+		"033555407|Gemeindewahl - Gemeinde Rullstorf": {
+			"sitze": 11,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 11
+		},
+		"033555407|Gemeindewahl - Gemeinde Scharnebeck": {
+			"sitze": 15,
+			"behoerde": "Samtgemeinde Scharnebeck",
+			"gewaehlte2021": 15
+		}
+	}
+}
