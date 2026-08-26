@@ -8,6 +8,7 @@
 
 const R_INNEN = 0.42;
 const R_AUSSEN = 1;
+export const DIAGRAMM_INNENABSTAND = 2;
 
 export interface Platz {
 	/** Winkel im Bogenmaß, π (links) bis 0 (rechts). */
@@ -65,15 +66,26 @@ export function plaetze(n: number): Platz[] {
  * Sitzverteilung auszusehen.
  */
 export function punktRadius(bildRadius: number, n: number): number {
-	const jeRing = ringVerteilung(n);
-	const ringe = jeRing.length;
-	const aussen = Math.max(1, jeRing[ringe - 1] ?? 1);
+	if (n <= 0) return 0;
+	const punkte = plaetze(n).map((p) => ({
+		x: Math.cos(p.winkel) * p.r,
+		y: Math.sin(p.winkel) * p.r
+	}));
+	let kleinsterAbstand = R_AUSSEN - R_INNEN;
+	if (punkte.length > 1) {
+		kleinsterAbstand = Infinity;
+		for (let i = 0; i < punkte.length; i++) {
+			for (let j = i + 1; j < punkte.length; j++) {
+				kleinsterAbstand = Math.min(
+					kleinsterAbstand,
+					Math.hypot(punkte[i].x - punkte[j].x, punkte[i].y - punkte[j].y)
+				);
+			}
+		}
+	}
 
-	// Abstand entlang des äußersten Rings (Halbkreis = π · r).
-	const laengs = (Math.PI * bildRadius * R_AUSSEN) / Math.max(1, aussen - 1);
-	// Abstand zwischen zwei Ringen.
-	const quer =
-		ringe > 1 ? ((R_AUSSEN - R_INNEN) * bildRadius) / (ringe - 1) : bildRadius * (R_AUSSEN - R_INNEN);
-
-	return Math.max(2, 0.42 * Math.min(laengs, quer));
+	// Die Mittelpunkte werden im SVG um den Punktradius nach innen gerückt.
+	// r = 0,42 · Abstand · (Bildradius - r - Rand), nach r aufgelöst.
+	const faktor = 0.42 * kleinsterAbstand;
+	return Math.max(2, (faktor * (bildRadius - DIAGRAMM_INNENABSTAND)) / (1 + faktor));
 }

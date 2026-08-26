@@ -75,6 +75,26 @@ describe('Poller-Kern', () => {
 		expect(erfolg).toHaveBeenCalledWith(aufgabe, expect.objectContaining({ geaendert: true, inhalt: { stand: 1 }, hash: expect.stringMatching(/^[a-f0-9]{64}$/) }));
 	});
 
+	it('lädt Terminlisten bei gefilterten Probe-Läufen trotz altem ETag neu', async () => {
+		const aufgabe: PollerAufgabe = {
+			id: '1', url: 'https://example.test/03355/api/termine.json', pfad: 'api/termine.json',
+			zustand: 'geplant', prioritaet: 0, fehler: 0, stand: { etag: 'alt' }
+		};
+		const speicher: PollerSpeicher = {
+			faellige: async () => [aufgabe], erfolg: vi.fn(), fehler: vi.fn(),
+			registryFaellig: async () => false, registryStand: async () => ({}), registrySpeichern: vi.fn(), behoerdenSpeichern: vi.fn()
+		};
+		const fetchMock = vi.fn(async (_url, init) => {
+			expect(new Headers(init?.headers).get('if-none-match')).toBeNull();
+			return Response.json({ termine: [] });
+		});
+		await new Poller(speicher, {
+			kontakt: 'ops@example.test', backfill: true, globalProSekunde: 1_000,
+			parallelProHost: 2, wahltage: ['20260913']
+		}, fetchMock as typeof fetch).einmal(new Date('2026-01-01'));
+		expect(speicher.erfolg).toHaveBeenCalledWith(aufgabe, expect.objectContaining({ geaendert: true }));
+	});
+
 	it('normalisiert und validiert die bundesweite Registry', () => {
 		expect(parseRegistry({ behoerden: [{ ags: '03355000', name: 'Lüneburg', ort: 'Lüneburg', bundesland: 'NI', url: 'https://example.test/' }] })[0]).toEqual({ ags: '03355000', name: 'Lüneburg', ort: 'Lüneburg', land: 'NI', basisUrl: 'https://example.test/' });
 		expect(parseRegistry({ data: [[

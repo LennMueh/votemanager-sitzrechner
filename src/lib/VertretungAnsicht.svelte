@@ -68,7 +68,7 @@
 				<strong>{d.stichwahl[0]?.name}</strong> und <strong>{d.stichwahl[1]?.name}</strong>.
 			</p>
 		{/if}
-		<table>
+		<div class="tabelle" role="region" aria-label="Ergebnis der Direktwahl"><table>
 			<thead>
 				<tr><th>Bewerber/in</th><th class="r">Stimmen</th><th class="r">Anteil</th></tr>
 			</thead>
@@ -81,7 +81,7 @@
 					</tr>
 				{/each}
 			</tbody>
-		</table>
+		</table></div>
 		{#if d.losentscheid}
 			<p class="hinweis">{d.losentscheid} — es entscheidet das Los (§ 45g NKWG).
 				{#if d.losfall?.vorlaeufig.length} Provisorisch angezeigt: {d.losfall.vorlaeufig.join(', ')}.{/if}
@@ -128,7 +128,7 @@
 
 		<!-- Tabellenansicht: erfüllt zugleich die Anforderung, dass die Information
 		     nicht nur grafisch vorliegt. -->
-			<table>
+			<div class="tabelle" role="region" aria-label="Voraussichtlich gewählte Personen"><table>
 			<thead>
 				<tr>
 					<th>Partei</th>
@@ -158,7 +158,7 @@
 					</tr>
 				{/each}
 			</tbody>
-			</table>
+			</table></div>
 		{/if}
 
 		{#if ergebnis.stimmverhaeltnis}
@@ -172,6 +172,10 @@
 	article {
 		background: var(--flaeche);
 		color: var(--text);
+		border: 1px solid var(--rand);
+		border-radius: var(--radius);
+		padding: clamp(1rem, 3vw, 1.75rem);
+		box-shadow: var(--schatten);
 	}
 
 	header {
@@ -289,6 +293,8 @@
 		font-size: 0.9rem;
 	}
 
+	.tabelle { max-width: 100%; overflow-x: auto; scrollbar-gutter: stable; }
+
 	th,
 	td {
 		text-align: left;
@@ -321,6 +327,17 @@
 
 	tr.gewaehlt td {
 		font-weight: 600;
+	}
+
+	@media (max-width: 620px) {
+		header { display: block; }
+		.stand { min-width: 0; margin-top: 1rem; text-align: left; }
+		table { min-width: 36rem; }
+		.legende { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	}
+
+	@media (max-width: 400px) {
+		.legende { grid-template-columns: 1fr; }
 	}
 
 </style>

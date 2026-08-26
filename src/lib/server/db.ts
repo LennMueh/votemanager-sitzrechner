@@ -55,8 +55,16 @@ export async function migriere(verzeichnis = resolve(process.cwd(), 'migrationen
 	});
 }
 
-export async function erstellePollerSpeicher(optionen: { wahltage?: string[]; sofort?: boolean } = {}): Promise<PollerSpeicher> {
+export async function erstellePollerSpeicher(
+	optionen: { wahltage?: string[]; regionen?: string[]; sofort?: boolean } = {}
+): Promise<PollerSpeicher> {
 	const sql = db();
+	if (optionen.sofort && optionen.regionen?.length) {
+		await sql`UPDATE pfad_stand p SET naechste_pruefung=now()
+			FROM instanz i JOIN behoerde b ON b.id=i.behoerde_id
+			WHERE p.instanz_id=i.id AND p.pfad LIKE '%/api/termine.json'
+				AND b.regionalschluessel IN ${sql(optionen.regionen)}`;
+	}
 	return {
 		async faellige(limit, backfill) {
 			const zeilen = await sql<
@@ -121,14 +129,17 @@ export async function erstellePollerSpeicher(optionen: { wahltage?: string[]; so
 					INSERT INTO dokument (pfad_stand_id, sha256, inhalt)
 					VALUES (${aufgabe.id}, ${ergebnis.hash}, ${tx.json(ergebnis.inhalt as never)})
 					ON CONFLICT (pfad_stand_id, sha256) DO NOTHING RETURNING id::text`;
-				if (!dokument) return;
-				await tx`INSERT INTO ereignis (schluessel, dokument_id)
-					VALUES (${`${instanzId}:${aufgabe.pfad}`}, ${dokument.id}), ('uebersicht', ${dokument.id})`;
-				const treffer = aufgabe.pfad.match(/wahl_(\d+)\/ergebnis_(.+)_0\.json$/);
-				if (treffer) {
+				if (dokument) {
 					await tx`INSERT INTO ereignis (schluessel, dokument_id)
-						VALUES (${`v:i${instanzId}:${treffer[1]}:${treffer[2]}`}, ${dokument.id})`;
+						VALUES (${`${instanzId}:${aufgabe.pfad}`}, ${dokument.id}), ('uebersicht', ${dokument.id})`;
+					const treffer = aufgabe.pfad.match(/wahl_(\d+)\/ergebnis_(.+)_0\.json$/);
+					if (treffer) {
+						await tx`INSERT INTO ereignis (schluessel, dokument_id)
+							VALUES (${`v:i${instanzId}:${treffer[1]}:${treffer[2]}`}, ${dokument.id})`;
+					}
 				}
+				// Auch ein bereits bekannter Hash muss seine Struktur erneut anwenden
+				// dürfen: Filter können zwischen zwei Probe-Läufen geändert worden sein.
 				if (aufgabe.pfad.endsWith('api/termine.json')) {
 					const alleTermine = (ergebnis.inhalt as { termine?: Array<{ date: string; name: string; url: string }> }).termine ?? [];
 					const termine = optionen.wahltage?.length
@@ -141,8 +152,10 @@ export async function erstellePollerSpeicher(optionen: { wahltage?: string[]; so
 						const datum = deutschesDatum(t.date);
 						await tx`INSERT INTO termin (instanz_id, termin_id, name, datum) VALUES (${instanz.id}, ${datum}, ${t.name}, ${datum}) ON CONFLICT (instanz_id, termin_id) DO UPDATE SET name=excluded.name, datum=excluded.datum`;
 						const vergangen = datum < ergebnis.geprueft.toISOString().slice(0, 10);
-						const pruefung = vergangen ? ergebnis.geprueft : new Date(`${datum}T17:45:00+02:00`);
-						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanz.id}, ${new URL('js/app.js', terminUrl).href}, ${vergangen ? 'ruhend' : 'vorlauf'}, 40, ${pruefung}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						const pruefung = optionen.sofort || vergangen ? ergebnis.geprueft : new Date(`${datum}T17:45:00+02:00`);
+						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung)
+							VALUES (${instanz.id}, ${new URL('js/app.js', terminUrl).href}, ${vergangen ? 'ruhend' : 'vorlauf'}, 40, ${pruefung})
+							ON CONFLICT (instanz_id, pfad) DO UPDATE SET naechste_pruefung=excluded.naechste_pruefung`;
 					}
 				} else if (aufgabe.pfad.endsWith('js/app.js') && typeof ergebnis.inhalt === 'string') {
 					const wurzel = apiWurzel(aufgabe.url.replace(/js\/app\.js$/, ''), ergebnis.inhalt);

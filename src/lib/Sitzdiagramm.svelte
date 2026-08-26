@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Sitz } from '$lib/nkwg';
-	import { plaetze as arcPlaetze, punktRadius } from '$lib/sitzarc';
+	import { DIAGRAMM_INNENABSTAND, plaetze as arcPlaetze, punktRadius } from '$lib/sitzarc';
 
 	let { sitze, groesse = 460 }: { sitze: Sitz[]; groesse?: number } = $props();
 
@@ -17,7 +17,7 @@
 	const plaetze = $derived.by(() => {
 		const n = sitze.length;
 		if (n === 0) return [];
-		const wirksam = radius - punktR - 2;
+		const wirksam = radius - punktR - DIAGRAMM_INNENABSTAND;
 		return arcPlaetze(n).map((p, i) => ({
 			x: radius + Math.cos(p.winkel) * p.r * wirksam,
 			y: radius - Math.sin(p.winkel) * p.r * wirksam,

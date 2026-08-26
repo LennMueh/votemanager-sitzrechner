@@ -110,15 +110,29 @@
 	const aktuell = $derived(seiten[index % Math.max(1, seiten.length)]);
 	const gezeigt = $derived(aktuell ? ergebnisse[aktuell.k] : undefined);
 
+	$effect(() => {
+		if (seiten.length && index >= seiten.length) index = 0;
+	});
+
 	function vollbild() {
-		if (document.fullscreenElement) document.exitFullscreen();
-		else document.documentElement.requestFullscreen();
+		const wechsel = document.fullscreenElement
+			? document.exitFullscreen()
+			: document.documentElement.requestFullscreen();
+		void wechsel.catch(() => {});
+	}
+
+	function vor() {
+		if (seiten.length) index = (index - 1 + seiten.length) % seiten.length;
+	}
+
+	function weiter() {
+		if (seiten.length) index = (index + 1) % seiten.length;
 	}
 
 	function taste(e: KeyboardEvent) {
 		if (seiten.length === 0) return;
-		if (e.key === 'ArrowRight') index = (index + 1) % seiten.length;
-		if (e.key === 'ArrowLeft') index = (index - 1 + seiten.length) % seiten.length;
+		if (e.key === 'ArrowRight') weiter();
+		if (e.key === 'ArrowLeft') vor();
 		if (e.key === ' ') {
 			e.preventDefault();
 			pausiert = !pausiert;
@@ -149,9 +163,16 @@
 	<div class="rahmen">
 		<div class="leiste">
 			<span class="zaehler zahl">{index + 1} / {seiten.length}</span>
-			<span class="tasten">
+			<span class="tasten" aria-hidden="true">
 				Leertaste: {pausiert ? 'weiter' : 'Pause'} · ← → blättern · F Vollbild
 			</span>
+			<div class="steuerung" role="group" aria-label="Präsentation steuern">
+				<button class="sekundaer icon" onclick={vor} aria-label="Vorherige Seite">←</button>
+				<button class="sekundaer pause" onclick={() => (pausiert = !pausiert)}>
+					{pausiert ? 'Weiter' : 'Pause'}
+				</button>
+				<button class="sekundaer icon" onclick={weiter} aria-label="Nächste Seite">→</button>
+			</div>
 			<Thema />
 			<button class="sekundaer" onclick={vollbild}>Vollbild</button>
 		</div>
@@ -212,11 +233,12 @@
 
 	button {
 		font: inherit;
+		min-height: 44px;
 		padding: 0.5rem 0.9rem;
 		border-radius: var(--radius);
 		border: 1px solid var(--akzent);
 		background: var(--akzent);
-		color: var(--flaeche);
+		color: var(--auf-akzent);
 		cursor: pointer;
 	}
 
@@ -236,9 +258,12 @@
 
 	.leiste {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 1rem;
-		padding: 0.5rem 2rem 0;
+		padding: 0.55rem clamp(.75rem, 2.5vw, 2rem);
+		border-bottom: 1px solid var(--rand);
+		background: color-mix(in srgb, var(--flaeche) 90%, transparent);
 		color: var(--text-3);
 		font-size: 0.9rem;
 		flex: none;
@@ -248,11 +273,15 @@
 		margin-right: auto;
 	}
 
+	.steuerung { display: flex; gap: .35rem; margin-left: auto; }
+
 	.leiste button {
-		padding: 0.3rem 0.7rem;
+		padding: 0.35rem 0.7rem;
 		font-size: 0.8rem;
 		border-radius: 99px;
 	}
+
+	.leiste button.icon { width: 44px; padding-inline: 0; font-size: 1.1rem; }
 
 	/* Die Bühne füllt den Rest; ihre eigene Höhe ist 100dvh, deshalb hier
 	   zurücknehmen. */
@@ -291,5 +320,21 @@
 
 	.hinweis {
 		margin: 0 2rem;
+	}
+
+	@media (max-width: 760px) {
+		.auswahl { padding-top: 1.25rem; }
+		.kopf { align-items: flex-start; flex-direction: column; }
+		.leiste { gap: .45rem; }
+		.tasten { display: none; }
+		.zaehler { margin-right: auto; font-weight: 700; }
+		.steuerung { order: 3; width: 100%; margin: 0; }
+		.steuerung .pause { flex: 1; }
+		.hinweis { margin: .5rem .75rem 0; }
+	}
+
+	@media (max-height: 560px) {
+		.leiste { padding-block: .3rem; }
+		.leiste :global(.thema) { display: none; }
 	}
 </style>

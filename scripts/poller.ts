@@ -14,7 +14,11 @@ const config = konfiguration({
 	POLLER_WAHLTAGE: argument('wahltage') ?? process.env.POLLER_WAHLTAGE,
 	BACKFILL_ENABLED: bisLeer ? 'true' : process.env.BACKFILL_ENABLED
 });
-const poller = new Poller(await erstellePollerSpeicher({ wahltage: config.wahltage, sofort: Boolean(config.regionen?.length) }), config);
+const poller = new Poller(await erstellePollerSpeicher({
+	wahltage: config.wahltage,
+	regionen: config.regionen,
+	sofort: Boolean(config.regionen?.length)
+}), config);
 const freigeben = await pollerSperre();
 let durchlaeufe = 0;
 let aufgaben = 0;

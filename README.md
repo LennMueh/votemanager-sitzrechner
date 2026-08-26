@@ -77,9 +77,9 @@ Oedeme, bei dem 2021 tatsächlich ein Sitz unbesetzt blieb.
 Trotzdem: **ohne Gewähr.** Amtlich ist allein die Feststellung des
 Wahlausschusses.
 
-Die Darstellung wird ebenfalls maschinell geprüft: `npm run schuss` nimmt den
-Präsentationsmodus in beiden Themen bei 1920 × 1080 und 1280 × 720 auf und
-schlägt an, sobald Inhalt aus der Seite läuft — waagerecht wie senkrecht.
+Die Darstellung wird ebenfalls maschinell geprüft: `npm run schuss` nimmt
+Übersicht, Detail- und Präsentationsmodus in beiden Themen vom 360 × 640-Handy
+bis zur 1920 × 1080-Leinwand auf und schlägt bei Überlauf an.
 
 ## Präsentationsmodus
 

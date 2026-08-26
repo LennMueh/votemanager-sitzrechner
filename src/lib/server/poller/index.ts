@@ -117,8 +117,14 @@ export class Poller {
 
 	private async bearbeite(aufgabe: PollerAufgabe, jetzt: Date): Promise<void> {
 		try {
+			// Ein neuer gefilterter Probe-Lauf muss die Terminliste erneut auswerten:
+			// Bei 304 gäbe es keinen Inhalt, aus dem der neu gewählte Wahltag
+			// eingeplant werden könnte.
+			const stand = this.config.wahltage?.length && aufgabe.url.endsWith('/api/termine.json')
+				? {}
+				: aufgabe.stand;
 			const ergebnis = await this.drossel.ausfuehren(aufgabe.url, () =>
-				holeJson(aufgabe.url, aufgabe.stand, { kontakt: this.config.kontakt, fetch: this.fetchImpl })
+				holeJson(aufgabe.url, stand, { kontakt: this.config.kontakt, fetch: this.fetchImpl })
 			);
 			const inhalt = ergebnis.geaendert ? ergebnis.inhalt : undefined;
 			await this.speicher.erfolg(aufgabe, {

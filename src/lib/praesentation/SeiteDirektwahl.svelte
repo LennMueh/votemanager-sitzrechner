@@ -174,4 +174,12 @@
 	.los {
 		color: var(--warn);
 	}
+
+	@media (max-width: 680px) {
+		li { grid-template-columns: minmax(0, 1fr) auto; gap: calc(.4rem * var(--skala)); }
+		.spur { grid-column: 1 / -1; grid-row: 2; }
+		.werte { grid-column: 2; grid-row: 1; }
+		.stimmen { display: none; }
+		.legende { font-size: calc(.78rem * var(--skala)); }
+	}
 </style>

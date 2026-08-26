@@ -26,6 +26,10 @@ describe('Alle Vertretungen im Landkreis Lüneburg 2021', () => {
 	it('berechnet jede Vertretung amtlich exakt', async () => {
 		const refs = (await holeVertretungen(WAHLTAG_2021)).filter((r) => !r.direktwahl);
 		expect(refs.length).toBeGreaterThan(40);
+		expect(refs.filter((r) => /ortsrat/i.test(r.titel)).map((r) => r.titel).sort()).toEqual([
+			'Wahl des Ortsrates - Ochtmissen',
+			'Wahl des Ortsrates - Oedeme'
+		]);
 
 		const fehler: string[] = [];
 		let geprueft = 0;

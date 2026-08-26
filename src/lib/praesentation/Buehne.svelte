@@ -118,7 +118,7 @@
 		display: flex;
 		flex-direction: column;
 		height: 100dvh;
-		padding: 1.4rem 2rem 1rem;
+		padding: clamp(.8rem, 2.5vw, 1.4rem) clamp(.75rem, 3vw, 2rem) 1rem;
 		gap: 0.6rem;
 		overflow: hidden;
 		background: var(--flaeche);
@@ -204,6 +204,18 @@
 	}
 
 	.inhalt.ueberlauf {
-		overflow-y: auto;
+		overflow: auto;
+	}
+
+	@media (max-width: 680px) {
+		header { display: block; }
+		.stand { min-width: 0; margin-top: .65rem; text-align: left; }
+		.balken { max-width: 22rem; }
+		.zwischenstand, .warnung { font-size: .82rem; }
+	}
+
+	@media (max-height: 560px) {
+		.buehne { gap: .35rem; padding-block: .55rem; }
+		.titel p, .zwischenstand { display: none; }
 	}
 </style>

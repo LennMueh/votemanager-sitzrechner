@@ -58,13 +58,15 @@
 
 <style>
 	main {
-		max-width: 900px;
+		max-width: 980px;
 		margin: 0 auto;
-		padding: 1.5rem 1.25rem 4rem;
+		padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 1.5rem) 4rem;
 	}
 
 	.zurueck {
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
 		margin-bottom: 1.25rem;
 		text-decoration: none;
 		font-size: 0.9rem;

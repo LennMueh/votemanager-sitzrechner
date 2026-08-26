@@ -58,7 +58,8 @@
 	button {
 		font: inherit;
 		font-size: 0.8rem;
-		padding: 0.3rem 0.7rem;
+		min-height: 44px;
+		padding: 0.45rem 0.75rem;
 		border: 0;
 		background: var(--flaeche);
 		color: var(--text-2);
@@ -72,7 +73,7 @@
 
 	button[aria-pressed='true'] {
 		background: var(--akzent);
-		color: var(--flaeche);
+		color: var(--auf-akzent);
 		font-weight: 600;
 	}
 </style>

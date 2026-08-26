@@ -61,6 +61,7 @@
 <main>
 	<header>
 		<div>
+			<p class="kicker">Wahlabend 2026</p>
 			<h1>Sitzrechner Kommunalwahl</h1>
 			<p class="unter">
 				Landkreis Lüneburg · {wahltag ? `Wahltag ${wahltag}` : '13. September 2026'}
@@ -68,7 +69,7 @@
 		</div>
 		<div class="werkzeuge">
 			<Thema />
-			<a class="knopf" href="/praesentation{zusatz}">Präsentationsmodus →</a>
+			<a class="knopf" href="/praesentation{zusatz}">Präsentation starten →</a>
 		</div>
 	</header>
 
@@ -77,8 +78,6 @@
 		auf Grundlage der von votemanager veröffentlichten Zwischenstände. <strong>Ohne Gewähr</strong>
 		— amtlich ist allein die Feststellung des Wahlausschusses.
 	</p>
-
-	<WahlAuswahl />
 
 	{#if daten}
 		<div class="gesamt">
@@ -95,7 +94,7 @@
 	{/if}
 
 	{#if daten}
-		<input class="suche" type="search" bind:value={suche} placeholder="Vertretung suchen …" />
+		<input class="suche" type="search" bind:value={suche} placeholder="Vertretung suchen …" aria-label="Vertretung suchen" />
 
 		{#each gruppen as [behoerde, eintraege] (behoerde)}
 			<section>
@@ -126,14 +125,23 @@
 				</ul>
 			</section>
 		{/each}
+
+		{#if gefiltert.length === 0}
+			<p class="leer" role="status">Keine Vertretung passt zur Suche.</p>
+		{/if}
 	{/if}
+
+	<details class="praesentationsauswahl">
+		<summary>Individuelle Präsentation zusammenstellen</summary>
+		<WahlAuswahl titel="Wahlen für die Präsentation auswählen" />
+	</details>
 </main>
 
 <style>
 	main {
-		max-width: 1000px;
+		max-width: var(--inhalt);
 		margin: 0 auto;
-		padding: 2rem 1.25rem 4rem;
+		padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) 5rem;
 	}
 
 	header {
@@ -145,8 +153,11 @@
 	}
 
 	h1 {
-		font-size: 1.7rem;
+		font-size: clamp(2rem, 5vw, 3.6rem);
+		letter-spacing: -0.045em;
 	}
+
+	.kicker { margin: 0 0 .35rem; color: var(--akzent); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 
 	.unter {
 		margin: 0.25rem 0 0;
@@ -155,6 +166,7 @@
 
 	.werkzeuge {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.6rem;
 	}
@@ -162,9 +174,14 @@
 	.knopf {
 		border: 1px solid var(--rand);
 		border-radius: var(--radius);
-		padding: 0.5rem 0.9rem;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		padding: 0.55rem 0.95rem;
 		text-decoration: none;
-		background: var(--flaeche-2);
+		background: var(--akzent);
+		color: var(--auf-akzent);
+		font-weight: 700;
 	}
 
 	.ohnegewaehr {
@@ -179,15 +196,16 @@
 		display: flex;
 		align-items: baseline;
 		gap: 0.5rem;
-		background: var(--flaeche-2);
+		background: linear-gradient(120deg, color-mix(in srgb, var(--akzent) 15%, var(--flaeche)), var(--flaeche-2));
 		border: 1px solid var(--rand);
 		border-radius: var(--radius);
-		padding: 0.9rem 1.1rem;
+		padding: clamp(1rem, 3vw, 1.5rem);
 		margin-bottom: 1.25rem;
 	}
 
 	.gesamt strong {
-		font-size: 1.6rem;
+		font-size: clamp(1.8rem, 5vw, 2.8rem);
+		color: var(--akzent);
 	}
 
 	.klein {
@@ -197,7 +215,8 @@
 
 	.suche {
 		width: 100%;
-		padding: 0.6rem 0.8rem;
+		min-height: 48px;
+		padding: 0.7rem 0.9rem;
 		border: 1px solid var(--rand);
 		border-radius: var(--radius);
 		background: var(--flaeche);
@@ -230,16 +249,20 @@
 		display: grid;
 		grid-template-columns: 1fr auto;
 		gap: 0.3rem 1rem;
-		padding: 0.7rem 0.9rem;
+		padding: 0.85rem 1rem;
 		border: 1px solid var(--rand);
 		border-radius: var(--radius);
 		text-decoration: none;
 		color: var(--text);
-		background: var(--flaeche);
+		background: color-mix(in srgb, var(--flaeche) 92%, transparent);
+		box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 5%, transparent);
+		transition: border-color .15s ease, transform .15s ease, background .15s ease;
 	}
 
-	li a:hover {
+	li a:hover, li a:focus-visible {
 		background: var(--flaeche-2);
+		border-color: color-mix(in srgb, var(--akzent) 55%, var(--rand));
+		transform: translateY(-1px);
 	}
 
 	.titel {
@@ -291,5 +314,26 @@
 
 	.laedt {
 		color: var(--text-2);
+	}
+
+	.leer { padding: 2rem; text-align: center; color: var(--text-2); border: 1px dashed var(--rand); border-radius: var(--radius); }
+
+	.praesentationsauswahl { margin-top: 3rem; border-top: 1px solid var(--rand); padding-top: 1.25rem; }
+	.praesentationsauswahl summary { min-height: 44px; display: flex; align-items: center; color: var(--text-2); font-weight: 700; cursor: pointer; }
+	.praesentationsauswahl[open] summary { color: var(--text); }
+
+	@media (max-width: 680px) {
+		header { align-items: flex-start; }
+		.werkzeuge { width: 100%; justify-content: space-between; }
+		.gesamt { align-items: flex-start; flex-wrap: wrap; }
+		.gesamt strong { width: 100%; }
+		li a { grid-template-columns: 1fr; }
+		.meta { justify-content: space-between; }
+	}
+
+	@media (max-width: 420px) {
+		.werkzeuge { align-items: stretch; }
+		.knopf { width: 100%; justify-content: center; }
+		.meta { align-items: flex-start; flex-direction: column; gap: .4rem; }
 	}
 </style>

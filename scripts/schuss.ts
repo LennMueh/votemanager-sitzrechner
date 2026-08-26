@@ -46,9 +46,20 @@ for (const [breite, hoehe] of [
 		faelle.push({ name: 'kreistag-kacheln', v: KREISTAG, seite: 2, thema, breite, hoehe });
 	}
 	faelle.push({ name: 'kreiswahl-adendorf-stimmen', v: KREISWAHL_ADENDORF, seite: 0, thema: 'hell', breite, hoehe });
+	faelle.push({ name: 'oedeme-uebersicht', v: OEDEME, seite: 0, thema: 'hell', breite, hoehe });
 	faelle.push({ name: 'oedeme-kacheln', v: OEDEME, seite: 2, thema: 'hell', breite, hoehe });
 	faelle.push({ name: 'obwahl-stichwahl', v: OB_WAHL, seite: 0, thema: 'hell', breite, hoehe });
 	faelle.push({ name: 'obwahl-gewaehlt', v: OB_STICH, seite: 0, thema: 'dunkel', breite, hoehe });
+}
+
+// Auf dem Handy müssen alle Seitentypen nicht nur passen, sondern auch per
+// Touch steuerbar bleiben.
+for (const [breite, hoehe] of [[390, 844], [360, 640]] as const) {
+	faelle.push({ name: 'kreistag-uebersicht-mobil', v: KREISTAG, seite: 0, thema: 'hell', breite, hoehe });
+	faelle.push({ name: 'kreistag-stimmen-mobil', v: KREISTAG, seite: 1, thema: 'dunkel', breite, hoehe });
+	faelle.push({ name: 'kreistag-kacheln-mobil', v: KREISTAG, seite: 2, thema: 'hell', breite, hoehe });
+	faelle.push({ name: 'oedeme-uebersicht-mobil', v: OEDEME, seite: 0, thema: 'hell', breite, hoehe });
+	faelle.push({ name: 'obwahl-mobil', v: OB_WAHL, seite: 0, thema: 'dunkel', breite, hoehe });
 }
 
 await mkdir(ZIEL, { recursive: true });
@@ -71,6 +82,13 @@ for (const f of faelle) {
 	await seite.waitForSelector('.inhalt');
 	// Rotation anhalten, damit die Aufnahme nicht mitten im Wechsel entsteht.
 	await seite.keyboard.press(' ');
+	if (f.breite <= 390) {
+		const vorher = await seite.$eval('.steuerung .pause', (el) => el.textContent?.trim());
+		await seite.click('.steuerung .pause');
+		const nachher = await seite.$eval('.steuerung .pause', (el) => el.textContent?.trim());
+		if (vorher === nachher) fehler++;
+		await seite.click('.steuerung .pause');
+	}
 	for (let i = 0; i < f.seite; i++) await seite.keyboard.press('ArrowRight');
 	await new Promise((r) => setTimeout(r, 1200));
 
@@ -101,19 +119,41 @@ for (const f of faelle) {
 	await seite.close();
 }
 
+for (const f of [
+	{ name: 'uebersicht-mobil', pfad: `/?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'hell', breite: 390, hoehe: 844 },
+	{ name: 'uebersicht-leinwand', pfad: `/?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'dunkel', breite: 1920, hoehe: 1080 },
+	{ name: 'detail-mobil', pfad: `/v?ags=03355000&wahl=219&gebiet=ebene_1_id_435&wahltag=${WAHLTAG}`, ziel: 'article', thema: 'dunkel', breite: 390, hoehe: 844 },
+	{ name: 'detail-desktop', pfad: `/v?ags=03355000&wahl=219&gebiet=ebene_1_id_435&wahltag=${WAHLTAG}`, ziel: 'article', thema: 'hell', breite: 1280, hoehe: 720 }
+] as const) {
+	const seite = await browser.newPage();
+	await seite.setViewport({ width: f.breite, height: f.hoehe });
+	await seite.evaluateOnNewDocument((t: string) => localStorage.setItem('thema', t), f.thema);
+	await seite.goto(`${BASIS}${f.pfad}`, { waitUntil: 'domcontentloaded' });
+	await seite.waitForSelector(f.ziel);
+	const ueberlauf = await seite.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+	await seite.screenshot({ path: `${ZIEL}/${f.breite}x${f.hoehe}-${f.name}-${f.thema}.png` });
+	if (ueberlauf > 1) fehler++;
+	console.log(`${ueberlauf > 1 ? 'FEHLT' : ' ok  '} ${f.breite}x${f.hoehe} ${f.name} breit=${ueberlauf}`);
+	await seite.close();
+}
+
 const auswahl = await browser.newPage();
-await auswahl.goto(`${BASIS}/praesentation`, { waitUntil: 'domcontentloaded' });
+await auswahl.setViewport({ width: 390, height: 844 });
+await auswahl.goto(`${BASIS}/praesentation?wahltag=${WAHLTAG}`, { waitUntil: 'domcontentloaded' });
 await auswahl.waitForSelector('.aktionen button:not([disabled])');
 await auswahl.click('.aktionen button');
 const alleAn = await auswahl.$$eval('.katalog input[type=checkbox]', (felder) =>
 	felder.length > 0 && felder.every((feld) => (feld as HTMLInputElement).checked)
 );
+const wahltagBleibt = await auswahl.$eval('.start', (link) =>
+	(link as HTMLAnchorElement).href.includes('wahltag=20210912')
+);
 await auswahl.click('.aktionen button');
 const alleAus = await auswahl.$$eval('.katalog input[type=checkbox]', (felder) =>
 	felder.every((feld) => !(feld as HTMLInputElement).checked)
 );
-if (!alleAn || !alleAus) fehler++;
-console.log(alleAn && alleAus ? ' ok   Alle Filtertreffer toggeln' : 'FEHLT Alle Filtertreffer toggeln');
+if (!alleAn || !alleAus || !wahltagBleibt) fehler++;
+console.log(alleAn && alleAus && wahltagBleibt ? ' ok   Auswahl mobil und Wahltag erhalten' : 'FEHLT Auswahl mobil oder Wahltag verloren');
 await auswahl.close();
 
 await browser.close();

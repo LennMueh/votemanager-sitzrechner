@@ -204,4 +204,10 @@
 		color: var(--warn);
 		font-size: calc(0.78rem * var(--skala));
 	}
+
+	@media (max-width: 680px) {
+		.gruppen { grid-template-columns: 1fr; }
+		.gruppe.breit { grid-column: auto; }
+		.gruppe.breit ul { grid-template-columns: 1fr; }
+	}
 </style>
