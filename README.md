@@ -1,8 +1,11 @@
-# Sitzrechner Kommunalwahl 2026 — Landkreis Lüneburg
+# Sitzrechner für Kommunalwahlen
 
-Rechnet am Wahlabend laufend aus, **wer gerade in den Rat einziehen würde** — für
-alle Vertretungen im Landkreis Lüneburg, mit Auszählungsstand und
-Präsentationsmodus für die Leinwand.
+Archiviert veröffentlichte VoteManager-Wahlen und macht sie in einem
+bundesweiten Katalog verfügbar. Für Vertretungen mit hinterlegter Sitzzahl
+rechnet die Anwendung am Wahlabend laufend aus, **wer gerade in den Rat
+einziehen würde**. Landkreis Lüneburg bleibt der vollständig geprüfte
+Referenzdatensatz; Übersicht, Präsentation und Wahlkatalog verarbeiten alle in
+PostgreSQL bekannten Termine und Behörden.
 
 Hintergrund: votemanager (KDO) veröffentlicht während der Auszählung nur
 Stimmen, keine Sitzverteilung. Die kommt erst mit dem amtlichen Endergebnis.
@@ -15,15 +18,16 @@ npm install
 npm run dev
 ```
 
-Ohne Parameter rechnet die Anwendung gegen den **13.09.2026**. Solange es dafür
-noch keine Daten gibt, hängt man den Wahltag der letzten Kommunalwahl an:
+Ohne Parameter verwendet die Anwendung automatisch den frühesten bekannten
+Termin ab heute, andernfalls den jüngsten gespeicherten Termin. Einen bestimmten
+Wahltag wählt man über die Oberfläche oder direkt über die URL:
 
 ```
 http://localhost:5173/?wahltag=20210912
 ```
 
-Das rechnet gegen die echten Daten von 2021 — praktisch zum Ausprobieren und
-zum Testen des Präsentationsmodus.
+Die Auswahl bleibt beim Navigieren, in Detail-, Präsentations- und
+Vergleichslinks über `wahltag=YYYYMMDD` erhalten.
 
 | Befehl | Zweck |
 |---|---|
@@ -38,8 +42,10 @@ zum Testen des Präsentationsmodus.
 | Datei | Inhalt |
 |---|---|
 | `src/lib/nkwg.ts` | Sitzverteilung nach §§ 36, 37, 45g NKWG. Reine Rechenlogik, kein I/O. |
-| `src/lib/votemanager.ts` | Abruf und Normalisierung der votemanager-JSON-API. Einziger Netzzugriff. |
-| `src/lib/server/daten.ts` | Zusammenführung, Zwischenspeicher, letzter guter Stand bei Ausfall. |
+| `src/lib/votemanager.ts` | Normalisierung der archivierten votemanager-JSON-Daten. |
+| `src/lib/server/daten.ts` | Dynamische Terminwahl, Berechnung und letzter guter Stand bei Ausfall. |
+| `src/lib/server/db.ts` | PostgreSQL-Zugriff und Übernahme der vom Poller entdeckten Termine und Wahlen. |
+| `src/lib/server/vergleich.ts` | Suche passender Gegenwahlen über AGS, Gebiet und normalisierte Wahlart. |
 | `src/lib/sitzarc.ts` | Geometrie des Halbkreis-Sitzdiagramms. |
 | `src/lib/sitzzahlen.json` | Sitzzahlen je Vertretung (aus 2021 geerntet, siehe unten). |
 | `src/routes/` | Übersicht, Detailansicht, Präsentationsmodus, JSON-API. |
@@ -81,6 +87,19 @@ Die Darstellung wird ebenfalls maschinell geprüft: `npm run schuss` nimmt
 Übersicht, Detail- und Präsentationsmodus in beiden Themen vom 360 × 640-Handy
 bis zur 1920 × 1080-Leinwand auf und schlägt bei Überlauf an.
 
+## Wahltermine und Navigation
+
+PostgreSQL ist die zentrale Quelle für bekannte Wahltermine. Der reguläre
+Poller liest die Terminlisten jeder aktiven Behörde wiederholt ein und übernimmt
+neu veröffentlichte Termine, Instanzen und Wahlen ohne Codeänderung. Die
+optionale Kommandozeilen-Auswahl `--wahltage=...` dient nur gezielten Probe- und
+Backfill-Läufen.
+
+Unter `/wahlen` führt die Auswahl durch Bundesland, Landkreis/Region und
+Behörde. Jede Ebene zeigt ihren aggregierten Schnellmeldungsstand; der große
+Fortschrittsstand folgt der geöffneten Ebene, etwa Niedersachsen → Landkreis
+Lüneburg → Samtgemeinde Bardowick.
+
 ## Präsentationsmodus
 
 Je Ratswahl drei Vollbildseiten, die alle 15 Sekunden wechseln:
@@ -105,16 +124,35 @@ sieht ein Ortsrat mit 7 Sitzen genauso vollständig aus wie der Kreistag mit 58.
 Tastatur: `←` `→` blättern, Leertaste hält an, `F` schaltet Vollbild.
 Hell/Dunkel lässt sich oben rechts umschalten (System / Hell / Dunkel).
 
-## Vor dem 13.09.2026 zu erledigen
+Ohne konkrete Auswahl öffnet `/praesentation` einen durchsuchbaren Wahlkatalog.
+Der gewählte Termin begrenzt zuerst die verfügbaren Länder, Regionen, Behörden
+und Wahlarten; eindeutige Ebenen werden automatisch vorausgewählt. So zeigt der
+Termin 14.09.2025 beispielsweise ausschließlich die vorhandenen NRW-Wahlen.
+
+## Vergleiche
+
+Ein Vergleich wird von einer konkreten Wahl unter `/wahlen` geöffnet. Der Link
+erscheint nur, wenn eine passende Gegenwahl und auswertbare Ergebnisdaten für
+beide Termine vorliegen. Die Zuordnung erfolgt bundesweit über AGS, Gebiet und
+normalisierte Wahlart; Schreibvarianten wie „Landkreis“ und „Landkreises“ werden
+berücksichtigt, verschiedene Direkt- und Stichwahlämter nicht vermischt.
+
+Sitzverteilungen stehen terminweise nebeneinander. Gewählte Personen werden je
+Partei oder Liste in Zweispaltentabellen verglichen; gleiche normalisierte Namen
+stehen in derselben Zeile, fehlende Gegenstücke erscheinen als `—`. Ohne
+vollständige Auswahl leitet `/vergleich` zurück nach `/wahlen`.
+
+## Vor dem Wahlabend zu erledigen
 
 1. **Sitzzahlen prüfen.** `src/lib/sitzzahlen.json` ist aus 2021 vorbelegt.
    Einwohnerzahlen können Schwellen nach § 46 NKomVG überschritten haben — Werte
    gegen die Bekanntmachungen der Wahlleitungen abgleichen. Fehlt eine Sitzzahl,
    sagt die Anwendung das sichtbar und rechnet nicht.
-2. **Discovery testen**, sobald votemanager den Pfad `20260913` veröffentlicht.
-   Wahlbereichszuschnitte, Ortsräte und angesetzte Direktwahlen stehen erst dann
-   fest; erkannt wird alles dynamisch, hart verdrahtet sind nur die zwölf AGS.
-3. **Deployment proben** (siehe unten), sobald Docker/Kubernetes verfügbar sind.
+2. **Discovery und Poller prüfen.** Terminliste, Wahlbereichszuschnitte,
+   Ortsräte und Direktwahlen werden dynamisch übernommen; ein Probe-/Backfill-Lauf
+   kann bei Bedarf auf den Wahltag begrenzt werden.
+3. **Deployment proben** und anschließend Health (`/api/health`) sowie Ready
+   (`/api/ready`) prüfen.
 
 ## Deployment
 
