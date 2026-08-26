@@ -13,3 +13,7 @@ export interface KatalogEintrag {
 	wahl: string;
 	wahlart: string;
 }
+
+export function vorwahl(optionen: string[], aktuell: string): string {
+	return optionen.includes(aktuell) ? aktuell : optionen.length === 1 ? optionen[0] : '';
+}

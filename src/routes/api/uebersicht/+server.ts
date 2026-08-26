@@ -1,14 +1,15 @@
 import { json } from '@sveltejs/kit';
 import { holeUebersicht } from '$lib/server/daten';
-import { WAHLTAG } from '$lib/votemanager';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
-	// ?wahltag=20210912 rechnet gegen die echten Daten der Kommunalwahl 2021.
-	const wahltag = url.searchParams.get('wahltag') ?? WAHLTAG;
+	const wahltag = url.searchParams.get('wahltag') ?? undefined;
+	if (wahltag && !/^\d{8}$/.test(wahltag)) {
+		return json({ fehler: 'wahltag muss das Format YYYYMMDD haben' }, { status: 400 });
+	}
 	try {
 		return json(await holeUebersicht(wahltag));
 	} catch (e) {
-		return json({ fehler: String(e), wahltag, eintraege: [] }, { status: 502 });
+		return json({ fehler: String(e), wahltag: wahltag ?? '', wahltermine: [], eintraege: [] }, { status: 502 });
 	}
 };

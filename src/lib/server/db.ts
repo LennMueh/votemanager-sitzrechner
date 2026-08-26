@@ -85,7 +85,8 @@ export async function erstellePollerSpeicher(
 				p.zustand, p.prioritaet, p.etag, p.last_modified, p.fehler_anzahl,
 				p.zuletzt_geaendert, p.zustand_vor_fehler
 			FROM pfad_stand p JOIN instanz i ON i.id = p.instanz_id
-			WHERE p.naechste_pruefung <= now() AND (${backfill} OR p.zustand <> 'ruhend')
+			JOIN behoerde b ON b.id = i.behoerde_id
+			WHERE b.aktiv AND p.naechste_pruefung <= now() AND (${backfill} OR p.zustand <> 'ruhend')
 				AND (p.zustand <> 'ruhend' OR NOT EXISTS (
 					SELECT 1 FROM pfad_stand live WHERE live.zustand IN ('vorlauf', 'wahlabend')
 				))
@@ -141,10 +142,8 @@ export async function erstellePollerSpeicher(
 				// Auch ein bereits bekannter Hash muss seine Struktur erneut anwenden
 				// dürfen: Filter können zwischen zwei Probe-Läufen geändert worden sein.
 				if (aufgabe.pfad.endsWith('api/termine.json')) {
-					const alleTermine = (ergebnis.inhalt as { termine?: Array<{ date: string; name: string; url: string }> }).termine ?? [];
-					const termine = optionen.wahltage?.length
-						? alleTermine.filter((t) => optionen.wahltage!.includes(deutschesDatum(t.date).replaceAll('-', '')))
-						: alleTermine;
+					const alleTermine = (ergebnis.inhalt as { termine?: TerminEintrag[] }).termine ?? [];
+					const termine = filtereTermine(alleTermine, optionen.wahltage);
 					const [quelle] = await tx<{ behoerde_id: number }[]>`SELECT behoerde_id FROM instanz WHERE id=${instanzId}`;
 					for (const t of termine) {
 						const terminUrl = new URL(t.url, new URL('../', aufgabe.url)).href;
@@ -152,7 +151,7 @@ export async function erstellePollerSpeicher(
 						const datum = deutschesDatum(t.date);
 						await tx`INSERT INTO termin (instanz_id, termin_id, name, datum) VALUES (${instanz.id}, ${datum}, ${t.name}, ${datum}) ON CONFLICT (instanz_id, termin_id) DO UPDATE SET name=excluded.name, datum=excluded.datum`;
 						const vergangen = datum < ergebnis.geprueft.toISOString().slice(0, 10);
-						const pruefung = optionen.sofort || vergangen ? ergebnis.geprueft : new Date(`${datum}T17:45:00+02:00`);
+						const pruefung = ergebnis.geprueft;
 						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung)
 							VALUES (${instanz.id}, ${new URL('js/app.js', terminUrl).href}, ${vergangen ? 'ruhend' : 'vorlauf'}, 40, ${pruefung})
 							ON CONFLICT (instanz_id, pfad) DO UPDATE SET naechste_pruefung=excluded.naechste_pruefung`;
@@ -280,6 +279,15 @@ export function deutschesDatum(wert: string): string {
 	const [tag, monat, jahr] = datum.split('.');
 	if (!jahr || !monat || !tag) throw new Error(`Ungültiges Datum ${wert}`);
 	return `${jahr}-${monat.padStart(2, '0')}-${tag.padStart(2, '0')}`;
+}
+
+export interface TerminEintrag { date: string; name: string; url: string }
+
+/** CLI-Filter gelten nur, wenn ein Probe-/Backfill-Lauf sie ausdrücklich setzt. */
+export function filtereTermine(termine: TerminEintrag[], wahltage?: string[]): TerminEintrag[] {
+	return wahltage?.length
+		? termine.filter((termin) => wahltage.includes(deutschesDatum(termin.date).replaceAll('-', '')))
+		: termine;
 }
 
 function dokumentZustand(aufgabe: PollerAufgabe, inhalt: unknown, jetzt: Date, geaendert: boolean): Zustand {

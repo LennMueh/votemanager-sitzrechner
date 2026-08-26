@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Thema from '$lib/Thema.svelte';
 	import WahlAuswahl from '$lib/WahlAuswahl.svelte';
@@ -7,7 +8,8 @@
 
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
 	const ansicht = $derived(page.url.searchParams.get('ansicht') === 'wahlen');
-	const zusatz = $derived(wahltag ? `?wahltag=${wahltag}` : '');
+	const aktiverWahltag = $derived(wahltag || daten?.wahltag || '');
+	const zusatz = $derived(aktiverWahltag ? `?wahltag=${aktiverWahltag}` : '');
 
 	let daten = $state<Uebersicht | undefined>();
 	let fehler = $state('');
@@ -48,28 +50,56 @@
 	const behoerden = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
 	const name = (ags: string) => daten?.eintraege.find((e) => e.ags === ags)?.behoerde ?? ags;
 	const regionName = (r: string) => daten?.eintraege.find((e) => e.region === r)?.regionName ?? r;
+	const meldungen = (eintraege: UebersichtEintrag[]) => ({
+		eingegangen: eintraege.reduce((summe, e) => summe + (e.stand?.eingegangen ?? 0), 0),
+		erwartet: eintraege.reduce((summe, e) => summe + (e.stand?.erwartet ?? 0), 0)
+	});
+	const meldungsstand = (eintraege: UebersichtEintrag[]) => {
+		const { eingegangen, erwartet } = meldungen(eintraege);
+		return `${eingegangen} von ${erwartet} Schnellmeldungen`;
+	};
 
 	const gesamt = $derived.by(() => {
-		const e = daten?.eintraege ?? [];
-		const ein = e.reduce((s, x) => s + (x.stand?.eingegangen ?? 0), 0);
-		const erw = e.reduce((s, x) => s + (x.stand?.erwartet ?? 0), 0);
+		const e = (daten?.eintraege ?? []).filter((x) =>
+			(!land || x.land === land) && (!region || x.region === region) && (!behoerde || x.ags === behoerde));
+		const { eingegangen: ein, erwartet: erw } = meldungen(e);
 		return { ein, erw, prozent: erw > 0 ? Math.round((ein / erw) * 100) : 0 };
+	});
+	const gesamtEbene = $derived.by(() => {
+		if (behoerde) return `in der ${name(behoerde)}`;
+		if (region) return `${regionName(region).startsWith('Landkreis') ? 'im' : 'in der'} ${regionName(region)}`;
+		const ausgewaehltesLand = land || (laender.length === 1 ? laender[0] : '');
+		return ausgewaehltesLand ? `in ${landName(ausgewaehltesLand)}` : 'in allen Bundesländern';
 	});
 
 	const link = (e: UebersichtEintrag) =>
-		`/v?${e.instanzId ? `instanz=${e.instanzId}` : `ags=${e.ags}`}&wahl=${e.wahlId}&gebiet=${e.gebietId}${wahltag ? `&wahltag=${wahltag}` : ''}`;
+		`/v?${e.instanzId ? `instanz=${e.instanzId}` : `ags=${e.ags}`}&wahl=${e.wahlId}&gebiet=${e.gebietId}${aktiverWahltag ? `&wahltag=${aktiverWahltag}` : ''}`;
+
+	function terminWechseln(e: Event) {
+		const parameter = new URLSearchParams(page.url.searchParams);
+		parameter.set('wahltag', (e.currentTarget as HTMLSelectElement).value);
+		land = region = behoerde = '';
+		void goto(`${page.url.pathname}?${parameter}`);
+	}
+
+	const datum = (tag: string) => `${tag.slice(6, 8)}.${tag.slice(4, 6)}.${tag.slice(0, 4)}`;
 </script>
 
 <main>
 	<header>
 		<div>
-			<p class="kicker">Wahlabend 2026</p>
+			<p class="kicker">Wahlergebnisse</p>
 			<h1>Sitzrechner Kommunalwahl</h1>
 			<p class="unter">
-				Landkreis Lüneburg · {wahltag ? `Wahltag ${wahltag}` : '13. September 2026'}
+				Landkreis Lüneburg · {aktiverWahltag ? `Wahltag ${datum(aktiverWahltag)}` : 'Noch kein Wahltermin bekannt'}
 			</p>
 		</div>
 		<div class="werkzeuge">
+			<label class="termin">Wahltermin
+				<select aria-label="Wahltermin" value={aktiverWahltag} onchange={terminWechseln} disabled={!daten?.wahltermine.length}>
+					{#each daten?.wahltermine ?? [] as tag}<option value={tag}>{datum(tag)}</option>{/each}
+				</select>
+			</label>
 			<Thema />
 			<a class="knopf" href="/praesentation{zusatz}">Präsentation starten →</a>
 		</div>
@@ -79,13 +109,12 @@
 		<section class="startseite" aria-label="Schnellzugriff">
 			<h2>Was möchtest du ansehen?</h2>
 			<div class="startkarten">
-				<a href={`/wahlen${wahltag ? `?wahltag=${wahltag}` : ''}`}><strong>Wahlen durchsuchen</strong><span>Land → Region → Behörde → Wahl</span></a>
+				<a href={`/wahlen${zusatz}`}><strong>Wahlen durchsuchen</strong><span>Land → Region → Behörde → Wahl</span></a>
 				<a href={`/praesentation${zusatz}`}><strong>Präsentation starten</strong><span>Für Bildschirm und Beamer</span></a>
-				<a href="/vergleich"><strong>Wahlen vergleichen</strong><span>2026 ↔ 2021</span></a>
 			</div>
 		</section>
 	{:else}
-		<a class="zurueck-start" href={`/${wahltag ? `?wahltag=${wahltag}` : ''}`}>← Startseite</a>
+		<a class="zurueck-start" href={`/${zusatz}`}>← Startseite</a>
 	{/if}
 
 	<p class="ohnegewaehr">
@@ -97,7 +126,7 @@
 	{#if ansicht && daten}
 		<div class="gesamt">
 			<strong class="zahl">{gesamt.prozent} %</strong>
-			<span>aller Schnellmeldungen im Landkreis ausgezählt</span>
+			<span>aller Schnellmeldungen {gesamtEbene} ausgezählt</span>
 			<span class="zahl klein">({gesamt.ein} von {gesamt.erw})</span>
 		</div>
 	{/if}
@@ -109,12 +138,13 @@
 	{/if}
 
 	{#if daten}
+		{#if !daten.wahltermine.length}<p class="leer" role="status">Noch keine Wahltermine bekannt.</p>{/if}
 		<input class="suche" type="search" bind:value={suche} placeholder="Vertretung suchen …" aria-label="Vertretung suchen" />
 
 		<nav class="hierarchie" aria-label="Wahlebene">
-			{#if !land}<div class="karten">{#each laender as x}<button onclick={() => (land = x)}>{landName(x)}</button>{/each}</div>
-			{:else if !region}<button class="zurueck" onclick={() => (land = '')}>← Bundesländer</button><div class="karten">{#each regionen as x}<button onclick={() => (region = x)}>{regionName(x)}</button>{/each}</div>
-			{:else if !behoerde}<button class="zurueck" onclick={() => (region = '')}>← Regionen</button><div class="karten">{#each behoerden as x}<button onclick={() => (behoerde = x)}>{name(x)}</button>{/each}</div>
+			{#if !land}<div class="karten">{#each laender as x}<button onclick={() => (land = x)}><strong>{landName(x)}</strong><span>{meldungsstand(daten.eintraege.filter((e) => e.land === x))}</span></button>{/each}</div>
+			{:else if !region}<button class="zurueck" onclick={() => (land = '')}>← Bundesländer</button><div class="karten">{#each regionen as x}<button onclick={() => (region = x)}><strong>{regionName(x)}</strong><span>{meldungsstand(daten.eintraege.filter((e) => e.land === land && e.region === x))}</span></button>{/each}</div>
+			{:else if !behoerde}<button class="zurueck" onclick={() => (region = '')}>← Regionen</button><div class="karten">{#each behoerden as x}<button onclick={() => (behoerde = x)}><strong>{name(x)}</strong><span>{meldungsstand(daten.eintraege.filter((e) => e.land === land && e.region === region && e.ags === x))}</span></button>{/each}</div>
 			{:else}<button class="zurueck" onclick={() => (behoerde = '')}>← Behörden</button>
 			<section>
 				<h2>{name(behoerde)}</h2>
@@ -139,7 +169,7 @@
 								</span>
 								<span class="balken"><span style:width="{p}%" class:fertig={p >= 100}></span></span>
 							</a>
-							<a class="vergleich" href={`/vergleich?ags=${e.ags}&wahl=${e.wahlId}&gebiet=${e.gebietId}&jahr=${wahltag || '20260913'}`}>2026 ↔ 2021</a>
+							{#if e.vergleichbar}<a class="vergleich" href={`/vergleich?instanz=${e.instanzId}&wahl=${e.wahlId}&gebiet=${e.gebietId}${aktiverWahltag ? `&wahltag=${aktiverWahltag}` : ''}`}>Vergleichen</a>{/if}
 						</li>
 					{/each}
 				</ul>
@@ -199,6 +229,9 @@
 		align-items: center;
 		gap: 0.6rem;
 	}
+
+	.termin { display: grid; gap: .2rem; color: var(--text-2); font-size: .75rem; }
+	.termin select { min-height: 44px; padding: .45rem .65rem; border: 1px solid var(--rand); border-radius: var(--radius-klein); background: var(--flaeche); color: var(--text); font: inherit; }
 
 	.knopf {
 		border: 1px solid var(--rand);
@@ -261,6 +294,8 @@
 	.hierarchie { display: grid; gap: .75rem; }
 	.karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .75rem; }
 	.karten button, .zurueck { min-height: 64px; padding: 1rem; border: 1px solid var(--rand); border-radius: var(--radius); background: var(--flaeche); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+	.karten button { display: grid; gap: .3rem; }
+	.karten button span { color: var(--text-2); font-size: .82rem; }
 	.zurueck { min-height: 44px; padding: .55rem .8rem; }
 	.vergleich { display: inline-flex; margin-top: .45rem; font-size: .8rem; }
 

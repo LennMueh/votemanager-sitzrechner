@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import type { KatalogEintrag } from './katalog';
+	import { vorwahl, type KatalogEintrag } from './katalog';
 	let { titel = 'Bundesweite Wahlauswahl' }: { titel?: string } = $props();
 
 	let eintraege = $state<KatalogEintrag[]>([]);
@@ -13,6 +13,7 @@
 	let gewaehlt = $state<string[]>([]);
 	let laedt = $state(true);
 	let fehler = $state('');
+	let standard = $state('');
 
 	$effect(() => {
 		fetch('/api/katalog')
@@ -20,25 +21,36 @@
 				if (!r.ok) throw new Error(r.statusText);
 				return r.json();
 			})
-			.then((x) => (eintraege = x.eintraege))
+			.then((x) => {
+				eintraege = x.eintraege;
+				standard = page.url.searchParams.get('wahltag') ?? x.wahltag;
+				termin = standard ? `${standard.slice(0, 4)}-${standard.slice(4, 6)}-${standard.slice(6, 8)}` : '';
+			})
 			.catch((e) => (fehler = String(e)))
 			.finally(() => (laedt = false));
 	});
 	const eindeutig = (werte: string[]) => [...new Set(werte)].sort((a, b) => a.localeCompare(b, 'de'));
-	const laender = $derived(eindeutig(eintraege.map((e) => e.land)));
-	const regionen = $derived(eindeutig(eintraege.filter((e) => !land || e.land === land).map((e) => e.region)));
-	const behoerden = $derived(eindeutig(eintraege.filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
-	const termine = $derived(eindeutig(eintraege.filter((e) => (!behoerde || e.ags === behoerde)).map((e) => e.datum)).reverse());
-	const sichtbar = $derived(eintraege.filter((e) =>
+	const amTermin = $derived(eintraege.filter((e) => !termin || e.datum === termin));
+	const laender = $derived(eindeutig(amTermin.map((e) => e.land)));
+	const regionen = $derived(eindeutig(amTermin.filter((e) => !land || e.land === land).map((e) => e.region)));
+	const behoerden = $derived(eindeutig(amTermin.filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
+	const termine = $derived(eindeutig(eintraege.map((e) => e.datum)).reverse());
+	const wahlarten = $derived(eindeutig(amTermin.filter((e) =>
+		(!land || e.land === land) && (!region || e.region === region) && (!behoerde || e.ags === behoerde)).map((e) => e.wahlart)));
+	$effect(() => { const neu = vorwahl(laender, land); if (neu !== land) { land = neu; region = ''; behoerde = ''; } });
+	$effect(() => { const neu = vorwahl(regionen, region); if (neu !== region) { region = neu; behoerde = ''; } });
+	$effect(() => { behoerde = vorwahl(behoerden, behoerde); });
+	$effect(() => { if (wahlart && !wahlarten.includes(wahlart)) wahlart = ''; });
+	const sichtbar = $derived(amTermin.filter((e) =>
 		(!land || e.land === land) && (!region || e.region === region) && (!behoerde || e.ags === behoerde) &&
-		(!termin || e.datum === termin) && (!wahlart || e.wahlart === wahlart) &&
+		(!wahlart || e.wahlart === wahlart) &&
 		(!suche || `${e.behoerde} ${e.wahl} ${e.gebietId}`.toLowerCase().includes(suche.toLowerCase()))));
 	const name = (art: 'region' | 'behoerde', wert: string) => eintraege.find((e) => e[art === 'region' ? 'region' : 'ags'] === wert)?.[art === 'region' ? 'regionName' : 'behoerde'] ?? wert;
 	const key = (e: KatalogEintrag) => `i${e.instanzId}:${e.wahlId}:${e.gebietId}`;
 	const alleSichtbar = $derived(sichtbar.length > 0 && sichtbar.every((e) => gewaehlt.includes(key(e))));
 	const ziel = $derived.by(() => {
 		const parameter = new URLSearchParams({ v: gewaehlt.join(',') });
-		const wahltag = page.url.searchParams.get('wahltag');
+		const wahltag = termin.replaceAll('-', '') || standard;
 		if (wahltag) parameter.set('wahltag', wahltag);
 		return `/praesentation?${parameter}`;
 	});
@@ -71,7 +83,7 @@
 			<option value="">Wahltermin</option>{#each termine as x}<option>{x}</option>{/each}
 		</select>
 		<select bind:value={wahlart} aria-label="Wahlart">
-			<option value="">Wahlart</option>{#each eindeutig(eintraege.map((e) => e.wahlart)) as x}<option>{x}</option>{/each}
+			<option value="">Wahlart</option>{#each wahlarten as x}<option>{x}</option>{/each}
 		</select>
 	</div>
 	<div class="aktionen">
@@ -91,7 +103,7 @@
 	{/if}
 	<ul>
 		{#each sichtbar.slice(0, 200) as e (key(e))}
-			<li><label><input type="checkbox" checked={gewaehlt.includes(key(e))} onchange={(x) => waehlen(key(e), x.currentTarget.checked)} /> <strong>{e.wahl}</strong> → {e.gebiet} · {e.behoerde} · {e.datum}</label></li>
+			<li data-land={e.land}><label><input type="checkbox" checked={gewaehlt.includes(key(e))} onchange={(x) => waehlen(key(e), x.currentTarget.checked)} /> <strong>{e.wahl}</strong> → {e.gebiet} · {e.behoerde} · {e.datum}</label></li>
 		{/each}
 	</ul>
 	{#if sichtbar.length > 200}<p class="status">Die ersten 200 von {sichtbar.length} Treffern werden angezeigt.</p>{/if}

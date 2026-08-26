@@ -120,8 +120,8 @@ for (const f of faelle) {
 }
 
 for (const f of [
-	{ name: 'uebersicht-mobil', pfad: `/?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'hell', breite: 390, hoehe: 844 },
-	{ name: 'uebersicht-leinwand', pfad: `/?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'dunkel', breite: 1920, hoehe: 1080 },
+	{ name: 'uebersicht-mobil', pfad: `/wahlen?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'hell', breite: 390, hoehe: 844 },
+	{ name: 'uebersicht-leinwand', pfad: `/wahlen?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'dunkel', breite: 1920, hoehe: 1080 },
 	{ name: 'detail-mobil', pfad: `/v?ags=03355000&wahl=219&gebiet=ebene_1_id_435&wahltag=${WAHLTAG}`, ziel: 'article', thema: 'dunkel', breite: 390, hoehe: 844 },
 	{ name: 'detail-desktop', pfad: `/v?ags=03355000&wahl=219&gebiet=ebene_1_id_435&wahltag=${WAHLTAG}`, ziel: 'article', thema: 'hell', breite: 1280, hoehe: 720 }
 ] as const) {
@@ -155,6 +155,31 @@ const alleAus = await auswahl.$$eval('.katalog input[type=checkbox]', (felder) =
 if (!alleAn || !alleAus || !wahltagBleibt) fehler++;
 console.log(alleAn && alleAus && wahltagBleibt ? ' ok   Auswahl mobil und Wahltag erhalten' : 'FEHLT Auswahl mobil oder Wahltag verloren');
 await auswahl.close();
+
+const terminseite = await browser.newPage();
+await terminseite.goto(`${BASIS}/?wahltag=20260913`, { waitUntil: 'domcontentloaded' });
+await terminseite.waitForSelector('select[aria-label="Wahltermin"]');
+await terminseite.select('select[aria-label="Wahltermin"]', WAHLTAG);
+await terminseite.waitForFunction(() => location.search.includes('wahltag=20210912'));
+const terminInLinks = await terminseite.$$eval('a[href^="/wahlen"], a[href^="/praesentation"]', (links) =>
+	links.length >= 2 && links.every((link) => (link as HTMLAnchorElement).href.includes('wahltag=20210912'))
+);
+await terminseite.click('a[href^="/wahlen"]');
+await terminseite.waitForFunction(() => location.search.includes('ansicht=wahlen') && location.search.includes('wahltag=20210912'));
+if (!terminInLinks) fehler++;
+console.log(terminInLinks ? ' ok   Terminwechsel bleibt in Navigation erhalten' : 'FEHLT Wahltag in Navigation verloren');
+await terminseite.close();
+
+const nrw = await browser.newPage();
+await nrw.goto(`${BASIS}/praesentation?wahltag=20250914`, { waitUntil: 'domcontentloaded' });
+await nrw.waitForSelector('select[aria-label="Bundesland"]');
+await nrw.waitForFunction(() => (document.querySelector('select[aria-label="Bundesland"]') as HTMLSelectElement).value === 'NW');
+const nurNrw = await nrw.$$eval('.katalog li[data-land]', (zeilen) =>
+	zeilen.length > 0 && zeilen.every((zeile) => (zeile as HTMLElement).dataset.land === 'NW')
+);
+if (!nurNrw) fehler++;
+console.log(nurNrw ? ' ok   Präsentationsfilter auf NRW vorgewählt' : 'FEHLT Präsentationsfilter nicht auf NRW begrenzt');
+await nrw.close();
 
 await browser.close();
 console.log(fehler === 0 ? '\nAlles passt.' : `\n${fehler} Beanstandung(en).`);

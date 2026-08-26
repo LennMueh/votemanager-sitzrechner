@@ -5,7 +5,7 @@ import { holeJson, retryAfter } from './http';
 import { parseRegistry, Poller, type PollerAufgabe, type PollerSpeicher } from './index';
 import { apiWurzel, termineUrl } from './urls';
 import { fehlerBackoff, naechsterZustand, pruefIntervall } from './zustand';
-import { deutschesDatum } from '../db';
+import { deutschesDatum, filtereTermine } from '../db';
 
 describe('Poller-Kern', () => {
 	it('durchläuft die Wahlabend-Zustände und Takte', () => {
@@ -34,6 +34,15 @@ describe('Poller-Kern', () => {
 
 	it('liest bei kombinierten Wahlterminen den ersten Wahltag', () => {
 		expect(deutschesDatum('14.09.2025 / 28.09.2025')).toBe('2025-09-14');
+	});
+
+	it('übernimmt neue Termine ungefiltert und filtert nur gezielte Läufe', () => {
+		const termine = [
+			{ date: '12.05.2030', name: 'Neue Wahl', url: '20300512/' },
+			{ date: '14.09.2025', name: 'Probe', url: '20250914/' }
+		];
+		expect(filtereTermine(termine)).toEqual(termine);
+		expect(filtereTermine(termine, ['20250914'])).toEqual([termine[1]]);
 	});
 
 	it('sendet Validatoren und behandelt 304 ohne Inhalt', async () => {

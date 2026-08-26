@@ -1,10 +1,12 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { holeWahltermine } from '$lib/server/daten';
 import type { KatalogEintrag } from '$lib/katalog';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const suche = url.searchParams.get('q')?.trim() ?? '';
+	const termine = await holeWahltermine();
 	const eintraege = await db()<KatalogEintrag[]>`
 		SELECT b.land, b.regionalschluessel AS region,
 			coalesce((SELECT b2.name FROM behoerde b2 WHERE b2.regionalschluessel=b.regionalschluessel
@@ -22,5 +24,5 @@ export const GET: RequestHandler = async ({ url }) => {
 		WHERE b.aktiv AND (${suche} = '' OR concat_ws(' ', b.name, t.name, w.name, w.gebiet_id) ILIKE ${`%${suche}%`})
 		ORDER BY b.land, "regionName", b.name, t.datum DESC, w.name
 	`;
-	return json({ eintraege });
+	return json({ eintraege, wahltag: termine.standard, wahltermine: termine.wahltermine });
 };
