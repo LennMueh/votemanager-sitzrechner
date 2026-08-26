@@ -42,6 +42,7 @@
 	);
 	const eindeutig = (x: string[]) => [...new Set(x)].sort((a, b) => a.localeCompare(b, 'de'));
 	const laender = $derived(eindeutig((daten?.eintraege ?? []).map((e) => e.land)));
+	const landName = (x: string) => ({ NI: 'Niedersachsen', NW: 'Nordrhein-Westfalen' }[x] ?? x);
 	const regionen = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => !land || e.land === land).map((e) => e.region)));
 	const behoerden = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
 	const name = (ags: string) => daten?.eintraege.find((e) => e.ags === ags)?.behoerde ?? ags;
@@ -97,7 +98,7 @@
 		<input class="suche" type="search" bind:value={suche} placeholder="Vertretung suchen …" aria-label="Vertretung suchen" />
 
 		<nav class="hierarchie" aria-label="Wahlebene">
-			{#if !land}<div class="karten">{#each laender as x}<button onclick={() => (land = x)}>{x}</button>{/each}</div>
+			{#if !land}<div class="karten">{#each laender as x}<button onclick={() => (land = x)}>{landName(x)}</button>{/each}</div>
 			{:else if !region}<button class="zurueck" onclick={() => (land = '')}>← Bundesländer</button><div class="karten">{#each regionen as x}<button onclick={() => (region = x)}>{regionName(x)}</button>{/each}</div>
 			{:else if !behoerde}<button class="zurueck" onclick={() => (region = '')}>← Regionen</button><div class="karten">{#each behoerden as x}<button onclick={() => (behoerde = x)}>{name(x)}</button>{/each}</div>
 			{:else}<button class="zurueck" onclick={() => (behoerde = '')}>← Behörden</button>
