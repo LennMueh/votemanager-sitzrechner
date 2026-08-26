@@ -12,6 +12,9 @@
 	let fehler = $state('');
 	let suche = $state('');
 	let laedt = $state(true);
+	let land = $state('');
+	let region = $state('');
+	let behoerde = $state('');
 
 	async function laden() {
 		try {
@@ -34,18 +37,15 @@
 
 	const gefiltert = $derived(
 		(daten?.eintraege ?? []).filter((e) =>
-			`${e.behoerde} ${e.titel}`.toLowerCase().includes(suche.toLowerCase())
+			(!land || e.land === land) && (!region || e.region === region) && (!behoerde || e.ags === behoerde) && `${e.behoerde} ${e.titel}`.toLowerCase().includes(suche.toLowerCase())
 		)
 	);
-
-	const gruppen = $derived.by(() => {
-		const m = new Map<string, UebersichtEintrag[]>();
-		for (const e of gefiltert) {
-			if (!m.has(e.behoerde)) m.set(e.behoerde, []);
-			m.get(e.behoerde)!.push(e);
-		}
-		return [...m];
-	});
+	const eindeutig = (x: string[]) => [...new Set(x)].sort((a, b) => a.localeCompare(b, 'de'));
+	const laender = $derived(eindeutig((daten?.eintraege ?? []).map((e) => e.land)));
+	const regionen = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => !land || e.land === land).map((e) => e.region)));
+	const behoerden = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
+	const name = (ags: string) => daten?.eintraege.find((e) => e.ags === ags)?.behoerde ?? ags;
+	const regionName = (r: string) => daten?.eintraege.find((e) => e.region === r)?.regionName ?? r;
 
 	const gesamt = $derived.by(() => {
 		const e = daten?.eintraege ?? [];
@@ -96,11 +96,15 @@
 	{#if daten}
 		<input class="suche" type="search" bind:value={suche} placeholder="Vertretung suchen …" aria-label="Vertretung suchen" />
 
-		{#each gruppen as [behoerde, eintraege] (behoerde)}
+		<nav class="hierarchie" aria-label="Wahlebene">
+			{#if !land}<div class="karten">{#each laender as x}<button onclick={() => (land = x)}>{x}</button>{/each}</div>
+			{:else if !region}<button class="zurueck" onclick={() => (land = '')}>← Bundesländer</button><div class="karten">{#each regionen as x}<button onclick={() => (region = x)}>{regionName(x)}</button>{/each}</div>
+			{:else if !behoerde}<button class="zurueck" onclick={() => (region = '')}>← Regionen</button><div class="karten">{#each behoerden as x}<button onclick={() => (behoerde = x)}>{name(x)}</button>{/each}</div>
+			{:else}<button class="zurueck" onclick={() => (behoerde = '')}>← Behörden</button>
 			<section>
-				<h2>{behoerde}</h2>
+				<h2>{name(behoerde)}</h2>
 				<ul>
-					{#each eintraege as e (e.ags + e.wahlId + e.gebietId)}
+					{#each gefiltert as e (e.ags + e.wahlId + e.gebietId)}
 						{@const p =
 							e.stand && e.stand.erwartet > 0
 								? Math.round((e.stand.eingegangen / e.stand.erwartet) * 100)
@@ -120,11 +124,13 @@
 								</span>
 								<span class="balken"><span style:width="{p}%" class:fertig={p >= 100}></span></span>
 							</a>
+							<a class="vergleich" href={`/vergleich?ags=${e.ags}&wahl=${e.wahlId}&gebiet=${e.gebietId}&jahr=${wahltag || '20260913'}`}>2026 ↔ 2021</a>
 						</li>
 					{/each}
 				</ul>
 			</section>
-		{/each}
+			{/if}
+		</nav>
 
 		{#if gefiltert.length === 0}
 			<p class="leer" role="status">Keine Vertretung passt zur Suche.</p>
@@ -228,6 +234,12 @@
 	section {
 		margin-bottom: 1.75rem;
 	}
+
+	.hierarchie { display: grid; gap: .75rem; }
+	.karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .75rem; }
+	.karten button, .zurueck { min-height: 64px; padding: 1rem; border: 1px solid var(--rand); border-radius: var(--radius); background: var(--flaeche); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+	.zurueck { min-height: 44px; padding: .55rem .8rem; }
+	.vergleich { display: inline-flex; margin-top: .45rem; font-size: .8rem; }
 
 	h2 {
 		font-size: 0.8rem;

@@ -54,6 +54,9 @@ async function zwischengespeichert<T extends object>(schluessel: string, laden: 
 // ---------------------------------------------------------------------------
 
 export interface UebersichtEintrag extends VertretungRef {
+	land: string;
+	region: string;
+	regionName: string;
 	sitze?: number;
 	stand?: Auszaehlstand;
 	fehler?: string;
@@ -68,8 +71,10 @@ export interface Uebersicht {
 
 export async function holeUebersicht(wahltag = WAHLTAG): Promise<Uebersicht> {
 	return zwischengespeichert(`uebersicht:${wahltag}`, async () => {
-		const zeilen = await db()<Array<{ instanz_id: number; ags: string; behoerde: string; wahl_id: string; gebiet_id: string; titel: string; inhalt: unknown | null }>>`
-			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, w.wahl_id, w.gebiet_id, w.name titel, d.inhalt
+		const zeilen = await db()<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; titel: string; inhalt: unknown | null }>>`
+			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, b.regionalschluessel region,
+				coalesce((SELECT b2.name FROM behoerde b2 WHERE b2.regionalschluessel=b.regionalschluessel AND b2.name ~* '(landkreis|region|städteregion|kreisfreie)' ORDER BY b2.kennung LIMIT 1), b.regionalschluessel) "regionName",
+				w.wahl_id, w.gebiet_id, w.name titel, d.inhalt
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			LEFT JOIN LATERAL (SELECT d.inhalt FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
 				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
@@ -77,7 +82,7 @@ export async function holeUebersicht(wahltag = WAHLTAG): Promise<Uebersicht> {
 			WHERE t.datum=${`${wahltag.slice(0, 4)}-${wahltag.slice(4, 6)}-${wahltag.slice(6, 8)}`}::date ORDER BY b.name, w.name`;
 		const eintraege = zeilen.map((z): UebersichtEintrag => {
 			const ref: VertretungRef = { instanzId: z.instanz_id, ags: z.ags, behoerde: z.behoerde, wahlId: Number(z.wahl_id), gebietId: z.gebiet_id, titel: z.titel, direktwahl: /(bürgermeister|landrat|stichwahl)/i.test(z.titel) };
-			return z.inhalt ? { ...ref, sitze: sitzzahl(ref), stand: parseErgebnis(z.inhalt as never).stand } : { ...ref, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
+			return z.inhalt ? { ...ref, land: z.land, region: z.region, regionName: z.regionName, sitze: sitzzahl(ref), stand: parseErgebnis(z.inhalt as never).stand } : { ...ref, land: z.land, region: z.region, regionName: z.regionName, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
 		});
 		return { wahltag, zeitpunkt: new Date().toISOString(), eintraege };
 	});
