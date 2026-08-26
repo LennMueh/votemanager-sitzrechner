@@ -6,6 +6,7 @@
 	import type { Uebersicht, UebersichtEintrag } from '$lib/server/daten';
 
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
+	const ansicht = $derived(page.url.searchParams.get('ansicht') === 'wahlen');
 	const zusatz = $derived(wahltag ? `?wahltag=${wahltag}` : '');
 
 	let daten = $state<Uebersicht | undefined>();
@@ -74,13 +75,26 @@
 		</div>
 	</header>
 
+	{#if !ansicht}
+		<section class="startseite" aria-label="Schnellzugriff">
+			<h2>Was möchtest du ansehen?</h2>
+			<div class="startkarten">
+				<a href={`/wahlen${wahltag ? `?wahltag=${wahltag}` : ''}`}><strong>Wahlen durchsuchen</strong><span>Land → Region → Behörde → Wahl</span></a>
+				<a href={`/praesentation${zusatz}`}><strong>Präsentation starten</strong><span>Für Bildschirm und Beamer</span></a>
+				<a href="/vergleich"><strong>Wahlen vergleichen</strong><span>2026 ↔ 2021</span></a>
+			</div>
+		</section>
+	{:else}
+		<a class="zurueck-start" href={`/${wahltag ? `?wahltag=${wahltag}` : ''}`}>← Startseite</a>
+	{/if}
+
 	<p class="ohnegewaehr">
 		Eigene Berechnung nach dem Niedersächsischen Kommunalwahlgesetz (§§ 36, 37, 45g NKWG)
 		auf Grundlage der von votemanager veröffentlichten Zwischenstände. <strong>Ohne Gewähr</strong>
 		— amtlich ist allein die Feststellung des Wahlausschusses.
 	</p>
 
-	{#if daten}
+	{#if ansicht && daten}
 		<div class="gesamt">
 			<strong class="zahl">{gesamt.prozent} %</strong>
 			<span>aller Schnellmeldungen im Landkreis ausgezählt</span>
@@ -138,10 +152,10 @@
 		{/if}
 	{/if}
 
-	<details class="praesentationsauswahl">
+	{#if ansicht}<details class="praesentationsauswahl">
 		<summary>Individuelle Präsentation zusammenstellen</summary>
 		<WahlAuswahl titel="Wahlen für die Präsentation auswählen" />
-	</details>
+	</details>{/if}
 </main>
 
 <style>
@@ -150,6 +164,14 @@
 		margin: 0 auto;
 		padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) 5rem;
 	}
+
+	.startseite { margin: 2rem 0; }
+	.startseite h2 { font-size: clamp(1.3rem, 3vw, 2rem); text-transform: none; letter-spacing: normal; color: var(--text); }
+	.startkarten { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+	.startkarten a { display: grid; gap: .45rem; min-height: 8rem; padding: 1.25rem; border: 1px solid var(--rand); border-radius: var(--radius); background: var(--flaeche); color: var(--text); text-decoration: none; box-shadow: var(--schatten); }
+	.startkarten a:hover { border-color: var(--akzent); transform: translateY(-2px); }
+	.startkarten span { color: var(--text-2); font-size: .9rem; }
+	.zurueck-start { display: inline-flex; min-height: 44px; align-items: center; margin: 1rem 0; }
 
 	header {
 		display: flex;
