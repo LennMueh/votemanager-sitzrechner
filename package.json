@@ -10,16 +10,23 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "harvest": "node --experimental-strip-types scripts/harvest-sitzzahlen.ts",
-    "schuss": "node --experimental-strip-types scripts/schuss.ts"
+    "schuss": "node --experimental-strip-types scripts/schuss.ts",
+    "ernte": "node --experimental-strip-types scripts/ernte-referenzen.ts",
+    "migrieren": "node --experimental-strip-types migrationen/migrieren.ts",
+    "poller": "node --experimental-strip-types scripts/poller.ts"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "^7.0.1",
+    "@sveltejs/adapter-node": "^5.5.7",
     "@sveltejs/kit": "^2.70.1",
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
+    "@types/node": "^26.3.0",
     "puppeteer-core": "^25.4.0",
     "svelte": "^5.56.8",
     "typescript": "^6.0.3",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "postgres": "^3.4.9"
   }
 }

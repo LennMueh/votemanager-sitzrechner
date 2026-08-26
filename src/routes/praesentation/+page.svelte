@@ -1,23 +1,23 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Thema from '$lib/Thema.svelte';
+	import WahlAuswahl from '$lib/WahlAuswahl.svelte';
+	import Stimmverhaeltnis from '$lib/Stimmverhaeltnis.svelte';
 	import Buehne from '$lib/praesentation/Buehne.svelte';
 	import SeiteUebersicht from '$lib/praesentation/SeiteUebersicht.svelte';
 	import SeiteKacheln from '$lib/praesentation/SeiteKacheln.svelte';
 	import SeiteDirektwahl from '$lib/praesentation/SeiteDirektwahl.svelte';
-	import type { Uebersicht, UebersichtEintrag, VertretungErgebnis } from '$lib/server/daten';
+	import { strom } from '$lib/strom';
+	import { vertretungPfad } from '$lib/auswahl';
+	import type { VertretungErgebnis } from '$lib/server/daten';
 
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
-	const zusatz = $derived(wahltag ? `&wahltag=${wahltag}` : '');
 	/** Auswahl steht in der URL — damit ist die Beamer-Ansicht teil- und neuladbar. */
 	const auswahl = $derived((page.url.searchParams.get('v') ?? '').split(',').filter(Boolean));
 
-	/** Taktzeit **je Seite**; eine Ratswahl hat zwei Seiten und steht damit 30 s. */
+	/** Taktzeit je Seite. */
 	const TAKT_MS = 15_000;
-	const AKTUALISIERUNG_MS = 30_000;
 
-	let uebersicht = $state<Uebersicht | undefined>();
-	let markiert = $state<string[]>([]);
 	let ergebnisse = $state<Record<string, VertretungErgebnis>>({});
 	let neuJeSchluessel = $state<Record<string, string[]>>({});
 	let wegJeSchluessel = $state<Record<string, { partei: string; name: string }[]>>({});
@@ -28,17 +28,9 @@
 	// Letzter bekannter Stand der Gewählten je Vertretung, für die Hervorhebung.
 	const vorher = new Map<string, Set<string>>();
 
-	const schluessel = (e: UebersichtEintrag) => `${e.ags}:${e.wahlId}:${e.gebietId}`;
-
-	async function ladeUebersicht() {
-		const a = await fetch(`/api/uebersicht${wahltag ? `?wahltag=${wahltag}` : ''}`);
-		uebersicht = await a.json();
-	}
-
 	async function ladeEine(k: string) {
-		const [ags, wahl, gebiet] = k.split(':');
 		try {
-			const a = await fetch(`/api/vertretung?ags=${ags}&wahl=${wahl}&gebiet=${gebiet}${zusatz}`);
+			const a = await fetch(vertretungPfad(k, wahltag));
 			const j: VertretungErgebnis = await a.json();
 			if (!a.ok) throw new Error((j as unknown as { fehler: string }).fehler);
 
@@ -70,22 +62,26 @@
 	}
 
 	const ladeAlle = () => Promise.all(auswahl.map(ladeEine));
+	const stromSchluessel = $derived(auswahl.flatMap((k) => {
+		if (/^i\d+:/.test(k)) return [`v:${k}`];
+		const e = ergebnisse[k];
+		return e?.ref.instanzId ? [`v:i${e.ref.instanzId}:${e.ref.wahlId}:${e.ref.gebietId}`] : [];
+	}));
 
 	$effect(() => {
-		if (auswahl.length === 0) {
-			ladeUebersicht();
-			return;
-		}
-		ladeAlle();
-		const t = setInterval(ladeAlle, AKTUALISIERUNG_MS);
-		return () => clearInterval(t);
+		if (auswahl.length) void ladeAlle();
+	});
+
+	$effect(() => {
+		if (!stromSchluessel.length) return;
+		return strom(stromSchluessel, () => void ladeAlle());
 	});
 
 	/**
-	 * Eine Ratswahl belegt zwei Seiten (Übersicht, dann Kacheln), eine
-	 * Direktwahl eine. Geblättert wird seitenweise.
+	 * Eine Ratswahl belegt Parlament, Stimmen und Gewählte; eine Auswahl ohne
+	 * Sitzverteilung nur die Stimmen. Geblättert wird seitenweise.
 	 */
-	type Art = 'uebersicht' | 'kacheln' | 'direkt' | 'laedt';
+	type Art = 'uebersicht' | 'stimmen' | 'kacheln' | 'direkt' | 'laedt';
 	const seiten = $derived(
 		auswahl.flatMap((k): { k: string; art: Art }[] => {
 			const e = ergebnisse[k];
@@ -94,9 +90,11 @@
 			if (e.verteilung) {
 				return [
 					{ k, art: 'uebersicht' },
+					{ k, art: 'stimmen' },
 					{ k, art: 'kacheln' }
 				];
 			}
+			if (e.stimmverhaeltnis) return [{ k, art: 'stimmen' }];
 			return [{ k, art: 'laedt' }];
 		})
 	);
@@ -111,12 +109,6 @@
 
 	const aktuell = $derived(seiten[index % Math.max(1, seiten.length)]);
 	const gezeigt = $derived(aktuell ? ergebnisse[aktuell.k] : undefined);
-
-	function starten() {
-		const u = new URL(page.url);
-		u.searchParams.set('v', markiert.join(','));
-		location.href = u.toString();
-	}
 
 	function vollbild() {
 		if (document.fullscreenElement) document.exitFullscreen();
@@ -149,38 +141,8 @@
 			in der Adresse und lässt sich als Lesezeichen speichern.
 		</p>
 
-		{#if !uebersicht}
-			<p>Lade …</p>
-		{:else}
-			<div class="knoepfe">
-				<button onclick={starten} disabled={markiert.length === 0}>
-					Präsentation starten ({markiert.length})
-				</button>
-				<button
-					class="sekundaer"
-					onclick={() =>
-						(markiert = (uebersicht?.eintraege ?? [])
-							.filter((e) => !e.direktwahl && e.sitze)
-							.map(schluessel))}
-				>
-					Alle Räte
-				</button>
-				<button class="sekundaer" onclick={() => (markiert = [])}>Auswahl leeren</button>
-				<a href="/{wahltag ? `?wahltag=${wahltag}` : ''}">← Übersicht</a>
-			</div>
-
-			<ul>
-				{#each uebersicht.eintraege as e (schluessel(e))}
-					<li>
-						<label>
-							<input type="checkbox" value={schluessel(e)} bind:group={markiert} />
-							<span>{e.titel}</span>
-							<span class="behoerde">{e.behoerde}</span>
-						</label>
-					</li>
-				{/each}
-			</ul>
-		{/if}
+		<WahlAuswahl titel="Wahlen für die Präsentation auswählen" />
+		<a href="/{wahltag ? `?wahltag=${wahltag}` : ''}">← Übersicht</a>
 	</main>
 {:else}
 	<!-- Beamer-Ansicht -->
@@ -209,6 +171,8 @@
 							neu={new Set(neuJeSchluessel[aktuell.k] ?? [])}
 							weg={wegJeSchluessel[aktuell.k] ?? []}
 						/>
+					{:else if aktuell.art === 'stimmen' && gezeigt.stimmverhaeltnis}
+						<Stimmverhaeltnis verhaeltnis={gezeigt.stimmverhaeltnis} verteilung={gezeigt.verteilung} gross />
 					{:else if aktuell.art === 'direkt' && gezeigt.direkt}
 						<SeiteDirektwahl direkt={gezeigt.direkt} />
 					{:else}
@@ -246,14 +210,6 @@
 		color: var(--text-2);
 	}
 
-	.knoepfe {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.6rem;
-		align-items: center;
-		margin: 1.25rem 0;
-	}
-
 	button {
 		font: inherit;
 		padding: 0.5rem 0.9rem;
@@ -264,39 +220,10 @@
 		cursor: pointer;
 	}
 
-	button:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-
 	button.sekundaer {
 		background: var(--flaeche-2);
 		color: var(--text);
 		border-color: var(--rand);
-	}
-
-	.auswahl ul {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: grid;
-		gap: 0.25rem;
-	}
-
-	.auswahl label {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-		padding: 0.45rem 0.7rem;
-		border: 1px solid var(--rand);
-		border-radius: var(--radius);
-		cursor: pointer;
-	}
-
-	.behoerde {
-		margin-left: auto;
-		color: var(--text-3);
-		font-size: 0.85rem;
 	}
 
 	/* Beamer */

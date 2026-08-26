@@ -12,6 +12,9 @@
  * § 36 ist schlicht der Sonderfall „genau ein Wahlbereich".
  */
 
+import { zuteilen, HARE_NIEMEYER } from './wahlrecht/kern/zuteilung';
+import { nimmGroesste, type Grenzfall } from './wahlrecht/kern/auswahl';
+
 // ---------------------------------------------------------------------------
 // Eingabemodell
 // ---------------------------------------------------------------------------
@@ -73,6 +76,20 @@ export interface ParteiErgebnis {
 	sitze: number;
 }
 
+export interface Stimmenanteil {
+	partei: string;
+	parteiLang?: string;
+	farbe?: string;
+	stimmen: number;
+	prozent: number;
+}
+
+export interface Stimmenverhaeltnis {
+	/** Summe der Partei- und Bewerberstimmen; bei Kumulieren keine Wählerzahl. */
+	stimmenGesamt: number;
+	parteien: Stimmenanteil[];
+}
+
 export interface Sitzverteilung {
 	sitzeGesamt: number;
 	gueltigeStimmen: number;
@@ -80,6 +97,17 @@ export interface Sitzverteilung {
 	sitze: Sitz[];
 	/** Stellen, an denen das Gesetz einen Losentscheid vorsieht (§ 36 Abs. 2 S. 5 u. a.). */
 	losentscheide: string[];
+	losfaelle: Losfall[];
+}
+
+export interface Losfall {
+	kontext: string;
+	betroffene: string[];
+	sitze: number;
+	/** Rechnerisch vorläufig ausgewählt; die tatsächliche Auswahl trifft das Los. */
+	vorlaeufig: string[];
+	rechtsgrundlage: string;
+	text: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +118,7 @@ export interface HareErgebnis<K> {
 	zuteilung: Map<K, number>;
 	/** true, wenn an der Zuteilungsgrenze gleiche Zahlenbruchteile stehen. */
 	losentscheid: boolean;
+	grenzfall?: Grenzfall<K>;
 }
 
 /**
@@ -97,39 +126,15 @@ export interface HareErgebnis<K> {
  *
  * Bewusst BigInt statt Gleitkomma: bei knappen Zahlenbruchteilen würde ein
  * Rundungsfehler sonst über ein Mandat entscheiden.
+ *
+ * Die Arithmetik liegt inzwischen in `wahlrecht/kern/zuteilung` — dort teilen
+ * sich Quote- und Divisorverfahren dasselbe Auswahl-Primitiv. Diese Funktion
+ * bleibt als niedersächsische Sicht darauf bestehen: § 36 Abs. 2 NKWG kennt nur
+ * Hare/Niemeyer, und `losentscheid` ist genau Satz 5.
  */
 export function hareNiemeyer<K>(stimmen: Map<K, number>, sitze: number): HareErgebnis<K> {
-	const eintraege = [...stimmen.entries()];
-	const zuteilung = new Map<K, number>(eintraege.map(([k]) => [k, 0]));
-	const gesamt = eintraege.reduce((s, [, v]) => s + v, 0);
-	if (gesamt <= 0 || sitze <= 0) return { zuteilung, losentscheid: false };
-
-	const G = BigInt(gesamt);
-	const S = BigInt(sitze);
-	const reste: { k: K; rest: bigint }[] = [];
-	let vergeben = 0;
-
-	// Satz 3: zunächst so viele Sitze, wie ganze Zahlen entfallen.
-	for (const [k, v] of eintraege) {
-		const produkt = BigInt(v) * S;
-		const ganze = Number(produkt / G);
-		zuteilung.set(k, ganze);
-		vergeben += ganze;
-		reste.push({ k, rest: produkt % G });
-	}
-
-	// Satz 4: Restsitze in der Reihenfolge der höchsten Zahlenbruchteile.
-	const offen = sitze - vergeben;
-	reste.sort((a, b) => (a.rest < b.rest ? 1 : a.rest > b.rest ? -1 : 0));
-
-	// Satz 5: Bei gleichen Zahlenbruchteilen entscheidet das Los — wir lösen das
-	// nicht selbst auf, sondern melden es nach oben.
-	const losentscheid = offen > 0 && offen < reste.length && reste[offen - 1].rest === reste[offen].rest;
-
-	for (let i = 0; i < offen; i++) {
-		zuteilung.set(reste[i].k, zuteilung.get(reste[i].k)! + 1);
-	}
-	return { zuteilung, losentscheid };
+	const erg = zuteilen(stimmen, sitze, HARE_NIEMEYER);
+	return { zuteilung: erg.sitze, losentscheid: erg.grenzfall !== undefined, grenzfall: erg.grenzfall };
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +144,30 @@ export function hareNiemeyer<K>(stimmen: Map<K, number>, sitze: number): HareErg
 /** Gesamtstimmenzahl eines Wahlvorschlags: Liste + alle Bewerber (§ 35 Nr. 4). */
 export function gesamtstimmen(v: Wahlvorschlag): number {
 	return v.listenstimmen + v.kandidaten.reduce((s, k) => s + k.stimmen, 0);
+}
+
+/** Partei-/Listensummen über alle Wahlbereiche, unabhängig von einer Sitzverteilung. */
+export function stimmenverhaeltnis(bereiche: Wahlbereich[]): Stimmenverhaeltnis {
+	const summen = new Map<string, { parteiLang?: string; farbe?: string; stimmen: number }>();
+	for (const { vorschlaege } of bereiche) {
+		for (const v of vorschlaege) {
+			const bisher = summen.get(v.partei);
+			summen.set(v.partei, {
+				parteiLang: bisher?.parteiLang ?? v.parteiLang,
+				farbe: bisher?.farbe ?? v.farbe,
+				stimmen: (bisher?.stimmen ?? 0) + gesamtstimmen(v)
+			});
+		}
+	}
+	const stimmenGesamt = [...summen.values()].reduce((summe, partei) => summe + partei.stimmen, 0);
+	const parteien = [...summen.entries()]
+		.map(([partei, wert]) => ({
+			partei,
+			...wert,
+			prozent: stimmenGesamt > 0 ? (wert.stimmen / stimmenGesamt) * 100 : 0
+		}))
+		.sort((a, b) => b.stimmen - a.stimmen);
+	return { stimmenGesamt, parteien };
 }
 
 function summeKandidatenstimmen(v: Wahlvorschlag): number {
@@ -186,12 +215,13 @@ function mitMehrheitsklausel<K>(
 
 	const offen = sitze - vergeben;
 	reste.sort((a, b) => (a.rest < b.rest ? 1 : a.rest > b.rest ? -1 : 0));
-	const losentscheid =
-		offen > 0 && offen < reste.length && reste[offen - 1].rest === reste[offen].rest;
-	for (let i = 0; i < offen && i < reste.length; i++) {
-		zuteilung.set(reste[i].k, zuteilung.get(reste[i].k)! + 1);
-	}
-	return { zuteilung, losentscheid };
+	const auswahl = nimmGroesste(reste, (a, b) => (a.rest < b.rest ? -1 : a.rest > b.rest ? 1 : 0), offen);
+	for (const rest of auswahl.gewaehlt) zuteilung.set(rest.k, zuteilung.get(rest.k)! + 1);
+	const grenzfall = auswahl.grenzfall && {
+		betroffene: auswahl.grenzfall.betroffene.map((rest) => rest.k),
+		sitze: auswahl.grenzfall.sitze
+	};
+	return { zuteilung, losentscheid: grenzfall !== undefined, grenzfall };
 }
 
 // ---------------------------------------------------------------------------
@@ -203,6 +233,7 @@ interface BewerberErgebnis {
 	/** Sitze, die mangels Bewerbern nicht besetzt werden konnten. */
 	offen: number;
 	losentscheide: string[];
+	losfaelle: Losfall[];
 }
 
 function verteileAufBewerber(
@@ -213,7 +244,8 @@ function verteileAufBewerber(
 ): BewerberErgebnis {
 	const sitze: Sitz[] = [];
 	const losentscheide: string[] = [];
-	if (anzahl <= 0) return { sitze, offen: 0, losentscheide };
+	const losfaelle: Losfall[] = [];
+	if (anzahl <= 0) return { sitze, offen: 0, losentscheide, losfaelle };
 
 	const wahlbereich = mehrereWahlbereiche ? bereich.name : undefined;
 	const basis = (k: Kandidat | undefined, art: Mandatsart, mandat: string): Sitz => ({
@@ -231,9 +263,9 @@ function verteileAufBewerber(
 	// Einzelwahlvorschlag: es gibt nur die eine Person, keine Liste.
 	if (v.einzelbewerber) {
 		const k = v.kandidaten[0];
-		if (!k) return { sitze, offen: anzahl, losentscheide };
+		if (!k) return { sitze, offen: anzahl, losentscheide, losfaelle };
 		sitze.push(basis(k, 'personenwahl', 'Einzelwahlvorschlag'));
-		return { sitze, offen: anzahl - 1, losentscheide };
+		return { sitze, offen: anzahl - 1, losentscheide, losfaelle };
 	}
 
 	const mitStimmen = v.kandidaten.filter((k) => k.stimmen > 0);
@@ -248,9 +280,14 @@ function verteileAufBewerber(
 		anzahl
 	);
 	if (aufteilung.losentscheid) {
-		losentscheide.push(
-			`${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Losentscheid bei der Aufteilung zwischen Liste und Bewerbern (§ 36 Abs. 4)`
-		);
+		meldeLosfall(losfaelle, losentscheide, {
+			kontext: `${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Liste oder Bewerber`,
+			betroffene: aufteilung.grenzfall?.betroffene ?? [],
+			sitze: aufteilung.grenzfall?.sitze ?? 0,
+			vorlaeufig: (aufteilung.grenzfall?.betroffene ?? []).slice(0, aufteilung.grenzfall?.sitze ?? 0),
+			rechtsgrundlage: '§ 36 Abs. 4 NKWG',
+			text: `${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Losentscheid bei der Aufteilung zwischen Liste und Bewerbern (§ 36 Abs. 4)`
+		});
 	}
 	let personenSitze = aufteilung.zuteilung.get('kandidaten') ?? 0;
 	let listenSitze = aufteilung.zuteilung.get('liste') ?? 0;
@@ -263,18 +300,19 @@ function verteileAufBewerber(
 	}
 
 	// Abs. 5 Satz 1: höchste Stimmenzahlen zuerst.
-	const nachStimmen = [...mitStimmen].sort(
-		(a, b) => b.stimmen - a.stimmen || a.listenplatz - b.listenplatz
-	);
-	if (
-		personenSitze > 0 &&
-		personenSitze < nachStimmen.length &&
-		nachStimmen[personenSitze - 1].stimmen === nachStimmen[personenSitze].stimmen
-	) {
+	const personenAuswahl = nimmGroesste(mitStimmen, (a, b) => a.stimmen < b.stimmen ? -1 : a.stimmen > b.stimmen ? 1 : 0, personenSitze);
+	const nachStimmen = [...personenAuswahl.gewaehlt, ...mitStimmen.filter((k) => !personenAuswahl.gewaehlt.includes(k))];
+	if (personenAuswahl.grenzfall) {
 		// Satz 4: Bei Stimmengleichheit entscheidet das Los.
-		losentscheide.push(
-			`${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Stimmengleichheit an der Mandatsgrenze zwischen ${nachStimmen[personenSitze - 1].name} und ${nachStimmen[personenSitze].name} (§ 36 Abs. 5 S. 4)`
-		);
+		const namen = personenAuswahl.grenzfall.betroffene.map((k) => k.name);
+		meldeLosfall(losfaelle, losentscheide, {
+			kontext: `${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Personenmandate`,
+			betroffene: namen,
+			sitze: personenAuswahl.grenzfall.sitze,
+			vorlaeufig: namen.slice(0, personenAuswahl.grenzfall.sitze),
+			rechtsgrundlage: '§ 36 Abs. 5 S. 4 NKWG',
+			text: `${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Stimmengleichheit an der Mandatsgrenze zwischen ${namen.join(' und ')} (§ 36 Abs. 5 S. 4)`
+		});
 	}
 	const gewaehlt = new Set<number>();
 	for (let i = 0; i < personenSitze; i++) {
@@ -297,7 +335,7 @@ function verteileAufBewerber(
 		sitze.push(basis(k, 'liste', `Listenplatz ${k.listenplatz}`));
 	}
 
-	return { sitze, offen, losentscheide };
+	return { sitze, offen, losentscheide, losfaelle };
 }
 
 // ---------------------------------------------------------------------------
@@ -313,26 +351,28 @@ function verteileAufBewerber(
  */
 export function verteileSitze(bereiche: Wahlbereich[], sitzeGesamt: number): Sitzverteilung {
 	const losentscheide: string[] = [];
+	const losfaelle: Losfall[] = [];
 	const mehrereWahlbereiche = bereiche.length > 1;
 
 	// § 37 Abs. 1: Gesamtstimmenzahl je Partei über alle Wahlbereiche.
-	const stimmenJePartei = new Map<string, number>();
-	const meta = new Map<string, { lang?: string; farbe?: string }>();
-	for (const b of bereiche) {
-		for (const v of b.vorschlaege) {
-			stimmenJePartei.set(v.partei, (stimmenJePartei.get(v.partei) ?? 0) + gesamtstimmen(v));
-			if (!meta.has(v.partei)) meta.set(v.partei, { lang: v.parteiLang, farbe: v.farbe });
-		}
-	}
-	const gueltigeStimmen = [...stimmenJePartei.values()].reduce((s, v) => s + v, 0);
+	const stimmen = stimmenverhaeltnis(bereiche);
+	const stimmenJePartei = new Map(stimmen.parteien.map((p) => [p.partei, p.stimmen]));
+	const meta = new Map<string, { lang?: string; farbe?: string }>(
+		stimmen.parteien.map((p) => [p.partei, { lang: p.parteiLang, farbe: p.farbe }])
+	);
+	const gueltigeStimmen = stimmen.stimmenGesamt;
 
 	// § 37 Abs. 2 i. V. m. § 36 Abs. 2 und 3.
 	let verteilung = hareNiemeyer(stimmenJePartei, sitzeGesamt);
 	verteilung = mitMehrheitsklausel(stimmenJePartei, sitzeGesamt, verteilung);
 	if (verteilung.losentscheid) {
-		losentscheide.push(
-			'Losentscheid bei der Sitzverteilung auf die Wahlvorschläge (§ 36 Abs. 2 S. 5)'
-		);
+		const betroffene = verteilung.grenzfall?.betroffene ?? [];
+		meldeLosfall(losfaelle, losentscheide, {
+			kontext: 'Sitzverteilung auf die Wahlvorschläge', betroffene,
+			sitze: verteilung.grenzfall?.sitze ?? 0, vorlaeufig: betroffene.slice(0, verteilung.grenzfall?.sitze ?? 0),
+			rechtsgrundlage: '§ 36 Abs. 2 S. 5 NKWG',
+			text: 'Losentscheid bei der Sitzverteilung auf die Wahlvorschläge (§ 36 Abs. 2 S. 5)'
+		});
 	}
 
 	const sitze: Sitz[] = [];
@@ -349,9 +389,12 @@ export function verteileSitze(bereiche: Wahlbereich[], sitzeGesamt: number): Sit
 		}
 		const bereichsSitze = hareNiemeyer(jeBereich, parteiSitze);
 		if (bereichsSitze.losentscheid) {
-			losentscheide.push(
-				`${partei}: Losentscheid bei der Verteilung auf die Wahlbereiche (§ 37 Abs. 3)`
-			);
+			const betroffene = bereichsSitze.grenzfall?.betroffene ?? [];
+			meldeLosfall(losfaelle, losentscheide, {
+				kontext: `${partei}: Verteilung auf die Wahlbereiche`, betroffene,
+				sitze: bereichsSitze.grenzfall?.sitze ?? 0, vorlaeufig: betroffene.slice(0, bereichsSitze.grenzfall?.sitze ?? 0),
+				rechtsgrundlage: '§ 37 Abs. 3 NKWG', text: `${partei}: Losentscheid bei der Verteilung auf die Wahlbereiche (§ 37 Abs. 3)`
+			});
 		}
 
 		// § 37 Abs. 4 i. V. m. § 36 Abs. 4 bis 6.
@@ -364,6 +407,7 @@ export function verteileSitze(bereiche: Wahlbereich[], sitzeGesamt: number): Sit
 			sitze.push(...erg.sitze);
 			offen += erg.offen;
 			losentscheide.push(...erg.losentscheide);
+			losfaelle.push(...erg.losfaelle);
 		}
 
 		// § 37 Abs. 5: Was in einem Wahlbereich nicht besetzt werden konnte, geht
@@ -382,18 +426,16 @@ export function verteileSitze(bereiche: Wahlbereich[], sitzeGesamt: number): Sit
 					if (!bereitsGewaehlt.has(schluessel)) uebrige.push({ k, bereich: b });
 				}
 			}
-			uebrige.sort((a, b) => b.k.stimmen - a.k.stimmen || a.k.listenplatz - b.k.listenplatz);
-			if (
-				offen > 0 &&
-				offen < uebrige.length &&
-				uebrige[offen - 1].k.stimmen === uebrige[offen].k.stimmen
-			) {
-				losentscheide.push(
-					`${partei}: Stimmengleichheit beim Übertrag in andere Wahlbereiche (§ 37 Abs. 5 S. 3)`
-				);
+			const uebertrag = nimmGroesste(uebrige, (a, b) => a.k.stimmen < b.k.stimmen ? -1 : a.k.stimmen > b.k.stimmen ? 1 : 0, offen);
+			if (uebertrag.grenzfall) {
+				const kennungen = uebertrag.grenzfall.betroffene.map(({ k, bereich }) => `${bereich.name}: ${k.name}`);
+				meldeLosfall(losfaelle, losentscheide, {
+					kontext: `${partei}: Übertrag in andere Wahlbereiche`, betroffene: kennungen,
+					sitze: uebertrag.grenzfall.sitze, vorlaeufig: kennungen.slice(0, uebertrag.grenzfall.sitze),
+					rechtsgrundlage: '§ 37 Abs. 5 S. 3 NKWG', text: `${partei}: Stimmengleichheit beim Übertrag in andere Wahlbereiche (§ 37 Abs. 5 S. 3)`
+				});
 			}
-			for (let i = 0; i < offen && i < uebrige.length; i++) {
-				const { k, bereich } = uebrige[i];
+			for (const { k, bereich } of uebertrag.gewaehlt) {
 				sitze.push({
 					partei,
 					parteiLang: m.lang,
@@ -424,14 +466,10 @@ export function verteileSitze(bereiche: Wahlbereich[], sitzeGesamt: number): Sit
 		}
 	}
 
-	const parteien: ParteiErgebnis[] = [...stimmenJePartei.entries()]
-		.map(([partei, stimmen]) => ({
-			partei,
-			parteiLang: meta.get(partei)?.lang,
-			farbe: meta.get(partei)?.farbe,
-			stimmen,
-			prozent: gueltigeStimmen > 0 ? (stimmen / gueltigeStimmen) * 100 : 0,
-			sitze: verteilung.zuteilung.get(partei) ?? 0
+	const parteien: ParteiErgebnis[] = stimmen.parteien
+		.map((partei) => ({
+			...partei,
+			sitze: verteilung.zuteilung.get(partei.partei) ?? 0
 		}))
 		.sort((a, b) => b.sitze - a.sitze || b.stimmen - a.stimmen);
 
@@ -445,7 +483,7 @@ export function verteileSitze(bereiche: Wahlbereich[], sitzeGesamt: number): Sit
 			(b.stimmen ?? 0) - (a.stimmen ?? 0)
 	);
 
-	return { sitzeGesamt, gueltigeStimmen, parteien, sitze, losentscheide };
+	return { sitzeGesamt, gueltigeStimmen, parteien, sitze, losentscheide, losfaelle };
 }
 
 // ---------------------------------------------------------------------------
@@ -467,6 +505,7 @@ export interface Direktergebnis {
 	/** Sonst die beiden Bestplatzierten für die Stichwahl. */
 	stichwahl?: DirektBewerber[];
 	losentscheid?: string;
+	losfall?: Losfall;
 }
 
 /**
@@ -487,10 +526,22 @@ export function direktwahl(bewerber: DirektBewerber[]): Direktergebnis {
 		erg.gewaehlt = sortiert[0];
 		return erg;
 	}
-	erg.stichwahl = sortiert.slice(0, 2);
+	const auswahl = nimmGroesste(sortiert, (a, b) => a.stimmen < b.stimmen ? -1 : a.stimmen > b.stimmen ? 1 : 0, 2);
+	erg.stichwahl = auswahl.gewaehlt;
 	// Gleichstand um den zweiten Stichwahlplatz: das Gesetz lässt losen.
-	if (sortiert.length > 2 && sortiert[1].stimmen === sortiert[2].stimmen) {
-		erg.losentscheid = `Stimmengleichheit um den zweiten Stichwahlplatz zwischen ${sortiert[1].name} und ${sortiert[2].name}`;
+	if (auswahl.grenzfall) {
+		const betroffene = auswahl.grenzfall.betroffene.map((b) => b.name);
+		erg.losentscheid = `Stimmengleichheit um den zweiten Stichwahlplatz zwischen ${betroffene.join(' und ')}`;
+		erg.losfall = {
+			kontext: 'Zweiter Stichwahlplatz', betroffene, sitze: auswahl.grenzfall.sitze,
+			vorlaeufig: betroffene.slice(0, auswahl.grenzfall.sitze), rechtsgrundlage: '§ 45g Abs. 2 NKWG',
+			text: erg.losentscheid
+		};
 	}
 	return erg;
+}
+
+function meldeLosfall(losfaelle: Losfall[], texte: string[], losfall: Losfall): void {
+	losfaelle.push(losfall);
+	texte.push(losfall.text);
 }

@@ -5,15 +5,23 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const ags = url.searchParams.get('ags');
+	const instanzText = url.searchParams.get('instanz');
+	const instanz = instanzText ? Number(instanzText) : undefined;
 	const wahl = Number(url.searchParams.get('wahl'));
 	const gebiet = url.searchParams.get('gebiet');
 	const wahltag = url.searchParams.get('wahltag') ?? WAHLTAG;
 
-	if (!ags || !wahl || !gebiet) {
-		return json({ fehler: 'ags, wahl und gebiet sind erforderlich' }, { status: 400 });
+	if (
+		(!ags && !instanz) ||
+		(instanz !== undefined && (!Number.isSafeInteger(instanz) || instanz <= 0)) ||
+		!Number.isSafeInteger(wahl) || wahl <= 0 ||
+		!gebiet ||
+		!/^\d{8}$/.test(wahltag)
+	) {
+		return json({ fehler: 'instanz oder ags sowie wahl und gebiet sind erforderlich' }, { status: 400 });
 	}
 	try {
-		return json(await berechneVertretung(ags, wahl, gebiet, wahltag));
+		return json(await berechneVertretung(ags ?? undefined, wahl, gebiet, wahltag, instanz));
 	} catch (e) {
 		return json({ fehler: String(e) }, { status: 502 });
 	}

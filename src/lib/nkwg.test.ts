@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { hareNiemeyer, verteileSitze, direktwahl, type Wahlbereich } from './nkwg';
+import {
+	stimmenverhaeltnis,
+	hareNiemeyer,
+	verteileSitze,
+	direktwahl,
+	type Wahlbereich
+} from './nkwg';
 import { ladeVertretung, type VertretungRef } from './votemanager';
 
 const WAHLTAG_2021 = '20210912';
@@ -56,6 +62,36 @@ describe('hareNiemeyer', () => {
 	it('verteilt keine Sitze ohne Stimmen', () => {
 		const { zuteilung } = hareNiemeyer(new Map([['A', 0]]), 5);
 		expect(zuteilung.get('A')).toBe(0);
+	});
+});
+
+describe('stimmenverhaeltnis', () => {
+	it('summiert Listen- und Bewerberstimmen aller Wahlbereiche einschließlich Nullwerten', () => {
+		const erg = stimmenverhaeltnis([
+			{
+				id: '1',
+				name: 'Nord',
+				vorschlaege: [
+					{ partei: 'A', listenstimmen: 10, kandidaten: [{ name: 'A1', stimmen: 20, listenplatz: 1 }] },
+					{ partei: 'C', listenstimmen: 0, kandidaten: [] }
+				]
+			},
+			{
+				id: '2',
+				name: 'Süd',
+				vorschlaege: [
+					{ partei: 'B', listenstimmen: 20, kandidaten: [] },
+					{ partei: 'A', listenstimmen: 10, kandidaten: [{ name: 'A2', stimmen: 10, listenplatz: 1 }] }
+				]
+			}
+		]);
+
+		expect(erg.stimmenGesamt).toBe(70);
+		expect(erg.parteien.map(({ partei, stimmen, prozent }) => ({ partei, stimmen, prozent }))).toEqual([
+			{ partei: 'A', stimmen: 50, prozent: (50 / 70) * 100 },
+			{ partei: 'B', stimmen: 20, prozent: (20 / 70) * 100 },
+			{ partei: 'C', stimmen: 0, prozent: 0 }
+		]);
 	});
 });
 

@@ -1,0 +1,78 @@
+{{- $secret := ternary (printf "%s-database" .Release.Name) .Values.database.existingSecret .Values.database.bundled -}}
+{{- $contact := required "crawler.contact is required" .Values.crawler.contact -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+  labels: {{- include "votemanager.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector: { matchLabels: { app.kubernetes.io/component: web, app.kubernetes.io/instance: {{ .Release.Name }} } }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/component: web, app.kubernetes.io/instance: {{ .Release.Name }} }
+    spec:
+      securityContext: {{- include "votemanager.podSecurityContext" . | nindent 8 }}
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["npm", "run", "migrieren"]
+          envFrom: [{ secretRef: { name: {{ $secret }} } }]
+          env: [{ name: DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $secret }}, key: {{ .Values.database.secretKey }} } } }]
+          securityContext: {{- include "votemanager.securityContext" . | nindent 12 }}
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: 3000 }
+          env:
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $secret }}, key: {{ .Values.database.secretKey }} } } }
+          readinessProbe: { httpGet: { path: /api/ready, port: http }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
+          startupProbe: { httpGet: { path: /api/health, port: http }, failureThreshold: 30, periodSeconds: 2 }
+          securityContext: {{- include "votemanager.securityContext" . | nindent 12 }}
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-poller
+  labels: {{- include "votemanager.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app.kubernetes.io/component: poller, app.kubernetes.io/instance: {{ .Release.Name }} } }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/component: poller, app.kubernetes.io/instance: {{ .Release.Name }} }
+    spec:
+      securityContext: {{- include "votemanager.podSecurityContext" . | nindent 8 }}
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["npm", "run", "migrieren"]
+          env: [{ name: DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $secret }}, key: {{ .Values.database.secretKey }} } } }]
+          securityContext: {{- include "votemanager.securityContext" . | nindent 12 }}
+      containers:
+        - name: poller
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["npm", "run", "poller"]
+          ports: [{ name: metrics, containerPort: 9090 }]
+          env:
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $secret }}, key: {{ .Values.database.secretKey }} } } }
+            - { name: CRAWLER_CONTACT, value: {{ $contact | quote }} }
+            - { name: BACKFILL_ENABLED, value: {{ .Values.crawler.backfill | quote }} }
+            - { name: METRICS_PORT, value: "9090" }
+          readinessProbe: { httpGet: { path: /metrics, port: metrics }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /metrics, port: metrics }, periodSeconds: 30 }
+          startupProbe: { httpGet: { path: /metrics, port: metrics }, failureThreshold: 30, periodSeconds: 2 }
+          securityContext: {{- include "votemanager.securityContext" . | nindent 12 }}
+          resources: {{- toYaml .Values.poller.resources | nindent 12 }}
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]

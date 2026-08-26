@@ -60,7 +60,9 @@
 	</p>
 
 	{#if direkt.losentscheid}
-		<p class="los">{direkt.losentscheid} — es entscheidet das Los.</p>
+		<p class="los">{direkt.losentscheid} — es entscheidet das Los.
+			{#if direkt.losfall?.vorlaeufig.length} Provisorisch angezeigt: {direkt.losfall.vorlaeufig.join(', ')}.{/if}
+		</p>
 	{/if}
 </div>
 

@@ -34,7 +34,7 @@
 	{#if verteilung.losentscheide.length}
 		<p class="los">
 			{verteilung.losentscheide.length === 1 ? 'An einer Stelle' : 'An mehreren Stellen'}
-			entscheidet das Los — insoweit steht das Ergebnis noch nicht fest.
+			entscheidet das Los — die angezeigte Auswahl ist insoweit nur provisorisch.
 		</p>
 	{/if}
 </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Sitzdiagramm from './Sitzdiagramm.svelte';
+	import Stimmverhaeltnis from './Stimmverhaeltnis.svelte';
 	import type { VertretungErgebnis } from '$lib/server/daten';
 
 	// Detailansicht am Schreibtisch: Diagramm plus vollständige Tabelle.
@@ -82,14 +83,17 @@
 			</tbody>
 		</table>
 		{#if d.losentscheid}
-			<p class="hinweis">{d.losentscheid} — es entscheidet das Los (§ 45g NKWG).</p>
+			<p class="hinweis">{d.losentscheid} — es entscheidet das Los (§ 45g NKWG).
+				{#if d.losfall?.vorlaeufig.length} Provisorisch angezeigt: {d.losfall.vorlaeufig.join(', ')}.{/if}
+			</p>
 		{/if}
 
 		<!-- ------------------------------------------------------------------ -->
 		<!-- Ratswahl (§ 36 / § 37)                                              -->
 		<!-- ------------------------------------------------------------------ -->
-	{:else if ergebnis.verteilung}
-		<Sitzdiagramm sitze={ergebnis.verteilung.sitze} groesse={460} />
+	{:else}
+		{#if ergebnis.verteilung}
+			<Sitzdiagramm sitze={ergebnis.verteilung.sitze} groesse={460} />
 
 		<!-- Legende: Partei immer im Klartext, nie nur über die Farbe. -->
 		<ul class="legende">
@@ -115,14 +119,16 @@
 				<strong>Losentscheid nötig</strong> — das Gesetz lässt hier losen, das Ergebnis steht
 				insoweit nicht fest:
 				<ul>
-					{#each ergebnis.verteilung.losentscheide as l (l)}<li>{l}</li>{/each}
+					{#each ergebnis.verteilung.losfaelle as l (l.kontext)}
+						<li>{l.text}; provisorisch ausgewählt: {l.vorlaeufig.join(', ') || 'niemand'}.</li>
+					{/each}
 				</ul>
 			</div>
 		{/if}
 
 		<!-- Tabellenansicht: erfüllt zugleich die Anforderung, dass die Information
 		     nicht nur grafisch vorliegt. -->
-		<table>
+			<table>
 			<thead>
 				<tr>
 					<th>Partei</th>
@@ -152,7 +158,13 @@
 					</tr>
 				{/each}
 			</tbody>
-		</table>
+			</table>
+		{/if}
+
+		{#if ergebnis.stimmverhaeltnis}
+			<h3>Stimmenverhältnis aller Parteien und Listen</h3>
+			<Stimmverhaeltnis verhaeltnis={ergebnis.stimmverhaeltnis} verteilung={ergebnis.verteilung} />
+		{/if}
 	{/if}
 </article>
 
@@ -174,6 +186,8 @@
 	h2 {
 		font-size: 1.35rem;
 	}
+
+	h3 { margin-top: 1.75rem; }
 
 	.behoerde {
 		margin: 0.15rem 0 0;

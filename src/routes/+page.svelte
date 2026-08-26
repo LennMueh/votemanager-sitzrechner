@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Thema from '$lib/Thema.svelte';
+	import WahlAuswahl from '$lib/WahlAuswahl.svelte';
+	import { strom } from '$lib/strom';
 	import type { Uebersicht, UebersichtEintrag } from '$lib/server/daten';
 
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
@@ -27,8 +29,7 @@
 
 	$effect(() => {
 		laden();
-		const t = setInterval(laden, 30_000);
-		return () => clearInterval(t);
+		return strom(['uebersicht'], () => laden());
 	});
 
 	const gefiltert = $derived(
@@ -54,7 +55,7 @@
 	});
 
 	const link = (e: UebersichtEintrag) =>
-		`/v?ags=${e.ags}&wahl=${e.wahlId}&gebiet=${e.gebietId}${wahltag ? `&wahltag=${wahltag}` : ''}`;
+		`/v?${e.instanzId ? `instanz=${e.instanzId}` : `ags=${e.ags}`}&wahl=${e.wahlId}&gebiet=${e.gebietId}${wahltag ? `&wahltag=${wahltag}` : ''}`;
 </script>
 
 <main>
@@ -76,6 +77,8 @@
 		auf Grundlage der von votemanager veröffentlichten Zwischenstände. <strong>Ohne Gewähr</strong>
 		— amtlich ist allein die Feststellung des Wahlausschusses.
 	</p>
+
+	<WahlAuswahl />
 
 	{#if daten}
 		<div class="gesamt">

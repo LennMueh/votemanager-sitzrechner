@@ -23,6 +23,9 @@ amtlichen Endergebnis. Diese Lücke schließt die Anwendung.
 | `npm run build` | Produktionsbau |
 | `npm run harvest` | `src/lib/sitzzahlen.json` aus den 2021-Daten neu erzeugen |
 | `npm run schuss` | Präsentationsmodus aufnehmen und auf Überlauf prüfen (Dev-Server muss laufen) |
+| `npm run ernte` | Amtliche NI-Referenzfälle offline einfrieren |
+| `npm run migrieren` | PostgreSQL-Migrationen idempotent einspielen |
+| `npm run poller -- --einmalig` | Einen Poller-Durchlauf ausführen |
 
 **Gegen echte Daten entwickeln:** Alles akzeptiert `?wahltag=20210912` und rechnet
 dann gegen die Kommunalwahl 2021 — vollständig ausgezählt, amtlich bestätigt.
@@ -31,18 +34,19 @@ Daten gibt. **Ohne diesen Parameter sieht man nichts.**
 
 ## Aufbau
 
-Drei Schichten, strikt getrennt:
+Vier Schichten, strikt getrennt:
 
 - **`src/lib/nkwg.ts`** — Sitzverteilung, **reine Funktionen ohne I/O**. Hier
   liegt die juristische Substanz; deshalb direkt testbar und ohne Netz prüfbar.
-- **`src/lib/votemanager.ts`** — **einziger Netzzugriff** der Anwendung.
-  Discovery, Parsen, Normalisierung auf das Modell aus `nkwg.ts`.
-- **`src/lib/server/daten.ts`** — verbindet beides, hält Zwischenspeicher und
-  Sitzzahlen. Nur die Routen unter `src/routes/api/` sprechen damit.
+- **`src/lib/votemanager.ts`** — Parser und Normalisierung auf das Rechenmodell;
+  die alten Netzfunktionen bleiben ausschließlich für Parser-/Erntetests.
+- **`src/lib/server/poller/`** — einziger produktiver Netzzugriff, Discovery,
+  Drosselung, Zustandsmaschine und bedingte Abrufe.
+- **`src/lib/server/db.ts` und `daten.ts`** — PostgreSQL-Archiv und Berechnung
+  aus dem letzten gespeicherten Stand. Web-Pods sprechen nie mit votemanager.
 
-Diese Trennung ist Absicht: die Hosting-Entscheidung steht noch aus (siehe
-README), und der gesamte Abruf hängt an `ladeVertretung()`. Netzaufrufe gehören
-nirgendwo anders hin.
+Diese Trennung ist Absicht: Kubernetes skaliert nur die Web-Schicht; der Poller
+bleibt durch Deployment und PostgreSQL-Advisory-Lock ein Singleton.
 
 ## votemanager-API — was man wissen muss
 
@@ -99,12 +103,9 @@ Vollständig in `src/lib/nkwg.ts` umgesetzt und kommentiert. Die Fallstricke:
 
 ## Tests
 
-`src/lib/alle-vertretungen.test.ts` prüft **jede der 53 Vertretungen** gegen das
-amtliche Ergebnis 2021 — Sitze je Partei und jeden Namen. Das ist der stärkste
-verfügbare Test und hat bereits einen echten Fehler gefunden. Bei Änderungen an
-der Rechenlogik oder am Parser muss er grün bleiben.
-
-11 der 14 Tests laufen ohne Netz (`nkwg.test.ts` teilweise, `sitzarc.test.ts`).
+`src/lib/referenzen.test.ts` prüft die Rechenschicht offline gegen 53 eingefrorene
+amtliche Ergebnisse. `alle-vertretungen.test.ts` bleibt der getrennte Netztest
+für den Parser; keiner ersetzt den anderen.
 
 ## Präsentationsmodus — zwei Fallen
 
@@ -143,11 +144,10 @@ Puppeteer-Cache.
 
 ## Rücksicht auf fremde Infrastruktur
 
-votemanager gehört uns nicht und hat keine zugesicherte API. Ergebnisse werden
-30 s zwischengespeichert, `votemanager.ts` lässt **höchstens 6 Anfragen
-gleichzeitig** zu, und bei Ausfall bleibt der letzte gute Stand mit `stale: true`
-stehen statt einer Fehlerseite. Diese Drosselung nicht aufheben — die Übersicht
-würde sonst rund 60 gleichzeitige Anfragen auslösen.
+votemanager gehört uns nicht und hat keine zugesicherte API. Genau ein Poller
+nutzt ETag/Last-Modified, höchstens 20 Starts/s und zwei parallele Abrufe je Host.
+Live-Wahlen laufen im 30-s-Takt; Fehler führen zu Backoff. Web-Pods lesen nur den
+letzten archivierten Stand und verteilen Änderungen über PostgreSQL und SSE.
 
 Aus demselben Grund gibt es **bewusst keine CI, die bei jedem Push die
 Golden Tests fährt**.

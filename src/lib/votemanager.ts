@@ -114,7 +114,7 @@ interface RohErgebnis {
 	Komponente: {
 		tabelle?: { zeilen: RohZeile[] };
 		info?: { titel?: string; hinweis?: string[]; tabelle?: { zeilen: RohZeile[] } };
-		sitze?: { hinweis?: string; tabelle?: { ueberschriften: string[]; zeilen: string[][] } };
+		sitze?: { hinweis?: string; tortenDiagramm?: { entries?: Array<{ value?: number | string; zahl?: number | string }> }; tabelle?: { ueberschriften: string[]; zeilen: string[][] } };
 	};
 }
 interface RohUebersicht {
@@ -145,6 +145,8 @@ const lang = (l: RohLabel | string): string | undefined =>
 // ---------------------------------------------------------------------------
 
 export interface VertretungRef {
+	/** Eindeutige Wahltermin-Instanz im Archiv. */
+	instanzId?: number;
 	ags: string;
 	behoerde: string;
 	wahlId: number;
@@ -207,7 +209,7 @@ export interface Auszaehlstand {
 	vollstaendig: boolean;
 }
 
-interface GebietsErgebnis {
+export interface GebietsErgebnis {
 	vorschlaege: Wahlvorschlag[];
 	direktBewerber: DirektBewerber[];
 	stand: Auszaehlstand;
@@ -229,7 +231,7 @@ function parseStand(hinweise: string[] | undefined): Auszaehlstand {
 	};
 }
 
-function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
+export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 	const k = roh.Komponente ?? {};
 	const zeilen = k.tabelle?.zeilen ?? [];
 	const nachPartei = new Map<string, Wahlvorschlag>();
@@ -306,9 +308,11 @@ function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 	for (const z of k.info?.tabelle?.zeilen ?? []) kennzahlen[kurz(z.label)] = parseZahl(z.zahl);
 
 	const sitzeRoh = k.sitze;
-	const amtlicheSitze = sitzeRoh?.hinweis
+	const sitzSumme = sitzeRoh?.tortenDiagramm?.entries?.reduce((summe, e) => summe + parseZahl(e.value ?? e.zahl), 0) ?? 0;
+	const sitzAnzahl = sitzSumme || parseZahl(sitzeRoh?.hinweis?.match(/([\d.]+)\s*Sitze/)?.[1] ?? '0');
+	const amtlicheSitze = sitzeRoh && sitzAnzahl
 		? {
-				anzahl: parseZahl(sitzeRoh.hinweis.match(/([\d.]+)\s*Sitze/)?.[1] ?? '0'),
+				anzahl: sitzAnzahl,
 				gewaehlte: sitzeRoh.tabelle?.zeilen ?? []
 			}
 		: undefined;

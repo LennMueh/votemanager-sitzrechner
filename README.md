@@ -83,11 +83,16 @@ schlägt an, sobald Inhalt aus der Seite läuft — waagerecht wie senkrecht.
 
 ## Präsentationsmodus
 
-Je Ratswahl zwei Vollbildseiten, die alle 15 Sekunden wechseln:
+Je Ratswahl drei Vollbildseiten, die alle 15 Sekunden wechseln:
 
 1. **Übersicht** — Sitzanzahl je Wahlvorschlag und der Halbkreis
-2. **Kacheln** — die voraussichtlichen Mitglieder, nach Wahlvorschlag gruppiert,
+2. **Stimmenverhältnis** — Torte und vollständige Legende aller Parteien und Listen,
+   einschließlich Wahlvorschlägen ohne Sitz
+3. **Kacheln** — die voraussichtlichen Mitglieder, nach Wahlvorschlag gruppiert,
    je Kachel Name und „direkt" bzw. „Liste"
+
+Gebietsansichten ohne eigene Sitzvergabe, etwa die Kreiswahl auf Gemeindeebene,
+zeigen ausschließlich das Stimmenverhältnis und keine fiktiven Sitze.
 
 Direktwahlen bekommen stattdessen eine Seite mit waagerechten Balken und einer
 markierten 50-%-Linie — die Schwelle, an der sich nach § 45g NKWG Wahl oder
@@ -109,28 +114,20 @@ Hell/Dunkel lässt sich oben rechts umschalten (System / Hell / Dunkel).
 2. **Discovery testen**, sobald votemanager den Pfad `20260913` veröffentlicht.
    Wahlbereichszuschnitte, Ortsräte und angesetzte Direktwahlen stehen erst dann
    fest; erkannt wird alles dynamisch, hart verdrahtet sind nur die zwölf AGS.
-3. **Deployment entscheiden** (siehe unten).
+3. **Deployment proben** (siehe unten), sobald Docker/Kubernetes verfügbar sind.
 
 ## Deployment
 
-Bewusst offen gehalten. Der gesamte Netzabruf liegt hinter `ladeVertretung()`,
-die Adapterwahl ist damit eine späte Entscheidung. Aktuell `adapter-auto`.
-
-| | Cloudflare Pages | GitHub Pages |
-|---|---|---|
-| Serverseitige Routen | ja | nein, rein statisch |
-| Datenaktualität | ~30 s | ~1–2 min (Poll + Deploy) |
-| Umsetzung | `adapter-cloudflare` | `adapter-static` + langlaufender Actions-Job |
-| Kosten | gratis | gratis (öffentliches Repo) |
-
-Für einen Wahlabend ist Cloudflare technisch der bessere Weg. GitHub Pages
-funktioniert, wenn alles an einem Ort bleiben soll — dann braucht es aber einen
-langlaufenden `workflow_dispatch`-Job; ein `schedule`-Cron reicht nicht
-(frühestens alle 5 Minuten, unter Last deutlich verspätet).
+Die Anwendung läuft mit `adapter-node` auf Kubernetes: beliebig viele Web-Pods
+lesen ausschließlich aus PostgreSQL, genau ein Poller spricht mit votemanager.
+PostgreSQL übernimmt Archiv, Cache und `LISTEN`/`NOTIFY`; Browser erhalten
+Änderungen per SSE statt durch eigenes Polling. Container, Helm-Chart und die
+lokale Anleitung stehen in [docs/deployment.md](docs/deployment.md).
 
 ## Rücksicht auf fremde Infrastruktur
 
-votemanager gehört uns nicht und hat keine zugesicherte API. Deshalb:
-Ergebnisse werden 30 Sekunden zwischengespeichert, es laufen höchstens sechs
-Anfragen gleichzeitig, und bei einem Ausfall zeigt die Anwendung den letzten
-guten Stand mit deutlichem Hinweis statt einer Fehlerseite.
+votemanager gehört uns nicht und hat keine zugesicherte API. Deshalb arbeitet
+nur ein Poller mit bedingten Anfragen, höchstens 20 Starts pro Sekunde und zwei
+gleichzeitigen Abrufen je Host. Live-Wahlen werden alle 30 Sekunden geprüft;
+unveränderte Antworten kosten dank ETag fast keine Nutzdaten. Ein Ausfall lässt
+den letzten archivierten Stand sichtbar als veraltet stehen.

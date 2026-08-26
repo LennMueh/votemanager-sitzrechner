@@ -1,0 +1,6 @@
+.git
+.svelte-kit
+node_modules
+screenshots
+referenzen
+*.log

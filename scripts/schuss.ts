@@ -20,6 +20,7 @@ const ZIEL = process.argv[3] ?? 'screenshots';
 const WAHLTAG = '20210912';
 
 const KREISTAG = '03355000:219:ebene_1_id_435';
+const KREISWAHL_ADENDORF = '03355001:219:ebene_3_id_436';
 const OEDEME = '03355022:225:ebene_8_id_1935';
 const OB_WAHL = '03355022:223:ebene_3_id_438';
 const OB_STICH = '03355022:224:ebene_3_id_438';
@@ -41,9 +42,11 @@ for (const [breite, hoehe] of [
 ] as const) {
 	for (const thema of ['hell', 'dunkel'] as const) {
 		faelle.push({ name: 'kreistag-uebersicht', v: KREISTAG, seite: 0, thema, breite, hoehe });
-		faelle.push({ name: 'kreistag-kacheln', v: KREISTAG, seite: 1, thema, breite, hoehe });
+		faelle.push({ name: 'kreistag-stimmen', v: KREISTAG, seite: 1, thema, breite, hoehe });
+		faelle.push({ name: 'kreistag-kacheln', v: KREISTAG, seite: 2, thema, breite, hoehe });
 	}
-	faelle.push({ name: 'oedeme-kacheln', v: OEDEME, seite: 1, thema: 'hell', breite, hoehe });
+	faelle.push({ name: 'kreiswahl-adendorf-stimmen', v: KREISWAHL_ADENDORF, seite: 0, thema: 'hell', breite, hoehe });
+	faelle.push({ name: 'oedeme-kacheln', v: OEDEME, seite: 2, thema: 'hell', breite, hoehe });
 	faelle.push({ name: 'obwahl-stichwahl', v: OB_WAHL, seite: 0, thema: 'hell', breite, hoehe });
 	faelle.push({ name: 'obwahl-gewaehlt', v: OB_STICH, seite: 0, thema: 'dunkel', breite, hoehe });
 }
@@ -62,8 +65,10 @@ for (const f of faelle) {
 
 	await seite.evaluateOnNewDocument((t: string) => localStorage.setItem('thema', t), f.thema);
 	await seite.goto(`${BASIS}/praesentation?wahltag=${WAHLTAG}&v=${f.v}`, {
-		waitUntil: 'networkidle0'
+		// SSE bleibt absichtlich offen; auf Netzwerk-Leerlauf würde der Test ewig warten.
+		waitUntil: 'domcontentloaded'
 	});
+	await seite.waitForSelector('.inhalt');
 	// Rotation anhalten, damit die Aufnahme nicht mitten im Wechsel entsteht.
 	await seite.keyboard.press(' ');
 	for (let i = 0; i < f.seite; i++) await seite.keyboard.press('ArrowRight');
@@ -95,6 +100,21 @@ for (const f of faelle) {
 
 	await seite.close();
 }
+
+const auswahl = await browser.newPage();
+await auswahl.goto(`${BASIS}/praesentation`, { waitUntil: 'domcontentloaded' });
+await auswahl.waitForSelector('.aktionen button:not([disabled])');
+await auswahl.click('.aktionen button');
+const alleAn = await auswahl.$$eval('.katalog input[type=checkbox]', (felder) =>
+	felder.length > 0 && felder.every((feld) => (feld as HTMLInputElement).checked)
+);
+await auswahl.click('.aktionen button');
+const alleAus = await auswahl.$$eval('.katalog input[type=checkbox]', (felder) =>
+	felder.every((feld) => !(feld as HTMLInputElement).checked)
+);
+if (!alleAn || !alleAus) fehler++;
+console.log(alleAn && alleAus ? ' ok   Alle Filtertreffer toggeln' : 'FEHLT Alle Filtertreffer toggeln');
+await auswahl.close();
 
 await browser.close();
 console.log(fehler === 0 ? '\nAlles passt.' : `\n${fehler} Beanstandung(en).`);

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import VertretungAnsicht from '$lib/VertretungAnsicht.svelte';
+	import { strom } from '$lib/strom';
 	import type { VertretungErgebnis } from '$lib/server/daten';
 
 	const abfrage = $derived(page.url.searchParams.toString());
@@ -8,6 +9,9 @@
 
 	let ergebnis = $state<VertretungErgebnis | undefined>();
 	let fehler = $state('');
+	const stromSchluessel = $derived(ergebnis?.ref.instanzId
+		? `v:i${ergebnis.ref.instanzId}:${ergebnis.ref.wahlId}:${ergebnis.ref.gebietId}`
+		: '');
 
 	async function laden() {
 		try {
@@ -23,9 +27,12 @@
 
 	$effect(() => {
 		abfrage; // bei geänderter Vertretung neu laden
-		laden();
-		const t = setInterval(laden, 30_000);
-		return () => clearInterval(t);
+		void laden();
+	});
+
+	$effect(() => {
+		if (!stromSchluessel) return;
+		return strom([stromSchluessel], () => void laden());
 	});
 </script>
 
