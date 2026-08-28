@@ -18,3 +18,11 @@ allowPrivilegeEscalation: false
 capabilities: { drop: ["ALL"] }
 readOnlyRootFilesystem: true
 {{- end }}
+{{- /* Deployed wird per Digest; tag bleibt Rückfallebene für lokale Bauten. */ -}}
+{{- define "votemanager.image" -}}
+{{- if .Values.image.digest -}}
+{{ .Values.image.repository }}@{{ .Values.image.digest }}
+{{- else -}}
+{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{- end -}}
+{{- end }}

@@ -1,7 +1,16 @@
 image:
-  repository: votemanager-ausgabe
+  repository: ghcr.io/lennmueh/votemanager
   tag: latest
+  # Digest gewinnt gegen tag; wird aus der Job-Summary des Image-Workflows gesetzt.
+  digest: ""
   pullPolicy: IfNotPresent
+
+metrics:
+  serviceMonitor:
+    # Braucht die Prometheus-Operator-CRD; ohne Operator auf false setzen.
+    enabled: true
+    interval: 30s
+    labels: {}
 
 crawler:
   contact: ""

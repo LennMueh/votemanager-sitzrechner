@@ -1,0 +1,14 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-poller
+  labels:
+    {{- include "votemanager.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}{{- toYaml . | nindent 4 }}{{- end }}
+spec:
+  selector: { matchLabels: { app.kubernetes.io/component: poller, app.kubernetes.io/instance: {{ .Release.Name }} } }
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+{{- end }}
