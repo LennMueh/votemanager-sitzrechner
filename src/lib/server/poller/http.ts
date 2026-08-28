@@ -20,7 +20,7 @@ export async function holeJson(
 ): Promise<Abruf> {
 	const headers = new Headers({
 		accept: 'application/json',
-		'user-agent': `votemanager-ausgabe/0.1 (${optionen.kontakt ?? crawlerKontakt()})`
+		'user-agent': `votemanager-sitzrechner/0.1 (${optionen.kontakt ?? crawlerKontakt()})`
 	});
 	if (stand.etag) headers.set('if-none-match', stand.etag);
 	if (stand.lastModified) headers.set('if-modified-since', stand.lastModified);

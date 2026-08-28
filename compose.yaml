@@ -2,7 +2,7 @@ name: votemanager
 
 x-app: &app
   build: .
-  image: votemanager-ausgabe:local
+  image: votemanager-sitzrechner:local
   environment:
     DATABASE_URL: postgres://votemanager:votemanager@postgres:5432/votemanager
   depends_on:
@@ -28,7 +28,7 @@ services:
 
   migrate:
     build: .
-    image: votemanager-ausgabe:local
+    image: votemanager-sitzrechner:local
     command: npm run migrieren
     environment:
       DATABASE_URL: postgres://votemanager:votemanager@postgres:5432/votemanager

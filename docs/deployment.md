@@ -19,7 +19,7 @@ Web läuft danach auf <http://localhost:3000>. Für den dauerhaften Poller statt
 ## Kubernetes
 
 ```sh
-docker build -t votemanager-ausgabe:local .
+docker build -t votemanager-sitzrechner:local .
 helm upgrade --install votemanager helm/votemanager \
   --set image.tag=local \
   --set database.password='lokales-langes-passwort' \
