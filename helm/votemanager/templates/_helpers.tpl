@@ -3,6 +3,9 @@
 app.kubernetes.io/name: {{ include "votemanager.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+{{- define "votemanager.secretName" -}}
+{{ .Values.database.existingSecret | default (printf "%s-database" .Release.Name) }}
+{{- end }}
 {{- define "votemanager.databaseUrl" -}}
 postgres://{{ .Values.database.user }}:{{ required "database.password is required when database.bundled=true" .Values.database.password }}@{{ .Release.Name }}-postgres:5432/{{ .Values.database.name }}
 {{- end }}

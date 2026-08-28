@@ -1,4 +1,4 @@
-{{- $secret := ternary (printf "%s-database" .Release.Name) .Values.database.existingSecret .Values.database.bundled -}}
+{{- $secret := include "votemanager.secretName" . -}}
 {{- $contact := required "crawler.contact is required" .Values.crawler.contact -}}
 apiVersion: apps/v1
 kind: Deployment

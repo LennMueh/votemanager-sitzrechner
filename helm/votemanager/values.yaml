@@ -20,7 +20,11 @@ database:
   bundled: true
   name: votemanager
   user: votemanager
+  # Nur noetig, wenn bundled=true UND kein existingSecret gesetzt ist.
   password: ""
+  # Gesetzt: Chart erzeugt kein eigenes Secret, sondern liest dieses. Gilt auch
+  # bei bundled=true; das Secret muss dann beide Keys tragen: den Key aus
+  # secretKey (Verbindungs-URL) und postgres-password fuer den DB-Container.
   existingSecret: ""
   secretKey: database-url
   storage: 10Gi
