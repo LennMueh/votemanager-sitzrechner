@@ -54,6 +54,8 @@ export function pruefIntervall(zustand: Zustand): number | undefined {
 	}
 }
 
-export function fehlerBackoff(fehler: number, retryAfterMs?: number): number {
-	return Math.min(24 * 60 * MINUTE, Math.max(retryAfterMs ?? 0, 30_000 * 2 ** Math.max(0, fehler - 1)));
+/** Verdopplung ab 30 s. Ein Retry-After des Anbieters schlägt den Deckel — wir
+ *  verkürzen nie, was uns die fremde Infrastruktur ausdrücklich vorgibt. */
+export function fehlerBackoff(fehler: number, retryAfterMs?: number, deckel = 24 * 60 * MINUTE): number {
+	return Math.max(retryAfterMs ?? 0, Math.min(deckel, 30_000 * 2 ** Math.max(0, fehler - 1)));
 }

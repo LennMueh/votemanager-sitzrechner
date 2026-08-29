@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import postgres from 'postgres';
 import type { Behoerde, PollerAufgabe, PollerSpeicher } from './poller/index.ts';
 import { apiWurzel, termineUrl } from './poller/urls.ts';
-import { naechsterZustand, pruefIntervall, type Zustand } from './poller/zustand.ts';
+import { fehlerBackoff, naechsterZustand, pruefIntervall, type Zustand } from './poller/zustand.ts';
 
 let verbindung: ReturnType<typeof postgres> | undefined;
 
@@ -86,7 +86,14 @@ export async function erstellePollerSpeicher(
 				p.zuletzt_geaendert, p.zustand_vor_fehler
 			FROM pfad_stand p JOIN instanz i ON i.id = p.instanz_id
 			JOIN behoerde b ON b.id = i.behoerde_id
+			-- Spiegelt new URL(pfad, basis).host aus der Zeilenabbildung unten.
+			-- ponytail: Ausdruck im JOIN statt eigener Spalte; erst bei spürbarer
+			-- Planzeit auf eine generierte host-Spalte in pfad_stand umstellen.
+			LEFT JOIN host_stand h ON h.host = substring(
+				CASE WHEN p.pfad ~ '^https?://' THEN p.pfad ELSE coalesce(i.api_wurzel, i.termin_url) END
+				FROM '^https?://([^/]+)')
 			WHERE b.aktiv AND p.naechste_pruefung <= now() AND (${backfill} OR p.zustand <> 'ruhend')
+				AND (h.naechster_abruf IS NULL OR h.naechster_abruf <= now())
 				AND (p.zustand <> 'ruhend' OR NOT EXISTS (
 					SELECT 1 FROM pfad_stand live WHERE live.zustand IN ('vorlauf', 'wahlabend')
 				))
@@ -113,9 +120,10 @@ export async function erstellePollerSpeicher(
 			const zustand = dokumentZustand(aufgabe, ergebnis.inhalt, ergebnis.geprueft, ergebnis.geaendert);
 			const intervall = pruefIntervall(zustand) ?? 24 * 60 * 60_000;
 			await sql.begin(async (tx) => {
-				await tx`INSERT INTO host_stand (host, fehler_anzahl, zuletzt_erreichbar, letzter_fehler)
-					VALUES (${new URL(aufgabe.url).host}, 0, ${ergebnis.geprueft}, null)
-					ON CONFLICT (host) DO UPDATE SET fehler_anzahl=0, zuletzt_erreichbar=excluded.zuletzt_erreichbar, letzter_fehler=null, aktualisiert_am=now()`;
+				await tx`INSERT INTO host_stand (host, fehler_anzahl, naechster_abruf, zuletzt_erreichbar, letzter_fehler)
+					VALUES (${new URL(aufgabe.url).host}, 0, null, ${ergebnis.geprueft}, null)
+					ON CONFLICT (host) DO UPDATE SET fehler_anzahl=0, naechster_abruf=null,
+						zuletzt_erreichbar=excluded.zuletzt_erreichbar, letzter_fehler=null, aktualisiert_am=now()`;
 				await tx`UPDATE pfad_stand SET
 					etag = ${ergebnis.stand.etag ?? null}, last_modified = ${ergebnis.stand.lastModified ?? null},
 					zuletzt_geprueft = ${ergebnis.geprueft},
@@ -204,10 +212,20 @@ export async function erstellePollerSpeicher(
 					zustand_vor_fehler = CASE WHEN fehler_anzahl + 1 >= 5 AND zustand <> 'unerreichbar' THEN zustand ELSE zustand_vor_fehler END,
 					zustand = CASE WHEN fehler_anzahl + 1 >= 5 THEN 'unerreichbar' ELSE zustand END
 				WHERE id = ${aufgabe.id}`;
-				await tx`INSERT INTO host_stand (host, naechster_abruf, fehler_anzahl, letzter_fehler)
-					VALUES (${host}, ${naechstePruefung}, 1, ${String(fehler)}) ON CONFLICT (host) DO UPDATE SET
-					naechster_abruf=excluded.naechster_abruf, fehler_anzahl=host_stand.fehler_anzahl+1,
-					letzter_fehler=excluded.letzter_fehler, aktualisiert_am=now()`;
+				const [stand] = await tx<{ fehler_anzahl: number }[]>`
+					INSERT INTO host_stand (host, fehler_anzahl, letzter_fehler)
+					VALUES (${host}, 1, ${String(fehler)}) ON CONFLICT (host) DO UPDATE SET
+					fehler_anzahl=host_stand.fehler_anzahl+1,
+					letzter_fehler=excluded.letzter_fehler, aktualisiert_am=now()
+					RETURNING fehler_anzahl`;
+				// Der Host sperrt sich selbst nach seinem eigenen Zähler, nicht nach
+				// dem des zuletzt gescheiterten Pfads. Deckel eine Stunde, damit ein
+				// behobener Ausfall nicht halbe Tage nachwirkt. now() ist die Uhr,
+				// gegen die faellige() vergleicht.
+				const sperre = fehlerBackoff(stand.fehler_anzahl, undefined, 60 * 60_000);
+				await tx`UPDATE host_stand
+					SET naechster_abruf = greatest(now() + make_interval(secs => ${sperre / 1000}), ${naechstePruefung})
+					WHERE host = ${host}`;
 			});
 		},
 

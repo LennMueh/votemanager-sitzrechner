@@ -22,6 +22,11 @@ describe('Poller-Kern', () => {
 	it('begrenzt Backoff auf 24 Stunden und deaktiviert Backfill', () => {
 		expect(fehlerBackoff(1)).toBe(30_000);
 		expect(fehlerBackoff(99)).toBe(86_400_000);
+		// Host-Backoff: eigener Deckel, Retry-After schlägt ihn.
+		expect(fehlerBackoff(1, undefined, 3_600_000)).toBe(30_000);
+		expect(fehlerBackoff(7, undefined, 3_600_000)).toBe(1_920_000);
+		expect(fehlerBackoff(8, undefined, 3_600_000)).toBe(3_600_000);
+		expect(fehlerBackoff(2, 7_200_000, 3_600_000)).toBe(7_200_000);
 		expect(konfiguration({ CRAWLER_CONTACT: 'ops@example.test' }).backfill).toBe(false);
 		expect(() => konfiguration({})).toThrow('CRAWLER_CONTACT');
 	});
