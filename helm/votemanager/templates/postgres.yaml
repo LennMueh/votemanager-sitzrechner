@@ -20,7 +20,10 @@ spec:
     metadata:
       labels: { app.kubernetes.io/component: postgres, app.kubernetes.io/instance: {{ .Release.Name }} }
     spec:
-      securityContext: { runAsNonRoot: true, fsGroup: 70, seccompProfile: { type: RuntimeDefault } }
+      # postgres:*-alpine legt den postgres-Benutzer mit uid/gid 70 an (Debian-Varianten: 999).
+      # Explizit gesetzt, damit der Entrypoint direkt als postgres startet statt als root;
+      # fsGroup gibt ihm das PVC, sonst scheitert initdb an den Verzeichnisrechten.
+      securityContext: { runAsNonRoot: true, runAsUser: 70, runAsGroup: 70, fsGroup: 70, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: postgres
           image: postgres:17-alpine
