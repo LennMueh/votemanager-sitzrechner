@@ -46,11 +46,28 @@ describe('Poller-Kern', () => {
 	});
 
 	it('leitet den Zustand eines Termins aus dessen Datum ab', () => {
-		const jetzt = new Date('2026-08-30T12:00:00+02:00');
-		expect(terminZustand('2026-09-13', jetzt, 'wahlabend')).toBe('geplant');
-		expect(terminZustand('2026-08-30', jetzt, 'wahlabend')).toBe('wahlabend');
-		expect(terminZustand('2026-08-30', jetzt, 'vorlauf')).toBe('vorlauf');
-		expect(terminZustand('2021-09-12', jetzt, 'wahlabend')).toBe('ruhend');
+		const mittags = new Date('2026-08-30T12:00:00+02:00');
+		expect(terminZustand('2026-09-13', mittags)).toBe('geplant');
+		expect(terminZustand('2021-09-12', mittags)).toBe('ruhend');
+		// Am Wahltag gilt dasselbe Zeitfenster wie beim Übergang: mittags noch
+		// Vorlauf (15-min-Takt), erst nach Schließung der Wahllokale 30 s.
+		expect(terminZustand('2026-08-30', mittags)).toBe('vorlauf');
+		expect(terminZustand('2026-08-30', new Date('2026-08-30T18:05:00+02:00'))).toBe('wahlabend');
+		// Kurz nach Mitternacht ist der UTC-Tag noch der Vortag — der Wahltag
+		// darf deshalb nicht als Zukunft durchgehen.
+		expect(terminZustand('2026-08-30', new Date('2026-08-30T00:30:00+02:00'))).toBe('vorlauf');
+	});
+
+	it('gibt dem Vorlauf einen eigenen Takt', () => {
+		// Ohne eigenen Fall fiel vorlauf auf die 24-h-Vorgabe zurück und holte
+		// die Struktur einmal am Tag — als Aufwärmphase wirkungslos.
+		expect(pruefIntervall('vorlauf')).toBe(900_000);
+		const wahltag = new Date('2026-09-13T00:00:00+02:00');
+		expect(naechsterZustand('geplant', new Date('2026-09-13T09:00:00+02:00'), { wahltag })).toBe('vorlauf');
+		// Frühstart nur im Endspurt, sonst zöge strukturGeladen den 30-s-Takt
+		// über den halben Wahltag.
+		expect(naechsterZustand('vorlauf', new Date('2026-09-13T09:00:00+02:00'), { wahltag, strukturGeladen: true })).toBe('vorlauf');
+		expect(naechsterZustand('vorlauf', new Date('2026-09-13T17:50:00+02:00'), { wahltag, strukturGeladen: true })).toBe('wahlabend');
 	});
 
 	it('begrenzt Backoff auf 24 Stunden und deaktiviert Backfill', () => {

@@ -80,8 +80,17 @@ export function waehleStandardtermin(wahltermine: string[], heute: string): stri
 // Zeile. Als Unterabfrage lief er einmal je Ergebniszeile über alle 3143
 // behoerde-Zeilen (202 Zeilen ~ 1,5 s); als CTE genau einmal (~7 ms).
 export function regionsname(sql: ReturnType<typeof db>) {
+	// Im AGS-Schema ist <Regionalschlüssel>000 die Kreisebene selbst. Die zuerst
+	// nehmen: kreisfreie Städte heißen "Stadt Emden" und fielen durch die Regex,
+	// weshalb sechs niedersächsische Kacheln nur ihren Schlüssel zeigten.
+	// Bundesweit bekommen so 103 Regionen einen Namen statt einer Zahl.
+	//
+	// Ohne Kreisbehörde im Feed bleibt es beim Schlüssel — bei 03353 etwa
+	// liefern nur vier Gemeinden, der Landkreis Harburg selbst nicht.
 	return sql`SELECT DISTINCT ON (regionalschluessel) regionalschluessel, name FROM behoerde
-		WHERE name ~* '(landkreis|region|städteregion|kreisfreie)' ORDER BY regionalschluessel, kennung`;
+		WHERE kennung = regionalschluessel || '000'
+			OR name ~* '(landkreis|region|städteregion|kreisfreie)'
+		ORDER BY regionalschluessel, (kennung <> regionalschluessel || '000'), kennung`;
 }
 
 export async function holeWahltermine(): Promise<{ wahltermine: string[]; standard: string }> {

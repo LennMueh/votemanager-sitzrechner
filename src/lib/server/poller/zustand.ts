@@ -31,11 +31,18 @@ export function naechsterZustand(aktuell: Zustand, jetzt: Date, signal: Signale)
 	if (aktuell === 'geplant' || aktuell === 'vorlauf') {
 		// Der 30-s-Takt hing bisher allein an strukturGeladen — einem Signal, das
 		// nirgends gesetzt wurde. Solange die Pfade fest als 'wahlabend' angelegt
-		// wurden, fiel das nicht auf. Deshalb entscheidet jetzt das Zeitfenster am
-		// echten Wahltag, und strukturGeladen bleibt nur noch der Frühstart.
+		// wurden, fiel das nicht auf. Deshalb entscheidet das Zeitfenster am
+		// echten Wahltag.
+		//
+		// Der Vorlauf deckt den ganzen Wahltag ab, damit die Kette termin.json →
+		// wahl.json → uebersicht → ergebnis vier Ebenen tief durchlaufen ist,
+		// bevor die Wahllokale schließen. Mit 24-h-Takt war er wirkungslos.
 		if (jetzt >= uhrzeitAm(signal.wahltag, 18, 0)) return 'wahlabend';
-		if (aktuell === 'vorlauf' && signal.strukturGeladen) return 'wahlabend';
-		if (jetzt >= uhrzeitAm(signal.wahltag, 17, 45)) return 'vorlauf';
+		// Frühstart nur im Endspurt: strukturGeladen ist über den ganzen Vorlauf
+		// wahr und würde den 30-s-Takt sonst über den halben Tag ziehen.
+		if (aktuell === 'vorlauf' && signal.strukturGeladen && jetzt >= uhrzeitAm(signal.wahltag, 17, 45))
+			return 'wahlabend';
+		if (jetzt >= uhrzeitAm(signal.wahltag, 0, 0)) return 'vorlauf';
 		return aktuell;
 	}
 	if (aktuell === 'wahlabend' && signal.vollstaendig) return 'nachlauf';
@@ -54,6 +61,10 @@ export function pruefIntervall(zustand: Zustand): number | undefined {
 	switch (zustand) {
 		case 'wahlabend':
 			return 30_000;
+		case 'vorlauf':
+			// Der Vorlauf muss die Struktur laden, nicht nur warten: ohne eigenen
+			// Takt fiel er auf die 24-h-Vorgabe zurück und holte einmal am Tag.
+			return 15 * MINUTE;
 		case 'nachlauf':
 			return 15 * MINUTE;
 		case 'beobachtung':

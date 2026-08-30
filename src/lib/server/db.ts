@@ -187,7 +187,7 @@ export async function erstellePollerSpeicher(
 						await tx`INSERT INTO termin (instanz_id, termin_id, name, datum) VALUES (${instanz.id}, ${datum}, ${t.name}, ${datum}) ON CONFLICT (instanz_id, termin_id) DO UPDATE SET name=excluded.name, datum=excluded.datum`;
 						const pruefung = ergebnis.geprueft;
 						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung)
-							VALUES (${instanz.id}, ${new URL('js/app.js', terminUrl).href}, ${terminZustand(datum, ergebnis.geprueft, 'vorlauf')}, 40, ${pruefung})
+							VALUES (${instanz.id}, ${new URL('js/app.js', terminUrl).href}, ${terminZustand(datum, ergebnis.geprueft)}, 40, ${pruefung})
 							ON CONFLICT (instanz_id, pfad) DO UPDATE SET naechste_pruefung=excluded.naechste_pruefung`;
 					}
 				} else if (aufgabe.pfad.endsWith('js/app.js') && typeof ergebnis.inhalt === 'string') {
@@ -204,7 +204,7 @@ export async function erstellePollerSpeicher(
 						// Das Gesamtergebnis steht über allen Unter-Gebieten: ohne dieses
 						// eine Dokument bricht berechneVertretung() mit „Wahlgebietsergebnis
 						// fehlt noch" ab. Vorher lag es mit 80 unter den 85 der Übersicht.
-						for (const [pfad, prio] of [[`wahl_${w.wahl.id}/wahl.json`, 80], [`wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`, 90]] as const) await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : terminZustand(datum, ergebnis.geprueft, 'wahlabend')}, ${prio}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						for (const [pfad, prio] of [[`wahl_${w.wahl.id}/wahl.json`, 80], [`wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`, 90]] as const) await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : terminZustand(datum, ergebnis.geprueft)}, ${prio}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				} else if (/wahl_\d+\/wahl\.json$/.test(aufgabe.pfad)) {
 					const menu = (ergebnis.inhalt as { menu_links?: Array<{ id: string; type: string; title: string }> }).menu_links ?? [];
@@ -347,15 +347,24 @@ export function deutschesDatum(wert: string): string {
 }
 
 /**
- * Heiß wird ein Termin erst am Wahltag selbst. Fest verdrahtetes
+ * Zustand eines frisch entdeckten Pfades aus dem Termindatum. Fest verdrahtetes
  * 'vorlauf'/'wahlabend' hat die Pfade der Wahl vom 13.09.2026 schon zwei Wochen
  * vorher in den 30-s-Takt gehängt — für Platzhalterdateien ohne `Komponente`,
  * aus denen `naechsterZustand` nie wieder herausfindet. Das sättigte die
  * Drossel und sperrte den Backfill dauerhaft aus.
+ *
+ * Für den Wahltag selbst entscheidet dieselbe Zeitfenster-Regel wie beim
+ * Übergang, statt einer zweiten Festlegung daneben: sonst liefe ein am Morgen
+ * entdeckter Pfad schon vor Schließung der Wahllokale im 30-s-Takt.
  */
-export function terminZustand(datum: string, jetzt: Date, amWahltag: Zustand): Zustand {
-	const heute = jetzt.toISOString().slice(0, 10);
-	return datum < heute ? 'ruhend' : datum > heute ? 'geplant' : amWahltag;
+export function terminZustand(datum: string, jetzt: Date): Zustand {
+	// Ortszeit, nicht toISOString(): der Container läuft mit TZ=Europe/Berlin,
+	// und zwischen 00:00 und 02:00 wäre der UTC-Tag noch der Vortag — ein um
+	// Mitternacht entdeckter Wahltag gälte dann als Zukunft.
+	const heute = `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, '0')}-${String(jetzt.getDate()).padStart(2, '0')}`;
+	if (datum < heute) return 'ruhend';
+	if (datum > heute) return 'geplant';
+	return naechsterZustand('geplant', jetzt, { wahltag: new Date(datum) });
 }
 
 export interface TerminEintrag { date: string; name: string; url: string }
