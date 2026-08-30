@@ -76,6 +76,14 @@ export function waehleStandardtermin(wahltermine: string[], heute: string): stri
 	return sortiert.find((termin) => termin >= heute) ?? sortiert.at(-1) ?? '';
 }
 
+// Der Regionsname (Landkreis o. ä.) hängt nur am Regionalschlüssel, nicht an der
+// Zeile. Als Unterabfrage lief er einmal je Ergebniszeile über alle 3143
+// behoerde-Zeilen (202 Zeilen ~ 1,5 s); als CTE genau einmal (~7 ms).
+export function regionsname(sql: ReturnType<typeof db>) {
+	return sql`SELECT DISTINCT ON (regionalschluessel) regionalschluessel, name FROM behoerde
+		WHERE name ~* '(landkreis|region|städteregion|kreisfreie)' ORDER BY regionalschluessel, kennung`;
+}
+
 export async function holeWahltermine(): Promise<{ wahltermine: string[]; standard: string }> {
 	const [zeile] = await db()<Array<{ wahltermine: string[]; heute: string }>>`
 		SELECT coalesce(array_agg(DISTINCT to_char(datum, 'YYYYMMDD') ORDER BY to_char(datum, 'YYYYMMDD')), '{}') AS wahltermine,
@@ -92,10 +100,12 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 	return zwischengespeichert(`uebersicht:${ausgewaehlt}`, async () => {
 		const sql = db();
 		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; inhalt: unknown | null }>>`
+			WITH regionsname AS (${regionsname(sql)})
 			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, b.regionalschluessel region,
-				coalesce((SELECT b2.name FROM behoerde b2 WHERE b2.regionalschluessel=b.regionalschluessel AND b2.name ~* '(landkreis|region|städteregion|kreisfreie)' ORDER BY b2.kennung LIMIT 1), b.regionalschluessel) "regionName",
+				coalesce(r.name, b.regionalschluessel) "regionName",
 				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.inhalt
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
+			LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
 			LEFT JOIN LATERAL (SELECT d.inhalt FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
 				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 				ORDER BY d.id DESC LIMIT 1) d ON true
