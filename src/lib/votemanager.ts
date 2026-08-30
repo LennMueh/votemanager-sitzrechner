@@ -114,7 +114,7 @@ interface RohErgebnis {
 	Komponente: {
 		tabelle?: { zeilen: RohZeile[] };
 		info?: { titel?: string; hinweis?: string[]; tabelle?: { zeilen: RohZeile[] } };
-		sitze?: { hinweis?: string; tortenDiagramm?: { entries?: Array<{ value?: number | string; zahl?: number | string }> }; tabelle?: { ueberschriften: string[]; zeilen: string[][] } };
+		sitze?: { hinweis?: string; tortenDiagramm?: { entries?: Array<{ sitze?: number | string; value?: number | string; zahl?: number | string }> }; tabelle?: { ueberschriften: string[]; zeilen: string[][] } };
 	};
 }
 interface RohUebersicht {
@@ -277,6 +277,26 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 		}
 		if (label.endsWith(S_GESAMT)) continue; // redundant, ergibt sich aus Liste + Bewerbern
 
+		// Zweite Tabellenform: eine Zeile je Wahlvorschlag, Bewerber in
+		// sub_zeilen, ohne jedes Suffix. So liefern Baden-Württemberg, Sachsen,
+		// Sachsen-Anhalt und Mecklenburg-Vorpommern; die niedersächsische
+		// Drei-Zeilen-Form kommt außerhalb Niedersachsens kein einziges Mal vor.
+		//
+		// `listenstimmen` bleibt 0: über alle 122.969 Bewerberzeilen im Archiv
+		// ist die Zeilensumme ausnahmslos exakt die Summe der Bewerberstimmen.
+		// Eine separate Listenstimme gibt es in dieser Form also nicht — sie ist
+		// bereits auf die Bewerber verteilt.
+		if (z.sub_zeilen?.length) {
+			hole(label, z.color, langLabel).kandidaten = z.sub_zeilen.map(
+				(s, i): Kandidat => ({
+					name: kurz(s.label),
+					stimmen: parseZahl(s.zahl),
+					listenplatz: i + 1
+				})
+			);
+			continue;
+		}
+
 		sonstige.push(z);
 	}
 
@@ -327,7 +347,11 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 	for (const z of k.info?.tabelle?.zeilen ?? []) kennzahlen[kurz(z.label)] = parseZahl(z.zahl);
 
 	const sitzeRoh = k.sitze;
-	const sitzSumme = sitzeRoh?.tortenDiagramm?.entries?.reduce((summe, e) => summe + parseZahl(e.value ?? e.zahl), 0) ?? 0;
+	// Das Feld heißt in allen neun archivierten Ländern `sitze`; `value`/`zahl`
+	// haben nie gegriffen. Getragen hat allein die hinweis-Regex darunter — und
+	// die fehlt in Sachsen-Anhalt und Sachsen ganz sowie in den meisten
+	// baden-württembergischen und saarländischen Endergebnissen.
+	const sitzSumme = sitzeRoh?.tortenDiagramm?.entries?.reduce((summe, e) => summe + parseZahl(e.sitze ?? e.value ?? e.zahl), 0) ?? 0;
 	const sitzAnzahl = sitzSumme || parseZahl(sitzeRoh?.hinweis?.match(/([\d.]+)\s*Sitze/)?.[1] ?? '0');
 	const amtlicheSitze = sitzeRoh && sitzAnzahl
 		? {

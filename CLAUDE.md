@@ -108,21 +108,61 @@ Vollständig in `src/lib/nkwg.ts` umgesetzt und kommentiert. Die Fallstricke:
 ## Andere Länder
 
 Der Feed ist nicht auf Niedersachsen beschränkt, das Recht schon. Der Poller
-archiviert, was er findet; `daten.ts` wählt den Rechtsstand nach `behoerde.land`.
+archiviert neun Länder mit Terminen bis 2001 zurück; `src/lib/wahlrecht/index.ts`
+hält je Land den Rechtsstand, `daten.ts` wählt ihn nach `behoerde.land`.
 
-**Saarland** (`src/lib/wahlrecht/saarland.ts`, § 41 KWG SL i. V. m. § 209 KSVG):
-d'Hondt statt Hare/Niemeyer, keine Sperrklausel seit 2008, **reine Listenwahl mit
-geschlossenen Listen**. Zwei Folgen, die man kennen muss:
+**Ohne hinterlegten Rechtsstand wird nicht gerechnet** und die Oberfläche sagt
+das. Kein stiller Rückfall auf das NKWG in einem Land, für das es nicht gilt.
 
-1. Das Ergebnis-JSON hat **eine flache Zeile je Wahlvorschlag** — keine
-   `sub_zeilen`, keines der drei niedersächsischen Suffixe. `parseErgebnis` füllt
-   in diesem Fall `vorschlaege` *und* `direktBewerber`; welcher Fall vorliegt,
-   entscheidet der Aufrufer über `ref.direktwahl`. Diese Doppelbefüllung nicht
-   entfernen, sonst landen saarländische Listen wieder im Direktwahl-Zweig.
-2. Der Feed nennt **keine Bewerbernamen**. Berechenbar sind nur Sitze je
-   Wahlvorschlag; Oberfläche und Präsentationsmodus sagen das und lassen die
-   Personenliste weg. § 41 Abs. 3 bis 5 (Bereichs-/Gebietsliste, Weitergabe,
-   Reihenfolge) sind aus demselben Grund nicht umgesetzt.
+### Der Korpus entscheidet, nicht die Vermutung
+
+In `referenzen/` liegen rund 785 eingefrorene **amtliche Endergebnisse** aus acht
+Ländern, jedes mit der amtlichen Liste der Gewählten. Damit wird nicht geglaubt,
+sondern nachgerechnet:
+
+- `src/lib/wahlrecht/verfahren.test.ts` stellt alle drei Zuteilungsverfahren
+  gegen den Korpus. Das hinterlegte Verfahren muss die meisten Fälle treffen.
+  Belegt wurde so: Saarland d'Hondt (277/304), Hessen und Sachsen-Anhalt
+  Hare/Niemeyer, Sachsen, Baden-Württemberg und Nordrhein-Westfalen Sainte-Laguë.
+- `src/lib/referenzen.test.ts` prüft Sitze **und Namen**. Länder mit
+  `belegt: true` werden Fall für Fall geprüft; die übrigen über eine Quote in
+  `referenzen/quoten.json`, die nur steigen darf. Die Lücke zur Gesamtzahl ist
+  die Arbeitsliste des Landes.
+
+`npm run ernte-archiv` erntet neu aus PostgreSQL (`DATABASE_URL` nötig).
+**Niedersachsen bleibt ausgenommen**: § 37 NKWG verteilt über Wahlbereiche, ein
+Referenzfall braucht dort die Wahlbereichs-Dokumente. Die 53 NI-Fälle stammen aus
+der Netzernte (`npm run ernte`) und sind vollständig.
+
+### Drei Tabellenformen im Feed
+
+| Form | Länder | Gestalt |
+|---|---|---|
+| A | NI | drei Zeilen je Partei mit Suffixen, `sub_zeilen` = Bewerber |
+| B | BW, SN, ST, MV, HE | eine Zeile je Wahlvorschlag, `sub_zeilen` = Bewerber |
+| C | SL, NW, BY | flache Zeile, keine `sub_zeilen` |
+
+Form A kommt außerhalb Niedersachsens **kein einziges Mal** vor. In Form B ist
+die Zeilensumme über alle 122.969 Bewerberzeilen im Archiv ausnahmslos die Summe
+der Bewerberstimmen — eine getrennte Listenstimme gibt es dort also nicht,
+`listenstimmen` bleibt 0 und § 36 Abs. 4 NKWG hat keine Entsprechung. In Form C
+füllt der Parser `vorschlaege` *und* `direktBewerber`; welcher Fall vorliegt,
+entscheidet der Aufrufer über `ref.direktwahl`. Diese Doppelbefüllung nicht
+entfernen, sonst landen saarländische Listen wieder im Direktwahl-Zweig.
+
+### Namen gibt es nicht überall
+
+Die amtlichen Listen verraten die Personenzuteilung: Hessen, Sachsen,
+Sachsen-Anhalt und Niedersachsen führen „Personenwahl" mit Stimmenzahl, das
+Saarland „Gebietsliste 1" und Nordrhein-Westfalen „Reservelistenplatz 1". Wo die
+Listenreihenfolge entscheidet, veröffentlicht votemanager sie während der
+Auszählung nicht — dort bleiben die Sitze **namenlos** statt eine Reihenfolge zu
+erfinden. Oberfläche und Präsentationsmodus sagen das.
+
+Offen: Mecklenburg-Vorpommern (Verfahren trifft, Personen nicht — die amtliche
+Liste nennt „Bewerber im Wahlbezirk … nach § 63 (4)"), Baden-Württemberg
+(unechte Teilortswahl, die Sitzzahl wird aufgestockt) und Nordrhein-Westfalen
+(Direktmandate stehen in eigenen Wahlbezirks-Dokumenten).
 
 ## Tests
 

@@ -1,0 +1,12 @@
+{
+	"_hinweis": "Wie viele amtliche Endergebnisse die eigene Rechnung je Land trifft. Nur für Länder mit belegt:false in src/lib/wahlrecht/index.ts — belegte Länder werden Fall für Fall geprüft. Die Zahlen dürfen steigen, nie fallen; die Lücke zur Gesamtzahl ist die Arbeitsliste. Beim Anheben immer mitschreiben, warum.",
+	"quoten": {
+		"BW": 60,
+		"HE": 56,
+		"MV": 6,
+		"NW": 148,
+		"SL": 277,
+		"SN": 12,
+		"ST": 73
+	}
+}

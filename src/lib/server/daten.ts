@@ -5,8 +5,8 @@
  * Läuft nur auf dem Server (votemanager sendet kein CORS).
  */
 
-import { verteileSitze, direktwahl, stimmenverhaeltnis, type Sitzverteilung, type Direktergebnis, type Stimmenverhaeltnis } from '$lib/nkwg';
-import { verteileSitzeSaarland } from '$lib/wahlrecht/saarland';
+import { direktwahl, stimmenverhaeltnis, type Sitzverteilung, type Direktergebnis, type Stimmenverhaeltnis } from '$lib/nkwg';
+import { rechtsstand } from '$lib/wahlrecht';
 import {
 	parseErgebnis,
 	type Auszaehlstand,
@@ -162,6 +162,15 @@ export interface VertretungErgebnis {
 	direkt?: Direktergebnis;
 	/** Von votemanager selbst veröffentlicht, erst im amtlichen Endergebnis. */
 	amtlich?: { anzahl: number; gewaehlte: string[][] };
+	/** Wonach gerechnet wurde — leer, solange für das Land nichts hinterlegt ist. */
+	recht?: {
+		land: string;
+		name: string;
+		rechtsgrundlage: string;
+		direktwahl: string;
+		belegt: boolean;
+		vorbehalt?: string;
+	};
 	warnung?: string;
 	zeitpunkt: string;
 	stale?: boolean;
@@ -213,6 +222,20 @@ export async function berechneVertretung(
 			zeitpunkt: gesamtZeile.erfasst_am.toISOString()
 		};
 
+		// Ohne hinterlegten Rechtsstand wird nicht gerechnet — kein stiller
+		// Rückfall auf das NKWG in einem Land, für das es nicht gilt.
+		const recht = rechtsstand(gesamtZeile.land);
+		if (recht) {
+			erg.recht = {
+				land: recht.land,
+				name: recht.name,
+				rechtsgrundlage: recht.rechtsgrundlage,
+				direktwahl: recht.direktwahl.rechtsgrundlage,
+				belegt: recht.belegt,
+				vorbehalt: recht.vorbehalt
+			};
+		}
+
 		if (ref.direktwahl) {
 			erg.direkt = direktwahl(gesamt.direktBewerber);
 			return erg;
@@ -221,6 +244,11 @@ export async function berechneVertretung(
 			{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }
 		]);
 
+		if (!recht) {
+			erg.warnung = `Für ${gesamtZeile.land} ist noch kein Kommunalwahlrecht hinterlegt — angezeigt wird nur das Stimmenverhältnis.`;
+			return erg;
+		}
+
 		// Amtliche Sitzzahl schlägt die Vorbelegung, sobald votemanager sie liefert.
 		const n = gesamt.amtlicheSitze?.anzahl ?? sitzzahl(ref);
 		erg.sitzzahl = n;
@@ -228,15 +256,14 @@ export async function berechneVertretung(
 			erg.warnung = 'Für diese Auswahl ist keine Sitzverteilung verfügbar — angezeigt wird das Stimmenverhältnis.';
 			return erg;
 		}
-		// ponytail: ein if reicht für zwei Länder; beim dritten wird daraus eine
-		// Tabelle Land → Rechtsstand.
-		if (gesamtZeile.land === 'SL') {
-			// § 41 Abs. 1 KWG SL verteilt nach den Gesamtstimmen im Wahlgebiet; die
-			// Wahlbereiche ändern an den Sitzen je Wahlvorschlag nichts. Deshalb
-			// bewusst ohne die Vollständigkeits-Gegenprobe: die Bereichs-Snapshots
-			// stammen aus verschiedenen Sekunden und summieren sich während der
-			// Auszählung nur selten exakt auf das Gesamtergebnis.
-			erg.verteilung = verteileSitzeSaarland(
+		if (!recht.wahlbereiche) {
+			// Verteilt das Land nicht über Wahlbereiche zwischen (alle außer
+			// Niedersachsen), genügt das Wahlgebietsergebnis — es enthält ohnehin
+			// alle Wahlvorschläge und Bewerber. Bewusst ohne die
+			// Vollständigkeits-Gegenprobe: die Bereichs-Snapshots stammen aus
+			// verschiedenen Sekunden und summieren sich während der Auszählung nur
+			// selten exakt auf das Gesamtergebnis.
+			erg.verteilung = recht.verteile(
 				[{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }],
 				n
 			);
@@ -246,7 +273,7 @@ export async function berechneVertretung(
 			erg.warnung = 'Wahlbereiche sind noch nicht vollständig archiviert — es wird noch keine Mandatsverteilung berechnet.';
 			return erg;
 		}
-		erg.verteilung = verteileSitze(bereiche, n);
+		erg.verteilung = recht.verteile(bereiche, n);
 		return erg;
 	});
 }

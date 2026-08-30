@@ -13,7 +13,8 @@
     "schuss": "node --experimental-strip-types scripts/schuss.ts",
     "ernte": "node --experimental-strip-types scripts/ernte-referenzen.ts",
     "migrieren": "node --experimental-strip-types migrationen/migrieren.ts",
-    "poller": "node --experimental-strip-types scripts/poller.ts"
+    "poller": "node --experimental-strip-types scripts/poller.ts",
+    "ernte-archiv": "node --experimental-strip-types scripts/ernte-archiv.ts"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.7",

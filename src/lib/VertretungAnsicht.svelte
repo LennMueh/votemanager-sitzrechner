@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Sitzdiagramm from './Sitzdiagramm.svelte';
 	import Stimmverhaeltnis from './Stimmverhaeltnis.svelte';
+	import Direktbalken from './Direktbalken.svelte';
 	import type { VertretungErgebnis } from '$lib/server/daten';
 
 	// Detailansicht am Schreibtisch: Diagramm plus vollständige Tabelle.
@@ -47,34 +48,51 @@
 		<p class="hinweis">{ergebnis.warnung}</p>
 	{/if}
 
+	<!-- Vorbehalt sichtbar machen: für welches Land die Rechnung noch nicht
+	     gegen amtliche Endergebnisse belegt ist, gehört auf die Seite und nicht
+	     nur in den Quelltext. -->
+	{#if ergebnis.recht && !ergebnis.recht.belegt}
+		<p class="hinweis">
+			Das Kommunalwahlrecht {ergebnis.recht.name}s ist noch nicht vollständig gegen amtliche
+			Endergebnisse geprüft.{ergebnis.recht.vorbehalt ? ` ${ergebnis.recht.vorbehalt}` : ''}
+		</p>
+	{/if}
+
 	{#if !stand.vollstaendig && stand.erwartet > 0}
 		<p class="zwischenstand">
-			Zwischenstand — die Sitzverteilung kann sich mit jeder weiteren Schnellmeldung ändern.
+			Zwischenstand — {ergebnis.direkt ? 'das Ergebnis' : 'die Sitzverteilung'} kann sich mit
+			jeder weiteren Schnellmeldung ändern.
 		</p>
 	{/if}
 
 	<!-- ------------------------------------------------------------------ -->
-	<!-- Direktwahl (§ 45g)                                                  -->
+	<!-- Direktwahl — Mehrheitsregel und Stichwahl sind Landesrecht          -->
 	<!-- ------------------------------------------------------------------ -->
 	{#if ergebnis.direkt}
-		{@const d = ergebnis.direkt}
-		{#if d.gewaehlt}
+		{@const direkt = ergebnis.direkt}
+		{#if direkt.gewaehlt}
 			<p class="ergebnissatz">
-				<strong>{d.gewaehlt.name}</strong> ist mit absoluter Mehrheit gewählt.
+				<strong>{direkt.gewaehlt.name}</strong> ist mit absoluter Mehrheit gewählt.
 			</p>
-		{:else if d.stichwahl}
+		{:else if direkt.stichwahl}
 			<p class="ergebnissatz">
-				Keine absolute Mehrheit — Stichwahl am 27.09.2026 zwischen
-				<strong>{d.stichwahl[0]?.name}</strong> und <strong>{d.stichwahl[1]?.name}</strong>.
+				Keine absolute Mehrheit — Stichwahl zwischen
+				<strong>{direkt.stichwahl[0]?.name}</strong> und <strong>{direkt.stichwahl[1]?.name}</strong>.
 			</p>
 		{/if}
+		<Direktbalken {direkt} />
+		<p class="legende">
+			Gestrichelte Linie: 50 % der gültigen Stimmen — wer sie überschreitet, ist im ersten
+			Wahlgang gewählt{ergebnis.recht ? ` (${ergebnis.recht.direktwahl})` : ''}.
+		</p>
+
 		<div class="tabelle" role="region" aria-label="Ergebnis der Direktwahl"><table>
 			<thead>
 				<tr><th>Bewerber/in</th><th class="r">Stimmen</th><th class="r">Anteil</th></tr>
 			</thead>
 			<tbody>
-				{#each d.bewerber as b (b.name)}
-					<tr class:gewaehlt={d.gewaehlt?.name === b.name}>
+				{#each direkt.bewerber as b (b.name)}
+					<tr class:gewaehlt={direkt.gewaehlt?.name === b.name}>
 						<td><span class="punkt" style:background={b.farbe ?? 'var(--text-3)'}></span>{b.name}</td>
 						<td class="r zahl">{fmt.format(b.stimmen)}</td>
 						<td class="r zahl">{pct.format(b.prozent)} %</td>
@@ -82,14 +100,14 @@
 				{/each}
 			</tbody>
 		</table></div>
-		{#if d.losentscheid}
-			<p class="hinweis">{d.losentscheid} — es entscheidet das Los (§ 45g NKWG).
-				{#if d.losfall?.vorlaeufig.length} Provisorisch angezeigt: {d.losfall.vorlaeufig.join(', ')}.{/if}
+		{#if direkt.losentscheid}
+			<p class="hinweis">{direkt.losentscheid} — es entscheidet das Los.
+				{#if direkt.losfall?.vorlaeufig.length} Provisorisch angezeigt: {direkt.losfall.vorlaeufig.join(', ')}.{/if}
 			</p>
 		{/if}
 
 		<!-- ------------------------------------------------------------------ -->
-		<!-- Ratswahl (§ 36 / § 37)                                              -->
+		<!-- Verhältniswahl — Verfahren je Land, siehe src/lib/wahlrecht/        -->
 		<!-- ------------------------------------------------------------------ -->
 	{:else}
 		{#if ergebnis.verteilung}
@@ -174,6 +192,12 @@
 			<Stimmverhaeltnis verhaeltnis={ergebnis.stimmverhaeltnis} verteilung={ergebnis.verteilung} />
 		{/if}
 	{/if}
+
+	{#if ergebnis.recht}
+		<p class="grundlage">
+			Gerechnet nach {ergebnis.recht.rechtsgrundlage} ({ergebnis.recht.name}).
+		</p>
+	{/if}
 </article>
 
 <style>
@@ -200,6 +224,16 @@
 	}
 
 	h3 { margin-top: 1.75rem; }
+
+	.legende { margin: .5rem 0 0; font-size: .85rem; color: var(--text-3); }
+
+	.grundlage {
+		margin: 1.5rem 0 0;
+		padding-top: .75rem;
+		border-top: 1px solid var(--rand);
+		font-size: .8rem;
+		color: var(--text-3);
+	}
 
 	.behoerde {
 		margin: 0.15rem 0 0;

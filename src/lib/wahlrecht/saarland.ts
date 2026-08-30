@@ -35,73 +35,26 @@
  *    liegt damit falsch. Dann gehört die Verbindung ins Eingabemodell.
  */
 
-import { stimmenverhaeltnis, type Losfall, type Sitz, type Sitzverteilung, type Wahlbereich } from '$lib/nkwg';
-import { zuteilen, D_HONDT } from './kern/zuteilung';
+import type { Sitzverteilung, Wahlbereich } from '$lib/nkwg';
+import { verteileListenwahl, type Listenwahlrecht } from './listenwahl';
+import { D_HONDT } from './kern/zuteilung';
 
 /**
- * § 41 Abs. 1 KWG SL — Sitze auf die Wahlvorschläge nach d'Hondt, im Verhältnis
- * der Gesamtzahl der gültigen Stimmen im ganzen Wahlgebiet.
+ * § 41 Abs. 1 KWG SL: d'Hondt über die Gesamtzahl der gültigen Stimmen im
+ * Wahlgebiet, keine Sperrklausel, Losentscheid bei gleichen Höchstzahlen.
  *
- * `bereiche` darf ein einzelner Eintrag für das Wahlgebiet sein oder die
- * Wahlbereiche; summiert wird ohnehin über alle.
+ * `personen: 'listenplatz'` ist die Konsequenz aus Abs. 5: es entscheidet die
+ * Reihenfolge auf dem Wahlvorschlag. Die amtlichen Endergebnisse im Archiv
+ * führen die Gewählten folgerichtig als „Gebietsliste 1", „Gebietsliste 2" …
+ * — ohne Stimmenzahl. Während der Auszählung veröffentlicht votemanager diese
+ * Reihenfolge nicht, weshalb die Sitze dann namenlos bleiben.
  */
+export const SAARLAND: Listenwahlrecht = {
+	verfahren: D_HONDT,
+	personen: 'listenplatz',
+	rechtsgrundlageZuteilung: '§ 41 Abs. 1 S. 2 KWG SL'
+};
+
 export function verteileSitzeSaarland(bereiche: Wahlbereich[], sitzeGesamt: number): Sitzverteilung {
-	const stimmen = stimmenverhaeltnis(bereiche);
-	const stimmenJePartei = new Map(stimmen.parteien.map((p) => [p.partei, p.stimmen]));
-
-	const verteilung = zuteilen(stimmenJePartei, sitzeGesamt, D_HONDT);
-
-	const losentscheide: string[] = [];
-	const losfaelle: Losfall[] = [];
-	if (verteilung.grenzfall) {
-		// § 41 Abs. 1 S. 2: „Über die Zuteilung des letzten Sitzes oder der letzten
-		// Sitze entscheidet bei gleichen Höchstzahlen das … zu ziehende Los."
-		// Eine Partei kann mit mehreren Höchstzahlen betroffen sein — für die
-		// Anzeige interessiert nur, wer beteiligt ist.
-		const betroffene = [...new Set(verteilung.grenzfall.betroffene)];
-		const losfall: Losfall = {
-			kontext: 'Sitzverteilung auf die Wahlvorschläge',
-			betroffene,
-			sitze: verteilung.grenzfall.sitze,
-			vorlaeufig: betroffene.slice(0, verteilung.grenzfall.sitze),
-			rechtsgrundlage: '§ 41 Abs. 1 S. 2 KWG SL',
-			text: 'Losentscheid bei gleichen Höchstzahlen um den letzten Sitz (§ 41 Abs. 1 S. 2 KWG SL)'
-		};
-		losfaelle.push(losfall);
-		losentscheide.push(losfall.text);
-	}
-
-	const parteien = stimmen.parteien.map((p) => ({
-		partei: p.partei,
-		parteiLang: p.parteiLang,
-		farbe: p.farbe,
-		stimmen: p.stimmen,
-		prozent: p.prozent,
-		sitze: verteilung.sitze.get(p.partei) ?? 0
-	}));
-
-	// Ein Sitz-Eintrag je Sitz, aber ohne `name`: das Sitzdiagramm zeichnet
-	// damit korrekt, und die Tabelle der Gewählten bleibt sichtbar leer, statt
-	// Namen zu erfinden, die der Feed nicht hergibt.
-	const sitze: Sitz[] = [];
-	for (const p of parteien) {
-		for (let i = 0; i < p.sitze; i++) {
-			sitze.push({
-				partei: p.partei,
-				parteiLang: p.parteiLang,
-				farbe: p.farbe,
-				art: 'liste',
-				mandat: 'Liste'
-			});
-		}
-	}
-
-	return {
-		sitzeGesamt,
-		gueltigeStimmen: stimmen.stimmenGesamt,
-		parteien: parteien.sort((a, b) => b.sitze - a.sitze || b.stimmen - a.stimmen),
-		sitze,
-		losentscheide,
-		losfaelle
-	};
+	return verteileListenwahl(bereiche, sitzeGesamt, SAARLAND);
 }
