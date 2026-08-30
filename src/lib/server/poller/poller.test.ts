@@ -5,7 +5,7 @@ import { holeJson, retryAfter } from './http';
 import { parseRegistry, Poller, type PollerAufgabe, type PollerSpeicher } from './index';
 import { apiWurzel, termineUrl } from './urls';
 import { fehlerBackoff, naechsterZustand, pruefIntervall } from './zustand';
-import { deutschesDatum, filtereTermine } from '../db';
+import { deutschesDatum, filtereTermine, terminZustand } from '../db';
 
 describe('Poller-Kern', () => {
 	it('durchläuft die Wahlabend-Zustände und Takte', () => {
@@ -17,6 +17,17 @@ describe('Poller-Kern', () => {
 		expect(naechsterZustand('nachlauf', jetzt, { wahltag, amtlich: true })).toBe('beobachtung');
 		expect(pruefIntervall('wahlabend')).toBe(30_000);
 		expect(pruefIntervall('nachlauf')).toBe(900_000);
+	});
+
+	it('macht Termine erst am Wahltag selbst heiß', () => {
+		const jetzt = new Date('2026-08-30T12:00:00Z');
+		// Vorher 'geplant' (24-h-Takt) — nicht 'wahlabend' (30-s-Takt): sonst
+		// hängen 658 Pfade zwei Wochen lang an fremder Infrastruktur und
+		// verdrängen über die Prioritätssortierung jeden Backfill.
+		expect(terminZustand('2026-09-13', jetzt, 'wahlabend')).toBe('geplant');
+		expect(terminZustand('2026-08-30', jetzt, 'wahlabend')).toBe('wahlabend');
+		expect(terminZustand('2026-08-30', jetzt, 'vorlauf')).toBe('vorlauf');
+		expect(terminZustand('2021-09-12', jetzt, 'wahlabend')).toBe('ruhend');
 	});
 
 	it('begrenzt Backoff auf 24 Stunden und deaktiviert Backfill', () => {

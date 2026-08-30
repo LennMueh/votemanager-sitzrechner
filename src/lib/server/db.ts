@@ -158,16 +158,15 @@ export async function erstellePollerSpeicher(
 						const [instanz] = await tx<{ id: number }[]>`INSERT INTO instanz (behoerde_id, termin_url) VALUES (${quelle.behoerde_id}, ${terminUrl}) ON CONFLICT (behoerde_id, termin_url) DO UPDATE SET aktualisiert_am=now() RETURNING id`;
 						const datum = deutschesDatum(t.date);
 						await tx`INSERT INTO termin (instanz_id, termin_id, name, datum) VALUES (${instanz.id}, ${datum}, ${t.name}, ${datum}) ON CONFLICT (instanz_id, termin_id) DO UPDATE SET name=excluded.name, datum=excluded.datum`;
-						const vergangen = datum < ergebnis.geprueft.toISOString().slice(0, 10);
 						const pruefung = ergebnis.geprueft;
 						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung)
-							VALUES (${instanz.id}, ${new URL('js/app.js', terminUrl).href}, ${vergangen ? 'ruhend' : 'vorlauf'}, 40, ${pruefung})
+							VALUES (${instanz.id}, ${new URL('js/app.js', terminUrl).href}, ${terminZustand(datum, ergebnis.geprueft, 'vorlauf')}, 40, ${pruefung})
 							ON CONFLICT (instanz_id, pfad) DO UPDATE SET naechste_pruefung=excluded.naechste_pruefung`;
 					}
 				} else if (aufgabe.pfad.endsWith('js/app.js') && typeof ergebnis.inhalt === 'string') {
 					const wurzel = apiWurzel(aufgabe.url.replace(/js\/app\.js$/, ''), ergebnis.inhalt);
 					await tx`UPDATE instanz SET api_wurzel=${wurzel} WHERE id=${instanzId}`;
-					await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL('termin.json', wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : 'vorlauf'}, 60, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+					await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL('termin.json', wurzel).href}, ${aufgabe.zustand === 'ruhend' || aufgabe.zustand === 'geplant' ? aufgabe.zustand : 'vorlauf'}, 60, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 				} else if (aufgabe.pfad.endsWith('termin.json')) {
 					const roh = ergebnis.inhalt as { datum_string?: string; wahleintraege?: Array<{ wahl: { id: number; titel: string }; gebiet_link: { id: string; title: string } }> };
 					const datum = deutschesDatum(roh.datum_string ?? '');
@@ -175,7 +174,7 @@ export async function erstellePollerSpeicher(
 					const [instanz] = await tx<{ api_wurzel: string }[]>`SELECT api_wurzel FROM instanz WHERE id=${instanzId}`;
 					if (termin && instanz?.api_wurzel) for (const w of roh.wahleintraege ?? []) {
 						await tx`INSERT INTO wahl (termin_id, wahl_id, gebiet_id, gebiet_name, name) VALUES (${termin.id}, ${String(w.wahl.id)}, ${w.gebiet_link.id}, ${w.gebiet_link.title}, ${w.wahl.titel}) ON CONFLICT (termin_id, wahl_id, gebiet_id) DO UPDATE SET name=excluded.name, gebiet_name=excluded.gebiet_name`;
-						for (const pfad of [`wahl_${w.wahl.id}/wahl.json`, `wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`]) await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : 'wahlabend'}, 80, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						for (const pfad of [`wahl_${w.wahl.id}/wahl.json`, `wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`]) await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : terminZustand(datum, ergebnis.geprueft, 'wahlabend')}, 80, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				} else if (/wahl_\d+\/wahl\.json$/.test(aufgabe.pfad)) {
 					const menu = (ergebnis.inhalt as { menu_links?: Array<{ id: string; type: string; title: string }> }).menu_links ?? [];
@@ -297,6 +296,18 @@ export function deutschesDatum(wert: string): string {
 	const [tag, monat, jahr] = datum.split('.');
 	if (!jahr || !monat || !tag) throw new Error(`Ungültiges Datum ${wert}`);
 	return `${jahr}-${monat.padStart(2, '0')}-${tag.padStart(2, '0')}`;
+}
+
+/**
+ * Heiß wird ein Termin erst am Wahltag selbst. Fest verdrahtetes
+ * 'vorlauf'/'wahlabend' hat die Pfade der Wahl vom 13.09.2026 schon zwei Wochen
+ * vorher in den 30-s-Takt gehängt — für Platzhalterdateien ohne `Komponente`,
+ * aus denen `naechsterZustand` nie wieder herausfindet. Das sättigte die
+ * Drossel und sperrte den Backfill dauerhaft aus.
+ */
+export function terminZustand(datum: string, jetzt: Date, amWahltag: Zustand): Zustand {
+	const heute = jetzt.toISOString().slice(0, 10);
+	return datum < heute ? 'ruhend' : datum > heute ? 'geplant' : amWahltag;
 }
 
 export interface TerminEintrag { date: string; name: string; url: string }
