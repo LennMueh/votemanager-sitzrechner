@@ -5,6 +5,7 @@ x-app: &app
   image: votemanager-sitzrechner:local
   environment:
     DATABASE_URL: postgres://votemanager:votemanager@postgres:5432/votemanager
+    TZ: Europe/Berlin
   depends_on:
     migrate:
       condition: service_completed_successfully

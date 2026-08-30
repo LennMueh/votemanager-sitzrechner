@@ -19,14 +19,25 @@ export interface Signale {
 	letzteAenderung?: Date;
 }
 
+/** Uhrzeit am Wahltag in Ortszeit — der Container läuft mit TZ=Europe/Berlin. */
+function uhrzeitAm(wahltag: Date, stunde: number, minute: number): Date {
+	const zeitpunkt = new Date(wahltag);
+	zeitpunkt.setHours(stunde, minute, 0, 0);
+	return zeitpunkt;
+}
+
 export function naechsterZustand(aktuell: Zustand, jetzt: Date, signal: Signale): Zustand {
 	if (aktuell === 'unerreichbar') return aktuell;
-	if (aktuell === 'geplant') {
-		const vorlauf = new Date(signal.wahltag);
-		vorlauf.setHours(17, 45, 0, 0);
-		return jetzt >= vorlauf ? 'vorlauf' : aktuell;
+	if (aktuell === 'geplant' || aktuell === 'vorlauf') {
+		// Der 30-s-Takt hing bisher allein an strukturGeladen — einem Signal, das
+		// nirgends gesetzt wurde. Solange die Pfade fest als 'wahlabend' angelegt
+		// wurden, fiel das nicht auf. Deshalb entscheidet jetzt das Zeitfenster am
+		// echten Wahltag, und strukturGeladen bleibt nur noch der Frühstart.
+		if (jetzt >= uhrzeitAm(signal.wahltag, 18, 0)) return 'wahlabend';
+		if (aktuell === 'vorlauf' && signal.strukturGeladen) return 'wahlabend';
+		if (jetzt >= uhrzeitAm(signal.wahltag, 17, 45)) return 'vorlauf';
+		return aktuell;
 	}
-	if (aktuell === 'vorlauf' && signal.strukturGeladen) return 'wahlabend';
 	if (aktuell === 'wahlabend' && signal.vollstaendig) return 'nachlauf';
 	if (aktuell === 'nachlauf' && signal.amtlich) return 'beobachtung';
 	if (

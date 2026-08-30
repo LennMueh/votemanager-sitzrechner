@@ -17,6 +17,9 @@ export interface PollerAufgabe {
 	backfill?: boolean;
 	letzteAenderung?: Date;
 	zustandVorFehler?: Zustand;
+	/** Wahltag der Instanz als YYYY-MM-DD; fehlt bei der Wurzel mit termine.json. */
+	terminDatum?: string;
+	strukturGeladen?: boolean;
 }
 
 export interface PollerSpeicher {

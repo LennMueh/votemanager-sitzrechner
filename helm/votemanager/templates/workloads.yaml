@@ -29,6 +29,9 @@ spec:
             - { name: http, containerPort: 3000 }
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $secret }}, key: {{ .Values.database.secretKey }} } } }
+            # Der Wahlabend beginnt 18:00 Ortszeit. Ohne TZ läuft der Container in
+            # UTC, und naechsterZustand schaltet erst um 20:00 CEST auf 30 s.
+            - { name: TZ, value: "Europe/Berlin" }
           readinessProbe: { httpGet: { path: /api/ready, port: http }, periodSeconds: 5 }
           livenessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
           startupProbe: { httpGet: { path: /api/health, port: http }, failureThreshold: 30, periodSeconds: 2 }
@@ -69,6 +72,7 @@ spec:
             - { name: CRAWLER_CONTACT, value: {{ $contact | quote }} }
             - { name: BACKFILL_ENABLED, value: {{ .Values.crawler.backfill | quote }} }
             - { name: METRICS_PORT, value: "9090" }
+            - { name: TZ, value: "Europe/Berlin" }
           readinessProbe: { httpGet: { path: /metrics, port: metrics }, periodSeconds: 10 }
           livenessProbe: { httpGet: { path: /metrics, port: metrics }, periodSeconds: 30 }
           startupProbe: { httpGet: { path: /metrics, port: metrics }, failureThreshold: 30, periodSeconds: 2 }

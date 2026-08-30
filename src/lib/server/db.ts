@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import postgres from 'postgres';
+import { parseErgebnis } from '../votemanager.ts';
 import type { Behoerde, PollerAufgabe, PollerSpeicher } from './poller/index.ts';
 import { apiWurzel, termineUrl } from './poller/urls.ts';
 import { fehlerBackoff, naechsterZustand, pruefIntervall, type Zustand } from './poller/zustand.ts';
@@ -67,6 +68,10 @@ export async function erstellePollerSpeicher(
 	}
 	return {
 		async faellige(limit, backfill) {
+			// Eine kleine Scheibe geht immer an den ältesten fälligen Pfad, egal
+			// wie kalt er ist. Sonst hungert termine.json (Prio 10) am Wahlabend —
+			// und genau darüber wird die Stichwahl am 27.09. entdeckt.
+			const reserve = Math.max(1, Math.floor(limit / 10));
 			const zeilen = await sql<
 				Array<{
 					id: string;
@@ -80,10 +85,25 @@ export async function erstellePollerSpeicher(
 					fehler_anzahl: number;
 					zuletzt_geaendert: Date | null;
 					zustand_vor_fehler: Zustand | null;
+					termin_datum: string | null;
+					struktur_geladen: boolean;
 				}>
-			>`SELECT p.id::text, p.pfad, p.instanz_id, coalesce(i.api_wurzel, i.termin_url) AS basis,
+			>`WITH faellig AS (SELECT p.id::text, p.pfad, p.instanz_id, coalesce(i.api_wurzel, i.termin_url) AS basis,
 				p.zustand, p.prioritaet, p.etag, p.last_modified, p.fehler_anzahl,
-				p.zuletzt_geaendert, p.zustand_vor_fehler
+				p.zuletzt_geaendert, p.zustand_vor_fehler,
+				-- Kein JOIN termin: 115 Instanzen tragen zwei Termine, das würde
+				-- Zeilen vervielfachen. Auswahlregel wie waehleStandardtermin():
+				-- der nächste noch anstehende Termin, sonst der letzte vergangene.
+				(SELECT to_char(t.datum, 'YYYY-MM-DD') FROM termin t WHERE t.instanz_id = i.id
+					ORDER BY (t.datum < current_date), abs(t.datum - current_date) LIMIT 1) AS termin_datum,
+				EXISTS (SELECT 1 FROM pfad_stand w WHERE w.instanz_id = i.id
+					AND w.pfad LIKE '%/wahl.json' AND w.status IS NOT NULL) AS struktur_geladen,
+				p.naechste_pruefung,
+				-- prioritaet ist statisch, der Zustand nicht: ein Ergebnispfad von
+				-- 2021 behält seine 85 für immer und schlug damit die termin.json
+				-- der laufenden Wahl. Der Zustand entscheidet deshalb zuerst.
+				CASE p.zustand WHEN 'wahlabend' THEN 4 WHEN 'vorlauf' THEN 3 WHEN 'nachlauf' THEN 2
+					WHEN 'ruhend' THEN 0 WHEN 'unerreichbar' THEN 0 ELSE 1 END AS rang
 			FROM pfad_stand p JOIN instanz i ON i.id = p.instanz_id
 			JOIN behoerde b ON b.id = i.behoerde_id
 			-- Spiegelt new URL(pfad, basis).host aus der Zeilenabbildung unten.
@@ -94,11 +114,16 @@ export async function erstellePollerSpeicher(
 				FROM '^https?://([^/]+)')
 			WHERE b.aktiv AND p.naechste_pruefung <= now() AND (${backfill} OR p.zustand <> 'ruhend')
 				AND (h.naechster_abruf IS NULL OR h.naechster_abruf <= now())
+				-- Korreliert auf die Instanz: unkorreliert hieß das „irgendwo läuft
+				-- eine Wahl" und sperrte jeden Backfill, solange auch nur ein Pfad
+				-- live war. Zwei Wochen lang war das dauerhaft der Fall.
 				AND (p.zustand <> 'ruhend' OR NOT EXISTS (
-					SELECT 1 FROM pfad_stand live WHERE live.zustand IN ('vorlauf', 'wahlabend')
-				))
-			ORDER BY p.prioritaet DESC, p.naechste_pruefung
-			LIMIT ${limit}`;
+					SELECT 1 FROM pfad_stand live WHERE live.instanz_id = p.instanz_id
+						AND live.zustand IN ('vorlauf', 'wahlabend')
+				)))
+			(SELECT * FROM faellig ORDER BY rang DESC, prioritaet DESC, naechste_pruefung LIMIT ${limit - reserve})
+			UNION
+			(SELECT * FROM faellig ORDER BY naechste_pruefung LIMIT ${reserve})`;
 			return zeilen.map((z) => ({
 				id: z.id,
 				url: new URL(z.pfad, z.basis.endsWith('/') ? z.basis : `${z.basis}/`).href,
@@ -110,7 +135,9 @@ export async function erstellePollerSpeicher(
 				fehler: z.fehler_anzahl,
 				backfill: z.zustand === 'ruhend',
 				letzteAenderung: z.zuletzt_geaendert ?? undefined,
-				zustandVorFehler: z.zustand_vor_fehler ?? undefined
+				zustandVorFehler: z.zustand_vor_fehler ?? undefined,
+				terminDatum: z.termin_datum ?? undefined,
+				strukturGeladen: z.struktur_geladen
 			}));
 		},
 
@@ -174,7 +201,10 @@ export async function erstellePollerSpeicher(
 					const [instanz] = await tx<{ api_wurzel: string }[]>`SELECT api_wurzel FROM instanz WHERE id=${instanzId}`;
 					if (termin && instanz?.api_wurzel) for (const w of roh.wahleintraege ?? []) {
 						await tx`INSERT INTO wahl (termin_id, wahl_id, gebiet_id, gebiet_name, name) VALUES (${termin.id}, ${String(w.wahl.id)}, ${w.gebiet_link.id}, ${w.gebiet_link.title}, ${w.wahl.titel}) ON CONFLICT (termin_id, wahl_id, gebiet_id) DO UPDATE SET name=excluded.name, gebiet_name=excluded.gebiet_name`;
-						for (const pfad of [`wahl_${w.wahl.id}/wahl.json`, `wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`]) await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : terminZustand(datum, ergebnis.geprueft, 'wahlabend')}, 80, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						// Das Gesamtergebnis steht über allen Unter-Gebieten: ohne dieses
+						// eine Dokument bricht berechneVertretung() mit „Wahlgebietsergebnis
+						// fehlt noch" ab. Vorher lag es mit 80 unter den 85 der Übersicht.
+						for (const [pfad, prio] of [[`wahl_${w.wahl.id}/wahl.json`, 80], [`wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`, 90]] as const) await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : terminZustand(datum, ergebnis.geprueft, 'wahlabend')}, ${prio}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				} else if (/wahl_\d+\/wahl\.json$/.test(aufgabe.pfad)) {
 					const menu = (ergebnis.inhalt as { menu_links?: Array<{ id: string; type: string; title: string }> }).menu_links ?? [];
@@ -185,19 +215,29 @@ export async function erstellePollerSpeicher(
 							VALUES (${instanzId}, ${wahlId}, ${m.id}, ${m.title}, ${art})
 							ON CONFLICT (instanz_id, wahl_id, ebene_id) DO UPDATE SET name=excluded.name, art=excluded.art`;
 						const url = new URL(`uebersicht_${m.id}_0.json`, aufgabe.url.replace(/wahl\.json$/, ''));
-						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, 75, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						// Die Stimmbezirks-Ebene erzeugt hunderte Pfade im 30-s-Takt, die
+						// die Rechenschicht nie liest. Niedrige Priorität begrenzt sich
+						// selbst: wird die Übersicht am Wahlabend nicht geholt, entstehen
+						// ihre Ergebnispfade gar nicht erst.
+						//
+						// Bewusst nur 'wahlbezirk' herunterstufen, nicht alles außer
+						// 'wahlbereich': von 254 Ebenen sind nur 2 als 'wahlbereich'
+						// erkannt, 35 heißen „Mitgliedsgemeinden". Ob das bei Samtgemeinden
+						// die Wahlbereiche nach § 36 sind, ist offen — bis dahin bleiben
+						// sie heiß, statt die Gegenprobe zu riskieren.
+						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${art === 'wahlbezirk' ? 45 : 75}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				} else if (/wahl_\d+\/uebersicht_.+_0\.json$/.test(aufgabe.pfad)) {
 					const zeilen = (ergebnis.inhalt as { tabelle?: { zeilen?: Array<{ name?: string; title?: string; link?: { id?: string; title?: string } }> } }).tabelle?.zeilen ?? [];
 					const treffer = aufgabe.pfad.match(/wahl_(\d+)\/uebersicht_(.+)_0\.json$/)!;
-					const [ebene] = await tx<{ id: number }[]>`SELECT id FROM uebersicht_ebene
+					const [ebene] = await tx<{ id: number; art: string }[]>`SELECT id, art FROM uebersicht_ebene
 						WHERE instanz_id=${instanzId} AND wahl_id=${treffer[1]} AND ebene_id=${treffer[2]}`;
 					for (const z of zeilen) if (z.link?.id) {
 						if (ebene) await tx`INSERT INTO gebiet (uebersicht_ebene_id, gebiet_id, name)
 							VALUES (${ebene.id}, ${z.link.id}, ${z.link.title ?? z.title ?? z.name ?? z.link.id})
 							ON CONFLICT (uebersicht_ebene_id, gebiet_id) DO UPDATE SET name=excluded.name`;
 						const url = new URL(`ergebnis_${z.link.id}_0.json`, aufgabe.url.replace(/uebersicht_.+_0\.json$/, ''));
-						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, 85, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${ebene?.art === 'wahlbezirk' ? 45 : 85}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				}
 			});
@@ -221,9 +261,17 @@ export async function erstellePollerSpeicher(
 				// dem des zuletzt gescheiterten Pfads. Deckel eine Stunde, damit ein
 				// behobener Ausfall nicht halbe Tage nachwirkt. now() ist die Uhr,
 				// gegen die faellige() vergleicht.
-				const sperre = fehlerBackoff(stand.fehler_anzahl, undefined, 60 * 60_000);
+				//
+				// Der Pfad-Backoff darf hier nicht mehr einfließen: greatest(…,
+				// naechstePruefung) ließ die 24 h eines einzelnen Pfades den ganzen
+				// Host sperren — und votemanager.kdo.de ist der Host aller 3143
+				// Behörden. Der Poller stand dann bis zu einen Tag, und kein Abruf
+				// konnte die Sperre lösen, weil dafür ein Abruf nötig gewesen wäre.
+				// Nur ein ausdrückliches Retry-After des Anbieters schlägt den Deckel.
+				const retryAfterMs = (fehler as { retryAfterMs?: number }).retryAfterMs ?? 0;
+				const sperre = Math.max(fehlerBackoff(stand.fehler_anzahl, undefined, 60 * 60_000), retryAfterMs);
 				await tx`UPDATE host_stand
-					SET naechster_abruf = greatest(now() + make_interval(secs => ${sperre / 1000}), ${naechstePruefung})
+					SET naechster_abruf = now() + make_interval(secs => ${sperre / 1000})
 					WHERE host = ${host}`;
 			});
 		},
@@ -321,18 +369,25 @@ export function filtereTermine(termine: TerminEintrag[], wahltage?: string[]): T
 
 function dokumentZustand(aufgabe: PollerAufgabe, inhalt: unknown, jetzt: Date, geaendert: boolean): Zustand {
 	let aktuell = aufgabe.zustand === 'unerreichbar' ? aufgabe.zustandVorFehler ?? 'beobachtung' : aufgabe.zustand;
-	const komponente = (inhalt as { Komponente?: { sitze?: unknown; info?: { hinweis?: string[] } } } | undefined)?.Komponente;
-	const text = komponente?.info?.hinweis?.join(' ') ?? '';
-	const stand = text.match(/(\d+)\D+(?:von|\/|der)\D*(\d+)/i);
-	const vollstaendig = Boolean(stand && Number(stand[1]) >= Number(stand[2]));
-	aktuell = naechsterZustand(aktuell, jetzt, {
-		wahltag: jetzt, vollstaendig, amtlich: Boolean(komponente?.sitze),
-		geaendert, letzteAenderung: geaendert ? jetzt : aufgabe.letzteAenderung
-	});
-	return naechsterZustand(aktuell, jetzt, {
-		wahltag: jetzt, amtlich: Boolean(komponente?.sitze), geaendert,
+	const komponente = (inhalt as { Komponente?: unknown } | undefined)?.Komponente;
+	// Vollständigkeit und amtliches Endergebnis kommen aus demselben Parser wie
+	// die Anzeige. Die frühere Eigenbau-Regex kannte den deutschen Tausenderpunkt
+	// nicht: "12 von 1.240" ergab [12, 1] und damit vollständig — der Pfad wäre
+	// am Wahlabend sofort von 30 s auf 15 min gefallen, unsichtbar hinter einer
+	// korrekten Anzeige.
+	const stand = komponente ? parseErgebnis(inhalt as never) : undefined;
+	// Ohne Termindatum (Wurzel-Instanz mit termine.json) gibt es kein Zeitfenster;
+	// ein Datum weit in der Zukunft hält den Pfad dann in seinem Zustand.
+	const wahltag = aufgabe.terminDatum ? new Date(aufgabe.terminDatum) : new Date(8.64e15);
+	const signale = {
+		wahltag,
+		strukturGeladen: aufgabe.strukturGeladen,
+		amtlich: Boolean(stand?.amtlicheSitze),
+		geaendert,
 		letzteAenderung: geaendert ? jetzt : aufgabe.letzteAenderung
-	});
+	};
+	aktuell = naechsterZustand(aktuell, jetzt, { ...signale, vollstaendig: stand?.stand.vollstaendig });
+	return naechsterZustand(aktuell, jetzt, signale);
 }
 
 function streuung(kennung: string): number {
