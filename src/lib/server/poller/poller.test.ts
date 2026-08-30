@@ -70,6 +70,29 @@ describe('Poller-Kern', () => {
 		expect(naechsterZustand('vorlauf', new Date('2026-09-13T17:50:00+02:00'), { wahltag, strukturGeladen: true })).toBe('wahlabend');
 	});
 
+	it('erntet eine vergangene Wahl genau einmal nach', () => {
+		// Ruhende Pfade prüfen alle 30 Tage. Die Kette termine.json → app.js →
+		// termin.json → ergebnis hat vier Glieder und bräuchte damit vier Monate
+		// bis zur Sitzzahl der Vorwahl — für einen bevorstehenden Wahltag zu spät.
+		expect(pruefIntervall('ruhend')).toBe(30 * 24 * 3_600_000);
+		expect(pruefIntervall('nachernte')).toBe(300_000);
+
+		// Genau einmal: naechsterZustand läuft nur nach einem erfolgreichen Abruf,
+		// und danach gilt wieder der 30-Tage-Takt. Zusammen mit der Bedingung
+		// „status IS NULL" der Beförderung kann kein Pfad zweimal geerntet werden.
+		const wahltag = new Date('2021-09-12T00:00:00+02:00');
+		const jetzt = new Date('2026-08-30T12:00:00+02:00');
+		expect(naechsterZustand('nachernte', jetzt, { wahltag })).toBe('ruhend');
+		expect(naechsterZustand('nachernte', jetzt, { wahltag, geaendert: true })).toBe('ruhend');
+		// Auch ein Wahltag in der Zukunft zieht einen Nachernte-Pfad nicht in den
+		// Vorlauf: die Nachernte gilt vergangenen Wahlen, nie der laufenden.
+		expect(naechsterZustand('nachernte', jetzt, { wahltag: new Date('2026-09-13T00:00:00+02:00') })).toBe('ruhend');
+
+		// Nach einem Fehler führt der Weg über 'unerreichbar' zurück in die
+		// Nachernte und von dort erst zu 'ruhend' — der Pfad geht nicht verloren.
+		expect(naechsterZustand('unerreichbar', jetzt, { wahltag })).toBe('unerreichbar');
+	});
+
 	it('begrenzt Backoff auf 24 Stunden und deaktiviert Backfill', () => {
 		expect(fehlerBackoff(1)).toBe(30_000);
 		expect(fehlerBackoff(99)).toBe(86_400_000);

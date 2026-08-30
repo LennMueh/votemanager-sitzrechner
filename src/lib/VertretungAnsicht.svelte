@@ -17,6 +17,17 @@
 	const mitSitzen = $derived(ergebnis.verteilung?.parteien.filter((p) => p.sitze > 0) ?? []);
 	const mehrereBereiche = $derived(ergebnis.wahlbereiche.length > 1);
 
+	const HERKUNFT = {
+		amtlich: 'amtlich veröffentlicht',
+		hinterlegt: 'hinterlegt',
+		vorwahl: 'aus der Vorwahl'
+	} as const;
+	const tag = (t?: string) => (t ? `${t.slice(6, 8)}.${t.slice(4, 6)}.${t.slice(0, 4)}` : '');
+	/** Quellen mit abweichender Zahl — genau die sind erklärungsbedürftig. */
+	const streit = $derived(
+		(ergebnis.sitzzahlQuellen ?? []).filter((q) => q.sitze !== ergebnis.sitzzahl)
+	);
+
 	const fmt = new Intl.NumberFormat('de-DE');
 	const pct = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 </script>
@@ -193,9 +204,21 @@
 		{/if}
 	{/if}
 
-	{#if ergebnis.recht}
+	{#if ergebnis.recht || ergebnis.sitzzahl}
 		<p class="grundlage">
-			Gerechnet nach {ergebnis.recht.rechtsgrundlage} ({ergebnis.recht.name}).
+			{#if ergebnis.recht}Gerechnet nach {ergebnis.recht.rechtsgrundlage} ({ergebnis.recht.name}).{/if}
+			{#if ergebnis.sitzzahl && ergebnis.sitzzahlHerkunft}
+				{ergebnis.sitzzahl} Sitze, {HERKUNFT[ergebnis.sitzzahlHerkunft]}{#if ergebnis.sitzzahlHerkunft === 'vorwahl'}
+					vom {tag(ergebnis.sitzzahlQuellen?.find((q) => q.herkunft === 'vorwahl')?.stand)}{/if}.
+			{/if}
+			<!-- Weicht eine Quelle ab, ist das kein Detail: die Sitzzahl folgt der
+			     Einwohnerzahl zu einem gesetzlichen Stichtag, eine Abweichung heißt
+			     also Wachstum über eine Schwelle — oder eine Satzung, die sie senkt. -->
+			{#if streit.length}
+				<span class="streit">
+					Abweichend: {streit.map((q) => `${HERKUNFT[q.herkunft]} ${q.sitze}${q.stand ? ` (${tag(q.stand)})` : ''}`).join(', ')}.
+				</span>
+			{/if}
 		</p>
 	{/if}
 </article>
@@ -226,6 +249,8 @@
 	h3 { margin-top: 1.75rem; }
 
 	.legende { margin: .5rem 0 0; font-size: .85rem; color: var(--text-3); }
+
+	.streit { color: var(--warn); }
 
 	.grundlage {
 		margin: 1.5rem 0 0;

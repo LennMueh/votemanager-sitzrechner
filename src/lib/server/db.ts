@@ -72,6 +72,11 @@ export async function erstellePollerSpeicher(
 			// wie kalt er ist. Sonst hungert termine.json (Prio 10) am Wahlabend —
 			// und genau darüber wird die Stichwahl am 27.09. entdeckt.
 			const reserve = Math.max(1, Math.floor(limit / 10));
+			// Zweite feste Scheibe für die Nachernte. Eine harte Obergrenze statt
+			// eines Rangs: nur so ist die Last auf fremder Infrastruktur ablesbar,
+			// egal wie viele tausend Pfade fällig sind. Am Wahlabend fällt sie unten
+			// auf null.
+			const nachernte = Math.max(1, Math.floor(limit / 10));
 			const zeilen = await sql<
 				Array<{
 					id: string;
@@ -103,7 +108,7 @@ export async function erstellePollerSpeicher(
 				-- 2021 behält seine 85 für immer und schlug damit die termin.json
 				-- der laufenden Wahl. Der Zustand entscheidet deshalb zuerst.
 				CASE p.zustand WHEN 'wahlabend' THEN 4 WHEN 'vorlauf' THEN 3 WHEN 'nachlauf' THEN 2
-					WHEN 'ruhend' THEN 0 WHEN 'unerreichbar' THEN 0 ELSE 1 END AS rang
+					WHEN 'ruhend' THEN 0 WHEN 'unerreichbar' THEN 0 WHEN 'nachernte' THEN 0 ELSE 1 END AS rang
 			FROM pfad_stand p JOIN instanz i ON i.id = p.instanz_id
 			JOIN behoerde b ON b.id = i.behoerde_id
 			-- Spiegelt new URL(pfad, basis).host aus der Zeilenabbildung unten.
@@ -117,13 +122,24 @@ export async function erstellePollerSpeicher(
 				-- Korreliert auf die Instanz: unkorreliert hieß das „irgendwo läuft
 				-- eine Wahl" und sperrte jeden Backfill, solange auch nur ein Pfad
 				-- live war. Zwei Wochen lang war das dauerhaft der Fall.
-				AND (p.zustand <> 'ruhend' OR NOT EXISTS (
+				AND (p.zustand NOT IN ('ruhend', 'nachernte') OR NOT EXISTS (
 					SELECT 1 FROM pfad_stand live WHERE live.instanz_id = p.instanz_id
 						AND live.zustand IN ('vorlauf', 'wahlabend')
-				)))
-			(SELECT * FROM faellig ORDER BY rang DESC, prioritaet DESC, naechste_pruefung LIMIT ${limit - reserve})
+				))),
+			-- Läuft irgendwo ein Wahlabend, ruht die Nachernte vollständig und ihre
+			-- Scheibe fällt an die Hauptauswahl zurück. Sie ist Vorratsarbeit für den
+			-- nächsten Wahltag und darf dem laufenden weder Plätze noch Bandbreite
+			-- beim gemeinsamen Host nehmen.
+			takt AS (SELECT CASE WHEN EXISTS (SELECT 1 FROM faellig WHERE zustand = 'wahlabend')
+				THEN 0 ELSE ${nachernte} END AS quote)
+			(SELECT * FROM faellig WHERE zustand <> 'nachernte'
+				ORDER BY rang DESC, prioritaet DESC, naechste_pruefung
+				LIMIT (SELECT ${limit - reserve} - quote FROM takt))
 			UNION
-			(SELECT * FROM faellig ORDER BY naechste_pruefung LIMIT ${reserve})`;
+			(SELECT * FROM faellig WHERE zustand <> 'nachernte' ORDER BY naechste_pruefung LIMIT ${reserve})
+			UNION
+			(SELECT * FROM faellig WHERE zustand = 'nachernte'
+				ORDER BY prioritaet DESC, naechste_pruefung LIMIT (SELECT quote FROM takt))`;
 			return zeilen.map((z) => ({
 				id: z.id,
 				url: new URL(z.pfad, z.basis.endsWith('/') ? z.basis : `${z.basis}/`).href,
@@ -193,7 +209,7 @@ export async function erstellePollerSpeicher(
 				} else if (aufgabe.pfad.endsWith('js/app.js') && typeof ergebnis.inhalt === 'string') {
 					const wurzel = apiWurzel(aufgabe.url.replace(/js\/app\.js$/, ''), ergebnis.inhalt);
 					await tx`UPDATE instanz SET api_wurzel=${wurzel} WHERE id=${instanzId}`;
-					await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL('termin.json', wurzel).href}, ${aufgabe.zustand === 'ruhend' || aufgabe.zustand === 'geplant' ? aufgabe.zustand : 'vorlauf'}, 60, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+					await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL('termin.json', wurzel).href}, ${aufgabe.zustand === 'ruhend' || aufgabe.zustand === 'geplant' || aufgabe.zustand === 'nachernte' ? aufgabe.zustand : 'vorlauf'}, 60, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 				} else if (aufgabe.pfad.endsWith('termin.json')) {
 					const roh = ergebnis.inhalt as { datum_string?: string; wahleintraege?: Array<{ wahl: { id: number; titel: string }; gebiet_link: { id: string; title: string } }> };
 					const datum = deutschesDatum(roh.datum_string ?? '');
@@ -204,7 +220,17 @@ export async function erstellePollerSpeicher(
 						// Das Gesamtergebnis steht über allen Unter-Gebieten: ohne dieses
 						// eine Dokument bricht berechneVertretung() mit „Wahlgebietsergebnis
 						// fehlt noch" ab. Vorher lag es mit 80 unter den 85 der Übersicht.
-						for (const [pfad, prio] of [[`wahl_${w.wahl.id}/wahl.json`, 80], [`wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`, 90]] as const) await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${aufgabe.zustand === 'ruhend' ? 'ruhend' : terminZustand(datum, ergebnis.geprueft)}, ${prio}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						for (const [pfad, prio] of [[`wahl_${w.wahl.id}/wahl.json`, 80], [`wahl_${w.wahl.id}/ergebnis_${w.gebiet_link.id}_0.json`, 90]] as const) {
+							// Die Nachernte will genau ein Dokument je Wahl: das
+							// Gesamtergebnis mit der amtlichen Sitzzahl. wahl.json führt
+							// nur zu Übersichten und Wahlbezirken, die für eine Sitzzahl
+							// nichts beitragen — es bleibt ruhend und spart pro Wahl einen
+							// Abruf plus die Pfade, die daraus entstünden.
+							const kindZustand = aufgabe.zustand === 'nachernte'
+								? (prio === 90 ? 'nachernte' : 'ruhend')
+								: aufgabe.zustand === 'ruhend' ? 'ruhend' : terminZustand(datum, ergebnis.geprueft);
+							await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${new URL(pfad, instanz.api_wurzel).href}, ${kindZustand}, ${prio}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						}
 					}
 				} else if (/wahl_\d+\/wahl\.json$/.test(aufgabe.pfad)) {
 					const menu = (ergebnis.inhalt as { menu_links?: Array<{ id: string; type: string; title: string }> }).menu_links ?? [];
@@ -274,6 +300,40 @@ export async function erstellePollerSpeicher(
 					SET naechster_abruf = now() + make_interval(secs => ${sperre / 1000})
 					WHERE host = ${host}`;
 			});
+		},
+
+		/**
+		 * Befördert die Kette einer vergangenen Wahl auf `nachernte`.
+		 *
+		 * Wozu: die Sitzzahl der Vorwahl steht im Gesamtergebnis des letzten
+		 * Wahltags derselben Körperschaft. Als ruhende Pfade bräuchte die Kette
+		 * termine.json → app.js → termin.json → ergebnis vier Monate — 30 Tage je
+		 * Glied. Für einen Wahltag, der bevorsteht, ist das zu spät.
+		 *
+		 * Drei Bedingungen halten die Menge klein und die Abfrage selbstbeendend:
+		 *
+		 *  - nur vergangene Termine von Behörden, die überhaupt eine Wahl vor sich
+		 *    haben — für alle anderen ist die Vorwahl uninteressant;
+		 *  - nur die drei Pfadarten der Kette, nicht Übersichten und Wahlbezirke;
+		 *  - nur `status IS NULL`, also nie erfolgreich geholt. Damit ist die
+		 *    Abfrage idempotent: was einmal geholt wurde, fällt auf `ruhend` und
+		 *    wird nie wieder befördert.
+		 */
+		async nachernteBefoerdern(jetzt) {
+			const zeilen = await sql<{ anzahl: number }[]>`
+				WITH befoerdert AS (
+					UPDATE pfad_stand p SET zustand = 'nachernte', naechste_pruefung = ${jetzt}
+					FROM instanz i
+					WHERE i.id = p.instanz_id
+						AND p.zustand = 'ruhend'
+						AND p.status IS NULL
+						AND (p.pfad LIKE '%js/app.js' OR p.pfad LIKE '%termin.json' OR p.prioritaet = 90)
+						AND EXISTS (SELECT 1 FROM termin t WHERE t.instanz_id = i.id AND t.datum < current_date)
+						AND EXISTS (SELECT 1 FROM instanz k JOIN termin t ON t.instanz_id = k.id
+							WHERE k.behoerde_id = i.behoerde_id AND t.datum >= current_date)
+					RETURNING 1
+				) SELECT count(*)::int AS anzahl FROM befoerdert`;
+			return zeilen[0]?.anzahl ?? 0;
 		},
 
 		async registryFaellig(jetzt) {

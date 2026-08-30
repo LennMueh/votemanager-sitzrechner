@@ -4,6 +4,12 @@ export type Zustand =
 	| 'wahlabend'
 	| 'nachlauf'
 	| 'beobachtung'
+	// Einmalige Nachernte einer vergangenen Wahl. Ruhende Pfade prüfen alle 30
+	// Tage; die Kette termine.json → app.js → termin.json → ergebnis hat vier
+	// Glieder und braucht damit vier Monate bis zum ersten Vorwahl-Ergebnis. Für
+	// die Sitzzahl der Vorwahl ist das zu spät. `nachernte` holt genau einmal und
+	// fällt danach zurück auf `ruhend`.
+	| 'nachernte'
 	| 'ruhend'
 	| 'unerreichbar';
 
@@ -28,6 +34,11 @@ function uhrzeitAm(wahltag: Date, stunde: number, minute: number): Date {
 
 export function naechsterZustand(aktuell: Zustand, jetzt: Date, signal: Signale): Zustand {
 	if (aktuell === 'unerreichbar') return aktuell;
+	// Ein Nachernte-Pfad ist mit dem ersten erfolgreichen Abruf erledigt — diese
+	// Funktion wird nur nach einem solchen aufgerufen. Danach gilt wieder der
+	// 30-Tage-Takt, und die Beförderung greift nicht erneut, weil sie nur Pfade
+	// ohne bisherigen Status auswählt.
+	if (aktuell === 'nachernte') return 'ruhend';
 	if (aktuell === 'geplant' || aktuell === 'vorlauf') {
 		// Der 30-s-Takt hing bisher allein an strukturGeladen — einem Signal, das
 		// nirgends gesetzt wurde. Solange die Pfade fest als 'wahlabend' angelegt
@@ -69,6 +80,10 @@ export function pruefIntervall(zustand: Zustand): number | undefined {
 			return 15 * MINUTE;
 		case 'beobachtung':
 			return 7 * TAG;
+		// Kurz, damit ein Glied der Kette nicht auf das nächste wartet. Das Tempo
+		// begrenzt nicht dieses Intervall, sondern die Quote in faellige().
+		case 'nachernte':
+			return 5 * MINUTE;
 		case 'ruhend':
 			return 30 * TAG;
 		default:

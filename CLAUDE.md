@@ -89,6 +89,43 @@ eine Sitzzahl, **rechnet die Anwendung bewusst nicht** und sagt das sichtbar.
 Einträge gehören deshalb in `src/lib/sitzzahlen-manuell.json`; `daten.ts` führt
 beide zusammen.
 
+### Woher die Sitzzahl kommt
+
+Rangfolge in `bestimmeSitzzahl()`, sichtbar am Ergebnis:
+
+1. **amtlich** — aus `Komponente.sitze` des laufenden Wahlabends, schlägt alles.
+2. **hinterlegt** — `sitzzahlen*.json`, aus der Bekanntmachung der Wahlleitung.
+3. **vorwahl** — amtliche Sitzzahl der letzten Wahl derselben Körperschaft aus
+   dem Archiv, mit Wahltag.
+
+Die Vorwahl steht hinten, weil die Sitzzahl der **Einwohnerzahl zu einem
+gesetzlichen Stichtag** folgt und sich zwischen zwei Wahlen ändert: der Kreistag
+Freudenstadt wuchs 2019→2024 von 41 auf 44, der Gemeinderat Hochdorf schrumpfte
+von 13 auf 12. Abweichende Quellen werden **nicht aufgelöst, sondern angezeigt** —
+sie bedeuten Wachstum über eine Staffelschwelle oder eine Satzung, die die Zahl
+senkt (§ 46 Abs. 4 NKomVG erlaubt −2, −4 oder −6).
+
+**Der Schlüssel ist nicht der Titel.** votemanager benennt dieselbe Wahl in jedem
+Zyklus anders („Gemeindewahl" 2021 gegen „Wahl des Gemeinderates" 2026,
+„Landkreises Lüneburg" gegen „Landkreis Lüneburg"). Über den rohen Titel passten
+von 56 hinterlegten Sitzzahlen noch **fünf** auf die 1.945 Vertretungen der Wahl
+2026; über `vertretungsSchluessel()` (`server/vergleich.ts`, dieselben
+Normalisierer wie der Wahlvergleich) sind es 52.
+
+### Nachernte
+
+Ruhende Pfade prüfen alle 30 Tage, und die Kette
+`termine.json → app.js → termin.json → ergebnis` hat vier Glieder — vier Monate
+bis zur Sitzzahl einer Vorwahl. Der Zustand `nachernte` holt diese Kette für
+vergangene Termine von Behörden mit **anstehender** Wahl genau einmal und fällt
+danach auf `ruhend` zurück. Die Beförderung wählt nur Pfade mit `status IS NULL`
+und ist damit idempotent und selbstbeendend.
+
+Zwei Bremsen, die nicht verschwinden dürfen: `faellige()` gibt der Nachernte eine
+**feste Scheibe von einem Zehntel** der Aufgaben, und **am Wahlabend fällt sie auf
+null** und die Plätze gehen an die Hauptauswahl zurück. Vorratsarbeit darf dem
+laufenden Wahltag weder Plätze noch Bandbreite beim gemeinsamen Host nehmen.
+
 ## Rechtliche Regeln (NKWG)
 
 Vollständig in `src/lib/nkwg.ts` umgesetzt und kommentiert. Die Fallstricke:

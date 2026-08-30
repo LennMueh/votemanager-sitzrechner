@@ -24,11 +24,15 @@ export function normalisiereWahlart(name: string): string {
 	return text.replace(/\W/g, '');
 }
 
-export function gleichesGebiet(a: string, b: string): boolean {
-	const gebiet = (text: string) => normal(text)
+/** Gebietsname ohne Rechtsformzusatz — „Landkreises Lüneburg" wie „Landkreis Lüneburg". */
+function gebietSchluessel(text: string): string {
+	return normal(text)
 		.replace(/\b(landkreis(?:es)?|gemeinderatswahl|samtgemeinde|gemeinde|stadt|flecken)\b/g, '')
 		.replace(/\W/g, '');
-	return gebiet(a) === gebiet(b);
+}
+
+export function gleichesGebiet(a: string, b: string): boolean {
+	return gebietSchluessel(a) === gebietSchluessel(b);
 }
 
 export function waehleGegenwahl<T extends VergleichKandidat>(basis: T, kandidaten: T[]): T | undefined {
@@ -39,4 +43,22 @@ export function waehleGegenwahl<T extends VergleichKandidat>(basis: T, kandidate
 	);
 	return passend.filter((kandidat) => kandidat.wahltag < basis.wahltag).sort((a, b) => b.wahltag.localeCompare(a.wahltag))[0]
 		?? passend.filter((kandidat) => kandidat.wahltag > basis.wahltag).sort((a, b) => a.wahltag.localeCompare(b.wahltag))[0];
+}
+
+/**
+ * Stabiler Schlüssel einer Vertretung über Wahlzyklen hinweg.
+ *
+ * Der frühere Schlüssel `<ags>|<Titel>` hielt keine zwei Wahlen durch:
+ * votemanager schrieb 2021 „Kreiswahl - Landkreises Lüneburg" und 2026
+ * „Kreiswahl - Landkreis Lüneburg", aus „Gemeindewahl" wurde „Wahl des
+ * Gemeinderates". Von 55 geernteten Sitzzahlen passten dadurch noch fünf auf die
+ * 1.945 Vertretungen der Wahl 2026.
+ *
+ * Deshalb dieselbe Normalisierung wie beim Wahlvergleich: Wahlart und Gebiet
+ * getrennt und beide entkleidet. Der Gebietsname steht am Ende des Titels, wo er
+ * nicht ohnehin als eigenes Feld vorliegt.
+ */
+export function vertretungsSchluessel(ags: string, name: string, gebietName?: string): string {
+	const gebiet = gebietName ?? name.split(' - ').at(-1) ?? name;
+	return `${ags}|${normalisiereWahlart(name)}|${gebietSchluessel(gebiet)}`;
 }

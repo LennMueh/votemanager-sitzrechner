@@ -33,6 +33,11 @@ export interface PollerSpeicher {
 	}): Promise<void>;
 	fehler(aufgabe: PollerAufgabe, fehler: unknown, naechstePruefung: Date): Promise<void>;
 	registryFaellig(jetzt: Date): Promise<boolean>;
+	/**
+	 * Befördert Pfade vergangener Wahlen auf `nachernte` und liefert die Anzahl.
+	 * Optional, damit Testdoppel sie weglassen können.
+	 */
+	nachernteBefoerdern?(jetzt: Date): Promise<number>;
 	registryStand(): Promise<AbrufStand>;
 	registrySpeichern(inhalt: unknown | undefined, stand: AbrufStand, geprueft: Date): Promise<void>;
 	behoerdenSpeichern(behoerden: Behoerde[], geprueft: Date, vollstaendig?: boolean): Promise<void>;
@@ -98,6 +103,10 @@ export class Poller {
 
 	async einmal(jetzt = new Date()): Promise<number> {
 		if (await this.speicher.registryFaellig(jetzt)) await this.registry(jetzt);
+		// Vor der Aufgabenauswahl: neu entstandene Pfade vergangener Wahlen sollen
+		// noch im selben Durchlauf mitlaufen können. Die Abfrage ist idempotent und
+		// endet von selbst, weil sie nur nie geholte Pfade auswählt.
+		if (this.config.backfill) await this.speicher.nachernteBefoerdern?.(jetzt);
 		const aufgaben = await this.speicher.faellige(100, this.config.backfill);
 		await Promise.all(aufgaben.map((aufgabe) => this.bearbeite(aufgabe, jetzt)));
 		return aufgaben.length;

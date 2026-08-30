@@ -151,6 +151,8 @@ export interface VertretungRef {
 	behoerde: string;
 	wahlId: number;
 	gebietId: string;
+	/** Name des Wahlgebiets aus termin.json — Teil des stabilen Vertretungsschlüssels. */
+	gebietName?: string;
 	titel: string;
 	/** Direktwahlen (Bürgermeister/Landrat) laufen nach § 45g, nicht nach § 36/37. */
 	direktwahl: boolean;
