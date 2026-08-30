@@ -27,7 +27,10 @@
 				partei: p.partei,
 				farbe: p.farbe,
 				sitze: p.sitze,
-				mitglieder: verteilung.sitze.filter((s) => s.partei === p.partei),
+				// Namenlose Sitze (Saarland: der Feed nennt keine Bewerber) gar nicht
+				// erst auflisten — sonst stehen hier 45 leere Zeilen. Die Überschrift
+				// trägt Partei und Sitzzahl bereits.
+				mitglieder: verteilung.sitze.filter((s) => s.partei === p.partei && (s.name || s.unbesetzt)),
 				weg: weg.filter((w) => w.partei === p.partei).map((w) => w.name)
 			}))
 	);
@@ -50,6 +53,7 @@
 				<span class="anzahl zahl">{g.sitze}</span>
 			</h2>
 
+			{#if g.mitglieder.length}
 			<ul>
 				{#each g.mitglieder as m, i (m.name ?? 'leer' + i)}
 					<li
@@ -64,6 +68,7 @@
 					</li>
 				{/each}
 			</ul>
+			{/if}
 
 			{#if g.weg.length}
 				<p class="weg">nicht mehr dabei: {g.weg.join(', ')}</p>

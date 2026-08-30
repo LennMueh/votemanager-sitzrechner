@@ -6,6 +6,7 @@
  */
 
 import { verteileSitze, direktwahl, stimmenverhaeltnis, type Sitzverteilung, type Direktergebnis, type Stimmenverhaeltnis } from '$lib/nkwg';
+import { verteileSitzeSaarland } from '$lib/wahlrecht/saarland';
 import {
 	parseErgebnis,
 	type Auszaehlstand,
@@ -14,10 +15,16 @@ import {
 import { db } from './db';
 import { waehleGegenwahl } from './vergleich';
 import sitzzahlen from '$lib/sitzzahlen.json';
+import sitzzahlenManuell from '$lib/sitzzahlen-manuell.json';
 
-const TABELLE = sitzzahlen.vertretungen as Record<string, { sitze: number; behoerde: string }>;
+// Zwei Quellen: sitzzahlen.json schreibt `npm run harvest` vollständig neu,
+// sitzzahlen-manuell.json ist handgepflegt und überlebt das.
+const TABELLE = {
+	...sitzzahlen.vertretungen,
+	...sitzzahlenManuell.vertretungen
+} as Record<string, { sitze: number }>;
 
-/** Sitzzahl einer Vertretung — Vorbelegung aus 2021, siehe sitzzahlen.json. */
+/** Sitzzahl einer Vertretung — Vorbelegung, siehe sitzzahlen*.json. */
 export function sitzzahl(ref: VertretungRef): number | undefined {
 	return TABELLE[`${ref.ags}|${ref.titel}`]?.sitze;
 }
@@ -172,8 +179,8 @@ export async function berechneVertretung(
 	// Der Datum-Parameter wird auch im Instanz-Zweig typisiert, dort aber nicht ausgewertet.
 	const datum = ausgewaehlt ? `${ausgewaehlt.slice(0, 4)}-${ausgewaehlt.slice(4, 6)}-${ausgewaehlt.slice(6, 8)}` : '1970-01-01';
 	return zwischengespeichert(`v:${instanzId ? `i${instanzId}` : `${ausgewaehlt}:${ags}`}:${wahlId}:${gebietId}`, async () => {
-		const zeilen = await db()<Array<{ instanz_id: number; ags: string; behoerde: string; titel: string; pfad: string; wahlbereich: string | null; inhalt: unknown; erfasst_am: Date }>>`
-			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, w.name titel, p.pfad, d.inhalt, d.erfasst_am,
+		const zeilen = await db()<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; titel: string; pfad: string; wahlbereich: string | null; inhalt: unknown; erfasst_am: Date }>>`
+			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, w.name titel, p.pfad, d.inhalt, d.erfasst_am,
 				(SELECT g.name FROM gebiet g JOIN uebersicht_ebene e ON e.id=g.uebersicht_ebene_id
 					WHERE e.instanz_id=i.id AND e.wahl_id=w.wahl_id AND e.art='wahlbereich'
 						AND p.pfad LIKE '%/ergebnis_' || g.gebiet_id || '_0.json' LIMIT 1) wahlbereich
@@ -219,6 +226,20 @@ export async function berechneVertretung(
 		erg.sitzzahl = n;
 		if (!n) {
 			erg.warnung = 'Für diese Auswahl ist keine Sitzverteilung verfügbar — angezeigt wird das Stimmenverhältnis.';
+			return erg;
+		}
+		// ponytail: ein if reicht für zwei Länder; beim dritten wird daraus eine
+		// Tabelle Land → Rechtsstand.
+		if (gesamtZeile.land === 'SL') {
+			// § 41 Abs. 1 KWG SL verteilt nach den Gesamtstimmen im Wahlgebiet; die
+			// Wahlbereiche ändern an den Sitzen je Wahlvorschlag nichts. Deshalb
+			// bewusst ohne die Vollständigkeits-Gegenprobe: die Bereichs-Snapshots
+			// stammen aus verschiedenen Sekunden und summieren sich während der
+			// Auszählung nur selten exakt auf das Gesamtergebnis.
+			erg.verteilung = verteileSitzeSaarland(
+				[{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }],
+				n
+			);
 			return erg;
 		}
 		if (!bereicheVollstaendig) {

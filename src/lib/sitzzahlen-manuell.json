@@ -1,0 +1,11 @@
+{
+	"_hinweis": "Von Hand gepflegt. npm run harvest schreibt sitzzahlen.json vollständig neu und würde Einträge hier überschreiben — deshalb eine eigene Datei. Beide werden in src/lib/server/daten.ts zusammengeführt.",
+	"_schluessel": "<ags>|<Titel der Wahl aus termin.json>",
+	"vertretungen": {
+		"10041000|Wahl zur Regionalversammlung - Regionalverband Saarbrücken": {
+			"sitze": 45,
+			"behoerde": "Regionalverband Saarbrücken",
+			"quelle": "§ 205 Abs. 2 KSVG — \"Die Regionalversammlung hat 45 Mitglieder.\" Feste Zahl, keine Einwohnerformel wie § 46 NKomVG. Die acht verbandsangehörigen Städte und Gemeinden bekommen bewusst keinen Eintrag: sie zeigen dieselbe Wahl aus Sicht einer Teilfläche und sind keine eigene Vertretung."
+		}
+	}
+}

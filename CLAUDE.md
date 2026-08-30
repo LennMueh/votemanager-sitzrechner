@@ -85,6 +85,10 @@ aus dem amtlichen Endergebnis 2021 geerntet (Schlüssel `<ags>|<Titel>`).
 Vor dem 13.09.2026 gegen die Bekanntmachungen der Wahlleitungen prüfen. Fehlt
 eine Sitzzahl, **rechnet die Anwendung bewusst nicht** und sagt das sichtbar.
 
+`npm run harvest` schreibt `sitzzahlen.json` vollständig neu. Handgepflegte
+Einträge gehören deshalb in `src/lib/sitzzahlen-manuell.json`; `daten.ts` führt
+beide zusammen.
+
 ## Rechtliche Regeln (NKWG)
 
 Vollständig in `src/lib/nkwg.ts` umgesetzt und kommentiert. Die Fallstricke:
@@ -100,6 +104,25 @@ Vollständig in `src/lib/nkwg.ts` umgesetzt und kommentiert. Die Fallstricke:
   Invariante: `Gewählte + Unbesetzte === Sitzzahl`. Kommt real vor (2021:
   Oedeme, Westergellersen, Barendorf).
 - Keine 5-%-Sperrklausel.
+
+## Andere Länder
+
+Der Feed ist nicht auf Niedersachsen beschränkt, das Recht schon. Der Poller
+archiviert, was er findet; `daten.ts` wählt den Rechtsstand nach `behoerde.land`.
+
+**Saarland** (`src/lib/wahlrecht/saarland.ts`, § 41 KWG SL i. V. m. § 209 KSVG):
+d'Hondt statt Hare/Niemeyer, keine Sperrklausel seit 2008, **reine Listenwahl mit
+geschlossenen Listen**. Zwei Folgen, die man kennen muss:
+
+1. Das Ergebnis-JSON hat **eine flache Zeile je Wahlvorschlag** — keine
+   `sub_zeilen`, keines der drei niedersächsischen Suffixe. `parseErgebnis` füllt
+   in diesem Fall `vorschlaege` *und* `direktBewerber`; welcher Fall vorliegt,
+   entscheidet der Aufrufer über `ref.direktwahl`. Diese Doppelbefüllung nicht
+   entfernen, sonst landen saarländische Listen wieder im Direktwahl-Zweig.
+2. Der Feed nennt **keine Bewerbernamen**. Berechenbar sind nur Sitze je
+   Wahlvorschlag; Oberfläche und Präsentationsmodus sagen das und lassen die
+   Personenliste weg. § 41 Abs. 3 bis 5 (Bereichs-/Gebietsliste, Weitergabe,
+   Reihenfolge) sind aus demselben Grund nicht umgesetzt.
 
 ## Tests
 

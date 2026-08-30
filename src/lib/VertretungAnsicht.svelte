@@ -128,6 +128,13 @@
 
 		<!-- Tabellenansicht: erfüllt zugleich die Anforderung, dass die Information
 		     nicht nur grafisch vorliegt. -->
+		{#if !gewaehlte.length && !unbesetzt.length}
+			<p class="hinweis">
+				Für diese Wahl veröffentlicht die Wahlleitung während der Auszählung keine
+				Bewerbernamen — angezeigt werden die Sitze je Wahlvorschlag. Wer einzieht,
+				steht erst mit dem amtlichen Endergebnis fest.
+			</p>
+		{:else}
 			<div class="tabelle" role="region" aria-label="Voraussichtlich gewählte Personen"><table>
 			<thead>
 				<tr>
@@ -159,6 +166,7 @@
 				{/each}
 			</tbody>
 			</table></div>
+		{/if}
 		{/if}
 
 		{#if ergebnis.stimmverhaeltnis}

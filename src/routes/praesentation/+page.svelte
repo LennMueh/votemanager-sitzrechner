@@ -88,10 +88,14 @@
 			if (!e) return [{ k, art: 'laedt' }];
 			if (e.direkt) return [{ k, art: 'direkt' }];
 			if (e.verteilung) {
+				// Die Kachelseite zeigt die Gewählten namentlich. Nennt der Feed keine
+				// Namen (Saarland: reine Listenwahl, § 41 KWG SL), bliebe sie leer —
+				// dann lieber überspringen als eine leere Seite auf die Leinwand takten.
+				const mitNamen = e.verteilung.sitze.some((s) => s.name || s.unbesetzt);
 				return [
-					{ k, art: 'uebersicht' },
-					{ k, art: 'stimmen' },
-					{ k, art: 'kacheln' }
+					{ k, art: 'uebersicht' as Art },
+					{ k, art: 'stimmen' as Art },
+					...(mitNamen ? [{ k, art: 'kacheln' as Art }] : [])
 				];
 			}
 			if (e.stimmverhaeltnis) return [{ k, art: 'stimmen' }];

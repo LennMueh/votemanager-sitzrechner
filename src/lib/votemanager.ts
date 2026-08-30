@@ -298,9 +298,28 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 			});
 		}
 	} else {
-		// Direktwahl: eine Zeile je Bewerber.
+		// Keine der drei Parteizeilen gefunden. Zwei Fälle sehen an dieser Stelle
+		// gleich aus und lassen sich am Dokument nicht unterscheiden:
+		//
+		//   - Direktwahl (§ 45g NKWG): eine Zeile je Bewerber.
+		//   - reine Listenwahl ohne Kandidatenstimmen. Das Saarland wählt so
+		//     (§ 41 KWG SL, geschlossene Listen, eine Stimme je Wähler); der Feed
+		//     liefert dort eine flache Tabelle „SPD | 2.118" ganz ohne sub_zeilen.
+		//
+		// Welcher Fall vorliegt, weiß nur der Aufrufer über den Wahltitel.
+		// Deshalb beide Sichten füllen und ihn entscheiden lassen — sonst landen
+		// saarländische Listen als „Bewerber" im Direktwahl-Zweig und das
+		// Stimmenverhältnis bleibt leer.
 		for (const z of sonstige) {
-			direktBewerber.push({ name: kurz(z.label), farbe: z.color, stimmen: parseZahl(z.zahl) });
+			const name = kurz(z.label);
+			direktBewerber.push({ name, farbe: z.color, stimmen: parseZahl(z.zahl) });
+			nachPartei.set(name, {
+				partei: name,
+				parteiLang: lang(z.label),
+				farbe: z.color,
+				listenstimmen: parseZahl(z.zahl),
+				kandidaten: []
+			});
 		}
 	}
 
