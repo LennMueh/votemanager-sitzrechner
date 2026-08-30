@@ -173,6 +173,8 @@ export interface UebersichtEintrag extends VertretungRef {
 export interface Uebersicht {
 	wahltag: string;
 	wahltermine: string[];
+	/** Alle bekannten Wahltage mit Anzahl — der Kalender wählt daraus. */
+	termine: Wahltermin[];
 	zeitpunkt: string;
 	eintraege: UebersichtEintrag[];
 	stale?: boolean;
@@ -200,19 +202,36 @@ export function regionsname(sql: ReturnType<typeof db>) {
 		ORDER BY regionalschluessel, (kennung <> regionalschluessel || '000'), kennung`;
 }
 
-export async function holeWahltermine(): Promise<{ wahltermine: string[]; standard: string }> {
-	const [zeile] = await db()<Array<{ wahltermine: string[]; heute: string }>>`
-		SELECT coalesce(array_agg(DISTINCT to_char(datum, 'YYYYMMDD') ORDER BY to_char(datum, 'YYYYMMDD')), '{}') AS wahltermine,
-			to_char(current_date, 'YYYYMMDD') AS heute
-		FROM termin`;
-	const wahltermine = zeile?.wahltermine ?? [];
-	return { wahltermine, standard: waehleStandardtermin(wahltermine, zeile?.heute ?? '') };
+/** Ein Wahltermin mit der Zahl der Wahlen an diesem Tag — Futter für den Kalender. */
+export interface Wahltermin {
+	datum: string;
+	wahlen: number;
+}
+
+export async function holeWahltermine(): Promise<{
+	termine: Wahltermin[];
+	wahltermine: string[];
+	standard: string;
+}> {
+	const sql = db();
+	// Die Zahl der Wahlen je Tag gleich mitzählen: der Kalender zeigt damit auf
+	// einen Blick, ob ein Tag eine Kommunalwahl trug oder eine einzelne
+	// Bürgermeister-Stichwahl. 870 Termine von 1993 bis 2027 sind als Liste
+	// unbrauchbar, als Kalender mit Markierungen lesbar.
+	const zeilen = await sql<Array<{ datum: string; wahlen: number }>>`
+		SELECT to_char(t.datum, 'YYYYMMDD') AS datum, count(w.*)::int AS wahlen
+		FROM termin t LEFT JOIN wahl w ON w.termin_id = t.id
+		GROUP BY 1 ORDER BY 1`;
+	const [{ heute } = { heute: '' }] = await sql<Array<{ heute: string }>>`
+		SELECT to_char(current_date, 'YYYYMMDD') AS heute`;
+	const wahltermine = zeilen.map((z) => z.datum);
+	return { termine: zeilen, wahltermine, standard: waehleStandardtermin(wahltermine, heute) };
 }
 
 export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 	const termine = await holeWahltermine();
 	const ausgewaehlt = wahltag ?? termine.standard;
-	if (!ausgewaehlt) return { wahltag: '', wahltermine: [], zeitpunkt: new Date().toISOString(), eintraege: [] };
+	if (!ausgewaehlt) return { wahltag: '', wahltermine: [], termine: [], zeitpunkt: new Date().toISOString(), eintraege: [] };
 	return zwischengespeichert(`uebersicht:${ausgewaehlt}`, async () => {
 		const sql = db();
 		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; inhalt: unknown | null }>>`
@@ -241,7 +260,7 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 			));
 			return z.inhalt ? { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), stand: parseErgebnis(z.inhalt as never).stand } : { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
 		});
-		return { wahltag: ausgewaehlt, wahltermine: termine.wahltermine, zeitpunkt: new Date().toISOString(), eintraege };
+		return { wahltag: ausgewaehlt, wahltermine: termine.wahltermine, termine: termine.termine, zeitpunkt: new Date().toISOString(), eintraege };
 	});
 }
 
@@ -271,6 +290,7 @@ export interface VertretungErgebnis {
 		name: string;
 		rechtsgrundlage: string;
 		direktwahl: string;
+		sitzzahlBeschluss?: string;
 		belegt: boolean;
 		vorbehalt?: string;
 	};
@@ -336,6 +356,7 @@ export async function berechneVertretung(
 				name: recht.name,
 				rechtsgrundlage: recht.rechtsgrundlage,
 				direktwahl: recht.direktwahl.rechtsgrundlage,
+				sitzzahlBeschluss: recht.sitzzahlBeschluss,
 				belegt: recht.belegt,
 				vorbehalt: recht.vorbehalt
 			};

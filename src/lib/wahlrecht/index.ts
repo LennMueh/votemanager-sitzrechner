@@ -39,6 +39,14 @@ export interface Rechtsstand {
 	/** Mehrheitsregel der Direktwahl (Bürgermeister, Landrat). */
 	direktwahl: { schwelle: number; stichwahl: boolean; rechtsgrundlage: string };
 	rechtsgrundlage: string;
+	/**
+	 * Vorschrift, nach der die Vertretung ihre eigene Sitzzahl per Beschluss
+	 * ändern kann. Eine solche Satzung steht in keinem Datensatz — solange die
+	 * Sitzzahl nicht amtlich bestätigt ist, bleibt sie deshalb eine begründete
+	 * Erwartung. Leer lassen, wo nicht nachgeschlagen: lieber der allgemeine Satz
+	 * als ein erfundener Paragraph.
+	 */
+	sitzzahlBeschluss?: string;
 	/** Gegen amtliche Endergebnisse nachgerechnet? Sonst Vorbehalt in der Oberfläche. */
 	belegt: boolean;
 	/** Warum noch nicht belegt bzw. was offen ist. */
@@ -73,6 +81,10 @@ const LAENDER: Rechtsstand[] = [
 		verteile: verteileSitze,
 		direktwahl: STICHWAHL('§ 45g NKWG'),
 		rechtsgrundlage: '§§ 36, 37 NKWG',
+		// § 46 Abs. 4 NKomVG: Gemeinden über 8.000 Einwohnern, Landkreise und die
+		// Region Hannover können die Zahl der Abgeordneten um 2, 4 oder 6 senken;
+		// Beschluss spätestens 18 Monate vor Ende der Wahlperiode, Untergrenze 20.
+		sitzzahlBeschluss: '§ 46 Abs. 4 NKomVG (Verringerung um 2, 4 oder 6)',
 		wahlbereiche: true,
 		belegt: true
 	},

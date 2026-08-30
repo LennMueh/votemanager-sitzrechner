@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { vorwahl, type KatalogEintrag } from './katalog';
+	import Wahlkalender from './Wahlkalender.svelte';
+	import type { Wahltermin } from './server/daten';
 	let { titel = 'Bundesweite Wahlauswahl' }: { titel?: string } = $props();
 
 	let eintraege = $state<KatalogEintrag[]>([]);
@@ -14,6 +16,7 @@
 	let laedt = $state(true);
 	let fehler = $state('');
 	let standard = $state('');
+	let alleTermine = $state<Wahltermin[]>([]);
 
 	$effect(() => {
 		fetch('/api/katalog')
@@ -23,6 +26,7 @@
 			})
 			.then((x) => {
 				eintraege = x.eintraege;
+				alleTermine = x.termine ?? [];
 				standard = page.url.searchParams.get('wahltag') ?? x.wahltag;
 				termin = standard ? `${standard.slice(0, 4)}-${standard.slice(4, 6)}-${standard.slice(6, 8)}` : '';
 			})
@@ -34,7 +38,6 @@
 	const laender = $derived(eindeutig(amTermin.map((e) => e.land)));
 	const regionen = $derived(eindeutig(amTermin.filter((e) => !land || e.land === land).map((e) => e.region)));
 	const behoerden = $derived(eindeutig(amTermin.filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
-	const termine = $derived(eindeutig(eintraege.map((e) => e.datum)).reverse());
 	const wahlarten = $derived(eindeutig(amTermin.filter((e) =>
 		(!land || e.land === land) && (!region || e.region === region) && (!behoerde || e.ags === behoerde)).map((e) => e.wahlart)));
 	$effect(() => { const neu = vorwahl(laender, land); if (neu !== land) { land = neu; region = ''; behoerde = ''; } });
@@ -79,9 +82,11 @@
 		<select value={behoerde} aria-label="Behörde" onchange={(e) => (behoerde = e.currentTarget.value)}>
 			<option value="">Behörde</option>{#each behoerden as x}<option value={x}>{name('behoerde', x)}</option>{/each}
 		</select>
-		<select bind:value={termin} aria-label="Wahltermin">
-			<option value="">Wahltermin</option>{#each termine as x}<option>{x}</option>{/each}
-		</select>
+		<Wahlkalender
+			termine={alleTermine}
+			wert={termin.replaceAll('-', '')}
+			onwaehlen={(d) => (termin = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`)}
+		/>
 		<select bind:value={wahlart} aria-label="Wahlart">
 			<option value="">Wahlart</option>{#each wahlarten as x}<option>{x}</option>{/each}
 		</select>

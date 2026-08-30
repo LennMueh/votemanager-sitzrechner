@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Thema from '$lib/Thema.svelte';
 	import WahlAuswahl from '$lib/WahlAuswahl.svelte';
+	import Wahlkalender from '$lib/Wahlkalender.svelte';
 	import { strom } from '$lib/strom';
 	import type { Uebersicht, UebersichtEintrag } from '$lib/server/daten';
 
@@ -45,7 +46,16 @@
 	);
 	const eindeutig = (x: string[]) => [...new Set(x)].sort((a, b) => a.localeCompare(b, 'de'));
 	const laender = $derived(eindeutig((daten?.eintraege ?? []).map((e) => e.land)));
-	const landName = (x: string) => ({ NI: 'Niedersachsen', NW: 'Nordrhein-Westfalen' }[x] ?? x);
+	// Alle sechzehn, nicht nur die beiden ersten: der Poller entdeckt Behörden
+	// bundesweit, und ein Kürzel als Überschrift ist keine Information.
+	const LAENDER: Record<string, string> = {
+		BW: 'Baden-Württemberg', BY: 'Bayern', BE: 'Berlin', BB: 'Brandenburg',
+		HB: 'Bremen', HH: 'Hamburg', HE: 'Hessen', MV: 'Mecklenburg-Vorpommern',
+		NI: 'Niedersachsen', NW: 'Nordrhein-Westfalen', RP: 'Rheinland-Pfalz',
+		SL: 'Saarland', SN: 'Sachsen', ST: 'Sachsen-Anhalt',
+		SH: 'Schleswig-Holstein', TH: 'Thüringen'
+	};
+	const landName = (x: string) => LAENDER[x] ?? x;
 	const regionen = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => !land || e.land === land).map((e) => e.region)));
 	const behoerden = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
 	const name = (ags: string) => daten?.eintraege.find((e) => e.ags === ags)?.behoerde ?? ags;
@@ -75,31 +85,39 @@
 	const link = (e: UebersichtEintrag) =>
 		`/v?${e.instanzId ? `instanz=${e.instanzId}` : `ags=${e.ags}`}&wahl=${e.wahlId}&gebiet=${e.gebietId}${aktiverWahltag ? `&wahltag=${aktiverWahltag}` : ''}`;
 
-	function terminWechseln(e: Event) {
+	function terminWechseln(gewaehlt: string) {
 		const parameter = new URLSearchParams(page.url.searchParams);
-		parameter.set('wahltag', (e.currentTarget as HTMLSelectElement).value);
+		parameter.set('wahltag', gewaehlt);
 		land = region = behoerde = '';
 		void goto(`${page.url.pathname}?${parameter}`);
 	}
 
 	const datum = (tag: string) => `${tag.slice(6, 8)}.${tag.slice(4, 6)}.${tag.slice(0, 4)}`;
+	const fmt = new Intl.NumberFormat('de-DE');
+
+	/** Was am gewählten Termin überhaupt vorliegt — früher stand hier fest „Landkreis Lüneburg". */
+	const umfang = $derived.by(() => {
+		const wahlen = daten?.eintraege.length ?? 0;
+		if (!wahlen) return 'Keine Wahlen an diesem Termin';
+		const n = laender.length;
+		return `${fmt.format(wahlen)} ${wahlen === 1 ? 'Wahl' : 'Wahlen'} in ${n === 1 ? landName(laender[0]) : `${n} Ländern`}`;
+	});
 </script>
 
 <main>
 	<header>
 		<div>
 			<p class="kicker">Wahlergebnisse</p>
-			<h1>Sitzrechner Kommunalwahl</h1>
+			<h1>Votemanager Viewer</h1>
 			<p class="unter">
-				Landkreis Lüneburg · {aktiverWahltag ? `Wahltag ${datum(aktiverWahltag)}` : 'Noch kein Wahltermin bekannt'}
+				{umfang}{aktiverWahltag ? ` · Wahltag ${datum(aktiverWahltag)}` : ' · Noch kein Wahltermin bekannt'}
 			</p>
 		</div>
 		<div class="werkzeuge">
-			<label class="termin">Wahltermin
-				<select aria-label="Wahltermin" value={aktiverWahltag} onchange={terminWechseln} disabled={!daten?.wahltermine.length}>
-					{#each daten?.wahltermine ?? [] as tag}<option value={tag}>{datum(tag)}</option>{/each}
-				</select>
-			</label>
+			<div class="termin">
+				<span>Wahltermin</span>
+				<Wahlkalender termine={daten?.termine ?? []} wert={aktiverWahltag} onwaehlen={terminWechseln} />
+			</div>
 			<Thema />
 			<a class="knopf" href="/praesentation{zusatz}">Präsentation starten →</a>
 		</div>
@@ -118,9 +136,9 @@
 	{/if}
 
 	<p class="ohnegewaehr">
-		Eigene Berechnung nach dem Niedersächsischen Kommunalwahlgesetz (§§ 36, 37, 45g NKWG)
-		auf Grundlage der von votemanager veröffentlichten Zwischenstände. <strong>Ohne Gewähr</strong>
-		— amtlich ist allein die Feststellung des Wahlausschusses.
+		Eigene Berechnung nach dem Kommunalwahlrecht des jeweiligen Landes auf Grundlage der von
+		votemanager veröffentlichten Zwischenstände. <strong>Ohne Gewähr</strong> — amtlich ist
+		allein die Feststellung des Wahlausschusses.
 	</p>
 
 	{#if ansicht && daten}
@@ -163,7 +181,7 @@
 									{:else if e.sitze}
 										<span class="marke">{e.sitze} Sitze</span>
 									{:else}
-										<span class="marke fehlt">Sitzzahl fehlt</span>
+										<span class="marke fehlt">Sitzzahl unbekannt</span>
 									{/if}
 									<span class="zahl stand">{e.stand?.text ?? '—'}</span>
 								</span>
@@ -231,7 +249,6 @@
 	}
 
 	.termin { display: grid; gap: .2rem; color: var(--text-2); font-size: .75rem; }
-	.termin select { min-height: 44px; padding: .45rem .65rem; border: 1px solid var(--rand); border-radius: var(--radius-klein); background: var(--flaeche); color: var(--text); font: inherit; }
 
 	.knopf {
 		border: 1px solid var(--rand);

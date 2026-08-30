@@ -69,6 +69,19 @@
 		</p>
 	{/if}
 
+	<!-- Eine nicht amtlich bestätigte Sitzzahl ist eine begründete Erwartung, keine
+	     Tatsache: sie folgt der Einwohnerzahl zu einem gesetzlichen Stichtag, und
+	     die Vertretung kann sie selbst per Beschluss ändern. Ohne diesen Satz
+	     wirkt eine geschätzte Sitzverteilung so belastbar wie eine amtliche. -->
+	{#if ergebnis.sitzzahl && ergebnis.sitzzahlHerkunft !== 'amtlich'}
+		<p class="hinweis">
+			Die Sitzzahl ist nicht amtlich bestätigt. Sie folgt der Einwohnerzahl zu einem
+			gesetzlichen Stichtag und kann durch Beschluss der Vertretung abweichen{#if ergebnis.recht?.sitzzahlBeschluss}
+				— {ergebnis.recht.sitzzahlBeschluss}{/if}. Maßgeblich ist die Bekanntmachung der
+			Wahlleitung.
+		</p>
+	{/if}
+
 	{#if !stand.vollstaendig && stand.erwartet > 0}
 		<p class="zwischenstand">
 			Zwischenstand — {ergebnis.direkt ? 'das Ergebnis' : 'die Sitzverteilung'} kann sich mit
@@ -199,7 +212,7 @@
 		{/if}
 
 		{#if ergebnis.stimmverhaeltnis}
-			<h3>Stimmenverhältnis aller Parteien und Listen</h3>
+			<h3>Stimmenverhältnis der Wahlvorschläge</h3>
 			<Stimmverhaeltnis verhaeltnis={ergebnis.stimmverhaeltnis} verteilung={ergebnis.verteilung} />
 		{/if}
 	{/if}

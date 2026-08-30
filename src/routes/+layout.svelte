@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>Sitzrechner Kommunalwahl 2026 — Landkreis Lüneburg</title>
+	<title>Votemanager Viewer</title>
 </svelte:head>
 
 {@render children()}

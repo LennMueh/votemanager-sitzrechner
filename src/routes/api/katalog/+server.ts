@@ -25,5 +25,5 @@ export const GET: RequestHandler = async ({ url }) => {
 		WHERE b.aktiv AND (${suche} = '' OR concat_ws(' ', b.name, t.name, w.name, w.gebiet_id) ILIKE ${`%${suche}%`})
 		ORDER BY b.land, "regionName", b.name, t.datum DESC, w.name
 	`;
-	return json({ eintraege, wahltag: termine.standard, wahltermine: termine.wahltermine });
+	return json({ eintraege, wahltag: termine.standard, wahltermine: termine.wahltermine, termine: termine.termine });
 };

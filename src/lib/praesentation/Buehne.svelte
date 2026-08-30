@@ -108,6 +108,15 @@
 		{@render children()}
 	</div>
 
+	<!-- Auf einer Leinwand ist eine Sitzverteilung ohne Vorbehalt besonders
+	     missverständlich: dort steht sie groß und ohne Umgebung. Deshalb auch hier
+	     der Satz, kurz gehalten — er wird mit --skala mitskaliert. -->
+	{#if ergebnis.sitzzahl && ergebnis.sitzzahlHerkunft !== 'amtlich'}
+		<p class="fussnote">
+			Sitzzahl nicht amtlich bestätigt — sie kann durch Beschluss der Vertretung abweichen.
+		</p>
+	{/if}
+
 	{#if ueberlauf}
 		<p class="warnung">Nicht alles passt auf die Seite — der Bereich ist scrollbar.</p>
 	{/if}
@@ -183,6 +192,13 @@
 		color: var(--text-3);
 		font-size: 0.95rem;
 		flex: none;
+	}
+
+	.fussnote {
+		margin: 0;
+		flex: none;
+		font-size: calc(0.85rem * var(--skala));
+		color: var(--text-3);
 	}
 
 	.warnung {

@@ -230,6 +230,25 @@ nimmt 14 Ansichten auf (1920×1080 und 1280×720, hell und dunkel) und schlägt 
 Überlauf an. Es braucht einen laufenden Dev-Server und nutzt Chrome aus dem
 Puppeteer-Cache.
 
+## Terminauswahl
+
+870 Wahltermine von 1993 bis 2027 — als `<select>` unbrauchbar. `Wahlkalender.svelte`
+zeigt stattdessen ein Monatsraster mit markierten Wahltagen und der Zahl der Wahlen
+je Tag. Drei Entscheidungen, die nicht zufällig sind:
+
+- **Natives `popover`** statt eigenem Overlay: Außenklick, Escape und Fokusfang
+  kommen vom Browser. Position über CSS-Ankerpositionierung, mit zentriertem
+  Rückfall — Aufwertung, keine Voraussetzung.
+- **Nur Wahltage sind Knöpfe**, alles andere ist Text. Damit ist „nicht anwählbar"
+  keine zusätzliche Prüfung, sondern ergibt sich aus dem Markup.
+- Die Pfeiltasten hängen **an den Tagesknöpfen**, nicht am Container: ein
+  Container mit Tastaturbedienung ohne eigene Rolle ist für Hilfsmittel eine
+  Sackgasse (und `role="grid"` verlangt Zeilen, Zellen und eigene Fokusverwaltung).
+
+Die Rasterberechnung liegt als reine Funktion in `src/lib/kalender.ts` — sie hat
+Invarianten (immer 42 Felder, Woche ab Montag, UTC statt Ortszeit wegen der
+Sommerzeitwechsel), die still kaputtgehen könnten.
+
 ## Farben und Darstellung
 
 - **Parteifarben kommen von votemanager** und sind Entitäts-Identität (SPD rot,
