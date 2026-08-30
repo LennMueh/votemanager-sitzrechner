@@ -25,7 +25,10 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.name.outputs.bild }}:${{ github.sha }}
+          # SHA = unveränderliche Bauhistorie, main = beweglicher Zeiger für Flux.
+          tags: |
+            ${{ steps.name.outputs.bild }}:${{ github.sha }}
+            ${{ steps.name.outputs.bild }}:main
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Digest in die Zusammenfassung
