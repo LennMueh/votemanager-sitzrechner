@@ -25,10 +25,23 @@ export interface Signale {
 	letzteAenderung?: Date;
 }
 
+/** Tage nach dem Wahltag, an denen ein Pfad den Wahlabend spätestens verlässt. */
+const WAHLABEND_ENDE_TAGE = 1;
+/** … und den Nachlauf, falls nie ein amtliches Endergebnis erscheint. */
+const NACHLAUF_ENDE_TAGE = 7;
+
 /** Uhrzeit am Wahltag in Ortszeit — der Container läuft mit TZ=Europe/Berlin. */
 function uhrzeitAm(wahltag: Date, stunde: number, minute: number): Date {
 	const zeitpunkt = new Date(wahltag);
 	zeitpunkt.setHours(stunde, minute, 0, 0);
+	return zeitpunkt;
+}
+
+/** Beginn des Tages `tage` nach dem Wahltag, in Ortszeit. */
+function nachTagen(wahltag: Date, tage: number): Date {
+	const zeitpunkt = new Date(wahltag);
+	zeitpunkt.setDate(zeitpunkt.getDate() + tage);
+	zeitpunkt.setHours(6, 0, 0, 0);
 	return zeitpunkt;
 }
 
@@ -56,8 +69,23 @@ export function naechsterZustand(aktuell: Zustand, jetzt: Date, signal: Signale)
 		if (jetzt >= uhrzeitAm(signal.wahltag, 0, 0)) return 'vorlauf';
 		return aktuell;
 	}
-	if (aktuell === 'wahlabend' && signal.vollstaendig) return 'nachlauf';
-	if (aktuell === 'nachlauf' && signal.amtlich) return 'beobachtung';
+	// Beide Übergänge hingen allein an einem Signal aus dem Dokument. Für
+	// Wahlbezirks-Ergebnisse gibt es diese Signale nie: ihr `hinweis` ist [null],
+	// also bleibt `vollstaendig` falsch, und eine amtliche Sitzverteilung tragen
+	// sie ohnehin nicht. 351 solcher Pfade wurden nach der Wahl vom 30.08.2026
+	// noch tagelang im 30-s-Takt abgefragt — Dauerlast auf fremder Infrastruktur
+	// für eine längst ausgezählte Wahl.
+	//
+	// Deshalb zusätzlich eine Zeitgrenze: der Wahlabend ist ein Abend, kein
+	// Dauerzustand. Das Signal bleibt der schnelle Weg, die Uhr der sichere.
+	if (aktuell === 'wahlabend') {
+		if (signal.vollstaendig) return 'nachlauf';
+		if (jetzt >= nachTagen(signal.wahltag, WAHLABEND_ENDE_TAGE)) return 'nachlauf';
+	}
+	if (aktuell === 'nachlauf') {
+		if (signal.amtlich) return 'beobachtung';
+		if (jetzt >= nachTagen(signal.wahltag, NACHLAUF_ENDE_TAGE)) return 'beobachtung';
+	}
 	if (
 		aktuell === 'beobachtung' &&
 		signal.letzteAenderung &&

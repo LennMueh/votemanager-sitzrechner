@@ -126,11 +126,18 @@ export async function erstellePollerSpeicher(
 					SELECT 1 FROM pfad_stand live WHERE live.instanz_id = p.instanz_id
 						AND live.zustand IN ('vorlauf', 'wahlabend')
 				))),
-			-- Läuft irgendwo ein Wahlabend, ruht die Nachernte vollständig und ihre
-			-- Scheibe fällt an die Hauptauswahl zurück. Sie ist Vorratsarbeit für den
-			-- nächsten Wahltag und darf dem laufenden weder Plätze noch Bandbreite
-			-- beim gemeinsamen Host nehmen.
-			takt AS (SELECT CASE WHEN EXISTS (SELECT 1 FROM faellig WHERE zustand = 'wahlabend')
+			-- An einem Wahltag ruht die Nachernte vollständig und ihre Scheibe fällt an
+			-- die Hauptauswahl zurück. Sie ist Vorratsarbeit für den nächsten Wahltag
+			-- und darf dem laufenden weder Plätze noch Bandbreite beim gemeinsamen
+			-- Host nehmen.
+			--
+			-- Maßgeblich ist das Datum, nicht der Zustand 'wahlabend'. Mit dem
+			-- Zustand als Kriterium hing die Nachernte an einem Signal, das manche
+			-- Dokumente nie liefern: Wahlbezirks-Ergebnisse tragen keinen
+			-- Auszählstand, blieben nach dem 30.08.2026 dauerhaft im Wahlabend und
+			-- hätten die Nachernte damit für immer abgeschaltet — 5.770 wartende
+			-- Pfade und kein einziger geholter.
+			takt AS (SELECT CASE WHEN EXISTS (SELECT 1 FROM termin WHERE datum = current_date)
 				THEN 0 ELSE ${nachernte} END AS quote)
 			(SELECT * FROM faellig WHERE zustand <> 'nachernte'
 				ORDER BY rang DESC, prioritaet DESC, naechste_pruefung

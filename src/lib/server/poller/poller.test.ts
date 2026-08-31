@@ -93,6 +93,28 @@ describe('Poller-Kern', () => {
 		expect(naechsterZustand('unerreichbar', jetzt, { wahltag })).toBe('unerreichbar');
 	});
 
+	it('lässt den Wahlabend nicht zum Dauerzustand werden', () => {
+		const wahltag = new Date('2026-08-30T00:00:00+02:00');
+		const abends = new Date('2026-08-30T20:00:00+02:00');
+		const tagsDrauf = new Date('2026-08-31T15:00:00+02:00');
+
+		// Am Wahlabend selbst entscheidet weiter das Signal aus dem Dokument.
+		expect(naechsterZustand('wahlabend', abends, { wahltag })).toBe('wahlabend');
+		expect(naechsterZustand('wahlabend', abends, { wahltag, vollstaendig: true })).toBe('nachlauf');
+
+		// Wahlbezirks-Ergebnisse tragen keinen Auszählstand — ihr hinweis ist
+		// [null], `vollstaendig` wird nie wahr. 351 solcher Pfade hingen nach dem
+		// 30.08.2026 im 30-s-Takt fest, für eine längst ausgezählte Wahl. Am Tag
+		// darauf ist der Wahlabend vorbei, Signal hin oder her.
+		expect(naechsterZustand('wahlabend', tagsDrauf, { wahltag })).toBe('nachlauf');
+
+		// Dieselbe Falle eine Stufe weiter: ohne amtliches Endergebnis käme ein
+		// Pfad nie aus dem Nachlauf und bliebe für immer im 15-Minuten-Takt.
+		expect(naechsterZustand('nachlauf', tagsDrauf, { wahltag })).toBe('nachlauf');
+		expect(naechsterZustand('nachlauf', new Date('2026-09-08T07:00:00+02:00'), { wahltag })).toBe('beobachtung');
+		expect(naechsterZustand('nachlauf', tagsDrauf, { wahltag, amtlich: true })).toBe('beobachtung');
+	});
+
 	it('begrenzt Backoff auf 24 Stunden und deaktiviert Backfill', () => {
 		expect(fehlerBackoff(1)).toBe(30_000);
 		expect(fehlerBackoff(99)).toBe(86_400_000);

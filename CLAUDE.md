@@ -122,9 +122,17 @@ danach auf `ruhend` zurück. Die Beförderung wählt nur Pfade mit `status IS NU
 und ist damit idempotent und selbstbeendend.
 
 Zwei Bremsen, die nicht verschwinden dürfen: `faellige()` gibt der Nachernte eine
-**feste Scheibe von einem Zehntel** der Aufgaben, und **am Wahlabend fällt sie auf
-null** und die Plätze gehen an die Hauptauswahl zurück. Vorratsarbeit darf dem
+**feste Scheibe von einem Zehntel** der Aufgaben, und **an einem Wahltag fällt sie
+auf null** und die Plätze gehen an die Hauptauswahl zurück. Vorratsarbeit darf dem
 laufenden Wahltag weder Plätze noch Bandbreite beim gemeinsamen Host nehmen.
+
+Maßgeblich ist dabei das **Datum**, nicht der Zustand `wahlabend`. Über den
+Zustand hing die Bremse an einem Signal, das manche Dokumente nie liefern:
+Wahlbezirks-Ergebnisse tragen keinen Auszählstand (`hinweis` ist `[null]`), blieben
+nach dem 30.08.2026 dauerhaft im Wahlabend — und schalteten die Nachernte damit
+für immer ab. Deshalb haben `wahlabend` und `nachlauf` jetzt zusätzlich eine
+**Zeitgrenze**: das Signal ist der schnelle Weg, die Uhr der sichere. Ohne sie
+wurden 351 Pfade tagelang im 30-s-Takt abgefragt, für eine längst ausgezählte Wahl.
 
 ## Rechtliche Regeln (NKWG)
 

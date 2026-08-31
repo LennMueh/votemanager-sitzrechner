@@ -5,6 +5,9 @@ import { holeJson, type AbrufStand } from './http.ts';
 import { REGISTRY_URL } from './urls.ts';
 import { fehlerBackoff, type Zustand } from './zustand.ts';
 
+/** Abstand zwischen zwei Nachernte-Beförderungen. */
+const BEFOERDERUNG_MS = 5 * 60_000;
+
 export interface PollerAufgabe {
 	id: string;
 	url: string;
@@ -101,12 +104,19 @@ export class Poller {
 		this.drossel = new Drossel(config.globalProSekunde, config.parallelProHost);
 	}
 
+	private letzteBefoerderung = 0;
+
 	async einmal(jetzt = new Date()): Promise<number> {
 		if (await this.speicher.registryFaellig(jetzt)) await this.registry(jetzt);
-		// Vor der Aufgabenauswahl: neu entstandene Pfade vergangener Wahlen sollen
-		// noch im selben Durchlauf mitlaufen können. Die Abfrage ist idempotent und
-		// endet von selbst, weil sie nur nie geholte Pfade auswählt.
-		if (this.config.backfill) await this.speicher.nachernteBefoerdern?.(jetzt);
+		// Neu entstandene Pfade vergangener Wahlen sollen mitlaufen können. Die
+		// Abfrage ist idempotent und endet von selbst, weil sie nur nie geholte
+		// Pfade auswählt — sie muss aber nicht jede Sekunde laufen: die Schleife
+		// dreht im Sekundentakt, und ein Durchlauf über pfad_stand ist zu teuer,
+		// um ihn 3600-mal in der Stunde zu wiederholen.
+		if (this.config.backfill && jetzt.getTime() - this.letzteBefoerderung >= BEFOERDERUNG_MS) {
+			this.letzteBefoerderung = jetzt.getTime();
+			await this.speicher.nachernteBefoerdern?.(jetzt);
+		}
 		const aufgaben = await this.speicher.faellige(100, this.config.backfill);
 		await Promise.all(aufgaben.map((aufgabe) => this.bearbeite(aufgabe, jetzt)));
 		return aufgaben.length;
