@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Thema from '$lib/Thema.svelte';
 	import WahlAuswahl from '$lib/WahlAuswahl.svelte';
@@ -15,8 +16,53 @@
 	/** Auswahl steht in der URL — damit ist die Beamer-Ansicht teil- und neuladbar. */
 	const auswahl = $derived((page.url.searchParams.get('v') ?? '').split(',').filter(Boolean));
 
-	/** Taktzeit je Seite. */
-	const TAKT_MS = 15_000;
+	/**
+	 * Einstellungen stehen in der Adresse, wie schon `v=` und `wahltag=`: damit
+	 * ist die Beamer-Ansicht als Ganzes teil- und neuladbar, und es braucht
+	 * keinen zweiten Speicherort neben der URL.
+	 */
+	const TAKT_VORGABE = 15;
+	const TAKT_MIN = 3;
+	const TAKT_MAX = 120;
+	const TAKT_STUFEN = [10, 15, 20, 30, 60];
+
+	/** Taktzeit je Seite, aus `?takt=` in Sekunden. Unsinn fällt auf die Vorgabe zurück. */
+	const takt = $derived(
+		Math.min(TAKT_MAX, Math.max(TAKT_MIN, Number(page.url.searchParams.get('takt')) || TAKT_VORGABE))
+	);
+	const taktMs = $derived(takt * 1000);
+
+	const SEITENARTEN = [
+		{ wert: 'uebersicht', text: 'Sitzverteilung' },
+		{ wert: 'stimmen', text: 'Stimmen' },
+		{ wert: 'kacheln', text: 'Gewählte' }
+	] as const;
+
+	/** Welche Seitenarten laufen, aus `?seiten=`. Ohne Angabe gilt alles. */
+	const gewuenschteSeiten = $derived.by(() => {
+		const roh = (page.url.searchParams.get('seiten') ?? '')
+			.split(',')
+			.filter((x) => SEITENARTEN.some((a) => a.wert === x));
+		return roh.length ? new Set(roh) : new Set(SEITENARTEN.map((a) => a.wert));
+	});
+
+	function einstellen(name: string, wert: string) {
+		const parameter = new URLSearchParams(page.url.searchParams);
+		if (wert) parameter.set(name, wert);
+		else parameter.delete(name);
+		// replaceState: sonst wandert die Zurück-Taste durch jede Takt-Einstellung.
+		void goto(`?${parameter}`, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	function seitenartUmschalten(wert: string) {
+		const naechste = new Set(gewuenschteSeiten);
+		if (naechste.has(wert)) naechste.delete(wert);
+		else naechste.add(wert);
+		// Keine leere Auswahl: sonst bliebe die Leinwand dunkel.
+		if (!naechste.size) return;
+		const alle = naechste.size === SEITENARTEN.length;
+		einstellen('seiten', alle ? '' : SEITENARTEN.filter((a) => naechste.has(a.wert)).map((a) => a.wert).join(','));
+	}
 
 	let ergebnisse = $state<Record<string, VertretungErgebnis>>({});
 	let neuJeSchluessel = $state<Record<string, string[]>>({});
@@ -92,11 +138,15 @@
 				// Namen (Saarland: reine Listenwahl, § 41 KWG SL), bliebe sie leer —
 				// dann lieber überspringen als eine leere Seite auf die Leinwand takten.
 				const mitNamen = e.verteilung.sitze.some((s) => s.name || s.unbesetzt);
-				return [
+				const moeglich: { k: string; art: Art }[] = [
 					{ k, art: 'uebersicht' as Art },
 					{ k, art: 'stimmen' as Art },
 					...(mitNamen ? [{ k, art: 'kacheln' as Art }] : [])
 				];
+				const gewaehlt = moeglich.filter((s) => gewuenschteSeiten.has(s.art));
+				// Streicht der Filter für diese Vertretung alles weg, lieber die volle
+				// Abfolge zeigen als sie stumm aus der Präsentation fallen zu lassen.
+				return gewaehlt.length ? gewaehlt : moeglich;
 			}
 			if (e.stimmverhaeltnis) return [{ k, art: 'stimmen' }];
 			return [{ k, art: 'laedt' }];
@@ -107,7 +157,7 @@
 		if (seiten.length < 2 || pausiert) return;
 		const t = setInterval(() => {
 			index = (index + 1) % seiten.length;
-		}, TAKT_MS);
+		}, taktMs);
 		return () => clearInterval(t);
 	});
 
@@ -135,6 +185,13 @@
 
 	function taste(e: KeyboardEvent) {
 		if (seiten.length === 0) return;
+		// Steht der Fokus in einem Bedienelement, gehören die Tasten diesem: sonst
+		// blättert der Pfeil im Takt-Auswahlfeld die Präsentation weiter, und die
+		// Leertaste löst gleichzeitig Knopf und Pause aus.
+		const ziel = e.target as HTMLElement | null;
+		const tag = ziel?.tagName ?? '';
+		if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA') return;
+		if (e.key === ' ' && tag === 'BUTTON') return;
 		if (e.key === 'ArrowRight') weiter();
 		if (e.key === 'ArrowLeft') vor();
 		if (e.key === ' ') {
@@ -177,6 +234,34 @@
 				</button>
 				<button class="sekundaer icon" onclick={weiter} aria-label="Nächste Seite">→</button>
 			</div>
+			<label class="einstellung">
+				<span>Takt</span>
+				<select
+					value={String(takt)}
+					onchange={(e) => einstellen('takt', e.currentTarget.value)}
+				>
+					{#each TAKT_STUFEN as sekunden (sekunden)}
+						<option value={String(sekunden)}>{sekunden} s</option>
+					{/each}
+					{#if !TAKT_STUFEN.some((x) => x === takt)}
+						<option value={String(takt)}>{takt} s</option>
+					{/if}
+				</select>
+			</label>
+
+			<div class="einstellung" role="group" aria-label="Seiten im Umlauf">
+				<span>Seiten</span>
+				{#each SEITENARTEN as a (a.wert)}
+					<button
+						class="sekundaer"
+						aria-pressed={gewuenschteSeiten.has(a.wert)}
+						onclick={() => seitenartUmschalten(a.wert)}
+					>
+						{a.text}
+					</button>
+				{/each}
+			</div>
+
 			<Thema />
 			<button class="sekundaer" onclick={vollbild}>Vollbild</button>
 		</div>
@@ -211,7 +296,7 @@
 
 		{#if !pausiert && seiten.length > 1}
 			{#key index}
-				<div class="takt"><span style:animation-duration="{TAKT_MS}ms"></span></div>
+				<div class="takt"><span style:animation-duration="{taktMs}ms"></span></div>
 			{/key}
 		{/if}
 	</div>
@@ -287,6 +372,38 @@
 
 	.leiste button.icon { width: 44px; padding-inline: 0; font-size: 1.1rem; }
 
+	.einstellung {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		flex: none;
+	}
+
+	.einstellung > span {
+		color: var(--text-3);
+		font-size: 0.8rem;
+	}
+
+	.einstellung select {
+		font: inherit;
+		font-size: 0.8rem;
+		min-height: 44px;
+		padding: 0.35rem 0.5rem;
+		border: 1px solid var(--rand);
+		border-radius: 99px;
+		background: var(--flaeche-2);
+		color: var(--text);
+	}
+
+	/* Aktive Seitenart wie beim Themenumschalter: Zustand über aria-pressed,
+	   sichtbar über die Fläche — nicht nur über die Farbe. */
+	.leiste button[aria-pressed='true'] {
+		background: var(--akzent);
+		color: var(--auf-akzent);
+		border-color: var(--akzent);
+		font-weight: 700;
+	}
+
 	/* Die Bühne füllt den Rest; ihre eigene Höhe ist 100dvh, deshalb hier
 	   zurücknehmen. */
 	.rahmen :global(section) {
@@ -340,5 +457,8 @@
 	@media (max-height: 560px) {
 		.leiste { padding-block: .3rem; }
 		.leiste :global(.thema) { display: none; }
+		/* Auf flachen Beamern zählt jede Zeile Höhe: die Einstellungen stehen
+		   ohnehin in der Adresse und lassen sich dort setzen. */
+		.einstellung { display: none; }
 	}
 </style>
