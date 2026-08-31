@@ -19,6 +19,7 @@ import { db } from './db';
 import { vertretungsSchluessel, waehleGegenwahl } from './vergleich';
 import sitzzahlen from '$lib/sitzzahlen.json';
 import sitzzahlenManuell from '$lib/sitzzahlen-manuell.json';
+import { kreise } from '$lib/kreise.json';
 
 // Zwei Quellen: sitzzahlen.json schreibt `npm run harvest` vollständig neu,
 // sitzzahlen-manuell.json ist handgepflegt und überlebt das.
@@ -198,6 +199,19 @@ export function waehleStandardtermin(wahltermine: string[], heute: string): stri
 // Der Regionsname (Landkreis o. ä.) hängt nur am Regionalschlüssel, nicht an der
 // Zeile. Als Unterabfrage lief er einmal je Ergebniszeile über alle 3143
 // behoerde-Zeilen (202 Zeilen ~ 1,5 s); als CTE genau einmal (~7 ms).
+/**
+ * Name einer Region: erst die Kreisbehörde aus dem Feed, dann die amtliche
+ * Kreistabelle, zuletzt der nackte Schlüssel.
+ *
+ * Der Feed hat Vorrang, weil er die Schreibweise trägt, die votemanager selbst
+ * verwendet. Er liefert die Kreisbehörde aber nur, wenn sie eine eigene Wahl
+ * ausrichtet — bei 56 von 273 Regionen im Bestand tut sie das nicht, und dort
+ * stand vorher der Schlüssel („03353" statt „Landkreis Harburg").
+ */
+export function regionName(schluessel: string, ausFeed: string | null): string {
+	return ausFeed ?? (kreise as Record<string, string>)[schluessel] ?? schluessel;
+}
+
 export function regionsname(sql: ReturnType<typeof db>) {
 	// Im AGS-Schema ist <Regionalschlüssel>000 die Kreisebene selbst. Die zuerst
 	// nehmen: kreisfreie Städte heißen "Stadt Emden" und fielen durch die Regex,
@@ -252,10 +266,10 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 		// `da` unterscheidet „kein Dokument archiviert" von „Dokument ohne Hinweis";
 		// über `hinweis IS NULL` allein ginge das nicht, den Fall gibt es wirklich
 		// (Wahlbezirks-Ergebnisse tragen keinen Auszählstand).
-		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; hinweis: string[] | null; da: boolean | null }>>`
+		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string | null; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; hinweis: string[] | null; da: boolean | null }>>`
 			WITH regionsname AS (${regionsname(sql)})
 			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, b.regionalschluessel region,
-				coalesce(r.name, b.regionalschluessel) "regionName",
+				r.name "regionName",
 				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.hinweis, d.da
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
@@ -277,7 +291,7 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name },
 				kandidaten.filter((k) => k.ags === z.ags)
 			));
-			return z.da ? { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), stand: parseStand(z.hinweis ?? undefined) } : { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
+			return z.da ? { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze: sitzzahl(ref), stand: parseStand(z.hinweis ?? undefined) } : { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
 		});
 		return { wahltag: ausgewaehlt, wahltermine: termine.wahltermine, termine: termine.termine, zeitpunkt: new Date().toISOString(), eintraege };
 	});
