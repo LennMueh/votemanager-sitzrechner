@@ -9,11 +9,14 @@
 
 	let ergebnis = $state<VertretungErgebnis | undefined>();
 	let fehler = $state('');
+	let laedt = $state(true);
 	const stromSchluessel = $derived(ergebnis?.ref.instanzId
 		? `v:i${ergebnis.ref.instanzId}:${ergebnis.ref.wahlId}:${ergebnis.ref.gebietId}`
 		: '');
 
-	async function laden() {
+	/** `still` für die Nachführung per SSE: die soll die Seite nicht abblenden. */
+	async function laden(still = false) {
+		if (!still) laedt = true;
 		try {
 			const a = await fetch(`/api/vertretung?${abfrage}`);
 			const j = await a.json();
@@ -22,6 +25,8 @@
 			fehler = '';
 		} catch (e) {
 			fehler = String(e);
+		} finally {
+			laedt = false;
 		}
 	}
 
@@ -32,11 +37,11 @@
 
 	$effect(() => {
 		if (!stromSchluessel) return;
-		return strom([stromSchluessel], () => void laden());
+		return strom([stromSchluessel], () => void laden(true));
 	});
 </script>
 
-<main>
+<main aria-busy={laedt}>
 	<a class="zurueck" href="/{wahltag ? `?wahltag=${wahltag}` : ''}">← Alle Vertretungen</a>
 
 	{#if fehler}
@@ -82,5 +87,12 @@
 
 	.laedt {
 		color: var(--text-2);
+	}
+
+	/* Beim Wechsel bleibt das alte Ergebnis stehen, bis das neue da ist —
+	   abblenden statt leerräumen, Leerräumen erzeugt nur ein Blinken. */
+	main[aria-busy='true'] {
+		opacity: 0.55;
+		transition: opacity 0.15s ease;
 	}
 </style>

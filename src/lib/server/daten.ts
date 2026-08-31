@@ -10,6 +10,7 @@ import { rechtsstand } from '$lib/wahlrecht';
 import {
 	amtlicheGewaehlte,
 	parseErgebnis,
+	parseStand,
 	type Auszaehlstand,
 	type VertretungRef
 } from '$lib/votemanager';
@@ -72,22 +73,29 @@ async function sitzzahlVorwahl(
 	ref: VertretungRef,
 	wahltag: string
 ): Promise<{ sitze: number; stand: string } | undefined> {
-	const zeilen = await sql<Array<{ wahltag: string; name: string; gebiet_name: string; inhalt: unknown }>>`
-		SELECT to_char(t.datum,'YYYYMMDD') wahltag, w.name, w.gebiet_name, d.inhalt
+	// Zwei Schritte statt einem: der Abgleich läuft über `name` und `gebiet_name`,
+	// das Dokument wird erst danach gebraucht. In einem Zug geholt kämen sämtliche
+	// Altwahlen der Behörde als vollständige Ergebnis-JSONs mit, obwohl die
+	// Schleife nach dem ersten Treffer abbricht — und das bei jedem Aufruf von
+	// /api/vertretung.
+	const zeilen = await sql<Array<{ wahltag: string; name: string; gebiet_name: string; pfad_stand_id: number }>>`
+		SELECT to_char(t.datum,'YYYYMMDD') wahltag, w.name, w.gebiet_name, p.id::int pfad_stand_id
 		FROM wahl w
 		JOIN termin t ON t.id=w.termin_id
 		JOIN instanz i ON i.id=t.instanz_id
 		JOIN behoerde b ON b.id=i.behoerde_id
 		JOIN pfad_stand p ON p.instanz_id=i.id
 			AND p.pfad LIKE '%/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
-		JOIN LATERAL (SELECT inhalt FROM dokument d WHERE d.pfad_stand_id=p.id ORDER BY id DESC LIMIT 1) d ON true
 		WHERE b.kennung=${ref.ags} AND to_char(t.datum,'YYYYMMDD') < ${wahltag}
 		ORDER BY t.datum DESC`;
 
 	const gesucht = vertretungsSchluessel(ref.ags, ref.titel, ref.gebietName);
 	for (const z of zeilen) {
 		if (vertretungsSchluessel(ref.ags, z.name, z.gebiet_name) !== gesucht) continue;
-		const anzahl = parseErgebnis(z.inhalt as never).amtlicheSitze?.anzahl;
+		const [dokument] = await sql<Array<{ inhalt: unknown }>>`
+			SELECT inhalt FROM dokument WHERE pfad_stand_id=${z.pfad_stand_id} ORDER BY id DESC LIMIT 1`;
+		if (!dokument) continue;
+		const anzahl = parseErgebnis(dokument.inhalt as never).amtlicheSitze?.anzahl;
 		if (anzahl) return { sitze: anzahl, stand: z.wahltag };
 	}
 	return undefined;
@@ -236,14 +244,23 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 	if (!ausgewaehlt) return { wahltag: '', wahltermine: [], termine: [], zeitpunkt: new Date().toISOString(), eintraege: [] };
 	return zwischengespeichert(`uebersicht:${ausgewaehlt}`, async () => {
 		const sql = db();
-		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; inhalt: unknown | null }>>`
+		// Aus dem Ergebnisdokument braucht die Übersicht nur den Auszählstand, und der
+		// hängt allein an `Komponente.info.hinweis` (siehe parseStand). Deshalb genau
+		// diesen Teilbaum selektieren statt der vollständigen Dokumente: an einem
+		// Wahltag hängen daran bis zu zweitausend Wahlen, deren gesamte Zeilen samt
+		// sub_zeilen sonst gelesen, übertragen und in parseErgebnis() zerlegt würden.
+		// `da` unterscheidet „kein Dokument archiviert" von „Dokument ohne Hinweis";
+		// über `hinweis IS NULL` allein ginge das nicht, den Fall gibt es wirklich
+		// (Wahlbezirks-Ergebnisse tragen keinen Auszählstand).
+		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; hinweis: string[] | null; da: boolean | null }>>`
 			WITH regionsname AS (${regionsname(sql)})
 			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, b.regionalschluessel region,
 				coalesce(r.name, b.regionalschluessel) "regionName",
-				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.inhalt
+				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.hinweis, d.da
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
-			LEFT JOIN LATERAL (SELECT d.inhalt FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
+			LEFT JOIN LATERAL (SELECT d.inhalt->'Komponente'->'info'->'hinweis' AS hinweis, true AS da
+				FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
 				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 				ORDER BY d.id DESC LIMIT 1) d ON true
 			WHERE t.datum=${`${ausgewaehlt.slice(0, 4)}-${ausgewaehlt.slice(4, 6)}-${ausgewaehlt.slice(6, 8)}`}::date ORDER BY b.name, w.name`;
@@ -256,11 +273,11 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json')` : [];
 		const eintraege = zeilen.map((z): UebersichtEintrag => {
 			const ref: VertretungRef = { instanzId: z.instanz_id, ags: z.ags, behoerde: z.behoerde, wahlId: Number(z.wahl_id), gebietId: z.gebiet_id, gebietName: z.gebiet_name, titel: z.titel, direktwahl: /(bürgermeister|landrat|stichwahl)/i.test(z.titel) };
-			const vergleichbar = Boolean(z.inhalt && waehleGegenwahl(
+			const vergleichbar = Boolean(z.da && waehleGegenwahl(
 				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name },
 				kandidaten.filter((k) => k.ags === z.ags)
 			));
-			return z.inhalt ? { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), stand: parseErgebnis(z.inhalt as never).stand } : { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
+			return z.da ? { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), stand: parseStand(z.hinweis ?? undefined) } : { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
 		});
 		return { wahltag: ausgewaehlt, wahltermine: termine.wahltermine, termine: termine.termine, zeitpunkt: new Date().toISOString(), eintraege };
 	});
@@ -333,9 +350,10 @@ function mandatsart(mandat: string | undefined): Mandatsart {
  * bleibt die Farbe leer und der Name trotzdem lesbar. Das ist die richtige
  * Richtung: der Name ist der Daseinsgrund, die Farbe Beiwerk.
  */
-function amtlicheVerteilung(
+export function amtlicheVerteilung(
 	amtlich: { anzahl: number; spalten: string[]; gewaehlte: string[][] },
-	stimmen: Stimmenverhaeltnis
+	stimmen: Stimmenverhaeltnis,
+	gerechnet?: Sitzverteilung
 ): Sitzverteilung {
 	const meta = new Map(stimmen.parteien.map((p) => [p.partei, p]));
 	const gewaehlte = amtlicheGewaehlte(amtlich.spalten, amtlich.gewaehlte);
@@ -354,11 +372,27 @@ function amtlicheVerteilung(
 		};
 	});
 
+	sitze.push(...fehlendeSitze(amtlich.anzahl, sitze, gerechnet));
+
+	// Die Namen sind die härtere Tatsache als die Zahl: `anzahl` stammt aus der
+	// Summe eines Tortendiagramms bzw. aus einem Hinweistext, nicht aus der
+	// Gewählten-Tabelle. Nennt die Tabelle mehr Personen als die Zahl behauptet,
+	// gilt die Tabelle — im Archiv gibt es das (Ortsbeirat Frankfurt-Mitte/Nord
+	// 2016: anzahl 19, zwanzig amtliche Namen).
+	const sitzeGesamt = Math.max(amtlich.anzahl, sitze.length);
+
+	// Über alle Sitze zählen, nicht nur über die Gewählten: sonst fällt ein
+	// Wahlvorschlag, dessen einziger Sitz unbesetzt bleibt, ganz aus Legende und
+	// Sitzdiagramm heraus. `sitze` ist damit wie in der eigenen Rechnung die
+	// Zuteilung einschließlich unbesetzter Plätze.
 	const jePartei = new Map<string, number>();
-	for (const g of gewaehlte) jePartei.set(g.partei, (jePartei.get(g.partei) ?? 0) + 1);
+	for (const s of sitze) {
+		if (!s.partei) continue;
+		jePartei.set(s.partei, (jePartei.get(s.partei) ?? 0) + 1);
+	}
 
 	return {
-		sitzeGesamt: amtlich.anzahl,
+		sitzeGesamt,
 		gueltigeStimmen: stimmen.stimmenGesamt,
 		parteien: [...jePartei].map(([partei, anzahl]) => ({
 			partei,
@@ -375,6 +409,61 @@ function amtlicheVerteilung(
 }
 
 /**
+ * Die Lücke zwischen amtlicher Sitzzahl und amtlich Gewählten als unbesetzte
+ * Sitze — Invariante: Gewählte + Unbesetzte === Sitzzahl.
+ *
+ * Die amtliche Liste führt nur, wer gewählt ist; bleibt ein Sitz nach § 36 Abs. 7
+ * NKWG (und den Entsprechungen) unbesetzt, steht dort schlicht keine Zeile. Ohne
+ * Auffüllen zeigte das Sitzdiagramm sechs Punkte, während die Seite daneben
+ * „7 Sitze, amtlich" schrieb. Im Referenzkorpus trifft das 20 von 785 Fällen.
+ *
+ * Wem der leere Platz zufiele, sagt die amtliche Liste nicht — die eigene
+ * Rechnung schon. Übernommen wird sie aber nur, wenn sie die Lücke **vollständig**
+ * erklärt: gleich viele unbesetzte Sitze, und bei den Besetzten je Wahlvorschlag
+ * Übereinstimmung. Das ist kein Zirkelschluss, weil `gegenprobe()` genau diese
+ * Übereinstimmung unabhängig prüft und unbesetzte Sitze dabei ignoriert.
+ * Andernfalls bleibt der Sitz ohne Wahlvorschlag: die Invariante gilt, ohne eine
+ * Zuordnung zu behaupten, für die es keinen Beleg gibt.
+ */
+function fehlendeSitze(anzahl: number, gewaehlt: Sitz[], gerechnet?: Sitzverteilung): Sitz[] {
+	const fehlend = anzahl - gewaehlt.length;
+	if (fehlend <= 0) return [];
+
+	const eigene = gerechnet?.sitze.filter((s) => s.unbesetzt) ?? [];
+	if (eigene.length === fehlend && gerechnet) {
+		const links = besetzteJePartei(gerechnet.sitze);
+		const rechts = besetzteJePartei(gewaehlt);
+		const parteien = new Set([...links.keys(), ...rechts.keys()]);
+		const einig = [...parteien].every((p) => (links.get(p) ?? 0) === (rechts.get(p) ?? 0));
+		if (einig) return eigene.map((s) => ({ ...s }));
+	}
+
+	return Array.from({ length: fehlend }, () => ({
+		partei: '',
+		art: 'unbesetzt' as const,
+		mandat: 'unbesetzt',
+		unbesetzt: true,
+		grund: 'Die amtliche Liste nennt weniger Gewählte als Sitze'
+	}));
+}
+
+/**
+ * Besetzte Sitze je Wahlvorschlag — unbesetzte zählen nicht mit.
+ *
+ * Gezählt wird über `sitze`, nicht über `parteien[].sitze`: letzteres ist auf der
+ * gerechneten Seite die *Zuteilung* und enthält damit auch die Sitze, die nach
+ * § 36 Abs. 7 NKWG (und den Entsprechungen) unbesetzt bleiben.
+ */
+function besetzteJePartei(sitze: Sitz[]): Map<string, number> {
+	const zahl = new Map<string, number>();
+	for (const s of sitze) {
+		if (s.unbesetzt) continue;
+		zahl.set(s.partei, (zahl.get(s.partei) ?? 0) + 1);
+	}
+	return zahl;
+}
+
+/**
  * Eigene Rechnung gegen das amtliche Ergebnis — der Referenztest zur Laufzeit.
  *
  * Verglichen werden nur die Sitze je Wahlvorschlag, nicht die Namen: wo die
@@ -382,18 +471,22 @@ function amtlicheVerteilung(
  * und eine Meldung darüber wäre Lärm. Eine Abweichung hier heißt dagegen, dass
  * für das Land das falsche Recht hinterlegt ist — das will man am Wahlabend
  * sehen und nicht erst bei der nächsten Ernte.
+ *
+ * Verglichen werden ausdrücklich die **besetzten** Sitze. Über `parteien[].sitze`
+ * war das ein Fehlalarm: der Ortsrat Oedeme 2021 meldete „GRÜNE: gerechnet 3,
+ * amtlich 2", obwohl die Rechnung stimmte — die GRÜNEN bekamen drei Sitze und
+ * hatten nur zwei Bewerber. Die amtliche Liste führt eben nur Gewählte; dieselbe
+ * Korrektur macht `referenzen.test.ts` seit jeher. Der Vergleich ist damit
+ * zugleich unabhängig davon, ob die amtliche Verteilung aufgefüllt wurde.
  */
 export function gegenprobe(gerechnet: Sitzverteilung | undefined, amtlich: Sitzverteilung): string[] {
 	if (!gerechnet) return [];
-	const parteien = new Set([
-		...gerechnet.parteien.map((p) => p.partei),
-		...amtlich.parteien.map((p) => p.partei)
-	]);
-	const zahl = (v: Sitzverteilung, partei: string) =>
-		v.parteien.find((p) => p.partei === partei)?.sitze ?? 0;
-	return [...parteien]
-		.filter((partei) => zahl(gerechnet, partei) !== zahl(amtlich, partei))
-		.map((partei) => `${partei}: gerechnet ${zahl(gerechnet, partei)}, amtlich ${zahl(amtlich, partei)}`);
+	const links = besetzteJePartei(gerechnet.sitze);
+	const rechts = besetzteJePartei(amtlich.sitze);
+	const parteien = [...new Set([...links.keys(), ...rechts.keys()])].filter(Boolean);
+	return parteien
+		.filter((partei) => (links.get(partei) ?? 0) !== (rechts.get(partei) ?? 0))
+		.map((partei) => `${partei}: gerechnet ${links.get(partei) ?? 0}, amtlich ${rechts.get(partei) ?? 0}`);
 }
 
 export async function berechneVertretung(
@@ -479,8 +572,12 @@ export async function berechneVertretung(
 		 */
 		const fertig = (): VertretungErgebnis => {
 			if (!gesamt.amtlicheSitze?.gewaehlte.length || !erg.stimmverhaeltnis) return erg;
-			const amtlicheVert = amtlicheVerteilung(gesamt.amtlicheSitze, erg.stimmverhaeltnis);
-			if (!amtlicheVert.sitze.length) return erg;
+			const amtlicheVert = amtlicheVerteilung(gesamt.amtlicheSitze, erg.stimmverhaeltnis, erg.verteilung);
+			// Auf besetzte Sitze prüfen, nicht auf die Gesamtzahl: fehlt in der Tabelle
+			// die Namensspalte, liefert `amtlicheGewaehlte()` nichts, und das Auffüllen
+			// ergäbe eine Verteilung aus lauter leeren Plätzen. Die eigene Rechnung ist
+			// dann die bessere Auskunft.
+			if (!amtlicheVert.sitze.some((s) => !s.unbesetzt)) return erg;
 			erg.gegenprobe = gegenprobe(erg.verteilung, amtlicheVert);
 			erg.verteilung = amtlicheVert;
 			erg.verteilungAmtlich = true;

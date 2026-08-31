@@ -36,9 +36,7 @@ spec:
           readinessProbe: { exec: { command: ["pg_isready", "-U", {{ .Values.database.user | quote }}, "-d", {{ .Values.database.name | quote }}] }, periodSeconds: 5 }
           livenessProbe: { exec: { command: ["pg_isready", "-U", {{ .Values.database.user | quote }}, "-d", {{ .Values.database.name | quote }}] }, periodSeconds: 10 }
           securityContext: { runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
-          resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits: { cpu: "1", memory: 1Gi }
+          resources: {{- toYaml .Values.database.resources | nindent 12 }}
           volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
   volumeClaimTemplates:
     - metadata: { name: data }

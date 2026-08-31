@@ -280,11 +280,18 @@ function verteileAufBewerber(
 		anzahl
 	);
 	if (aufteilung.losentscheid) {
+		// 'liste' und 'kandidaten' sind die Schlüssel der Zuteilungs-Map. Weil die
+		// Beteiligten eines Losfalls angezeigt werden, hier auf die Bezeichnungen
+		// des Gesetzes bringen — § 36 Abs. 4 stellt die Liste der Gesamtheit der
+		// Bewerber mit Stimmen gegenüber.
+		const beteiligte = (aufteilung.grenzfall?.betroffene ?? []).map((k) =>
+			k === 'liste' ? 'Liste' : 'Bewerber mit Stimmen'
+		);
 		meldeLosfall(losfaelle, losentscheide, {
 			kontext: `${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Liste oder Bewerber`,
-			betroffene: aufteilung.grenzfall?.betroffene ?? [],
+			betroffene: beteiligte,
 			sitze: aufteilung.grenzfall?.sitze ?? 0,
-			vorlaeufig: (aufteilung.grenzfall?.betroffene ?? []).slice(0, aufteilung.grenzfall?.sitze ?? 0),
+			vorlaeufig: beteiligte.slice(0, aufteilung.grenzfall?.sitze ?? 0),
 			rechtsgrundlage: '§ 36 Abs. 4 NKWG',
 			text: `${v.partei}${wahlbereich ? ` (${wahlbereich})` : ''}: Losentscheid bei der Aufteilung zwischen Liste und Bewerbern (§ 36 Abs. 4)`
 		});
@@ -389,7 +396,10 @@ export function verteileSitze(bereiche: Wahlbereich[], sitzeGesamt: number): Sit
 		}
 		const bereichsSitze = hareNiemeyer(jeBereich, parteiSitze);
 		if (bereichsSitze.losentscheid) {
-			const betroffene = bereichsSitze.grenzfall?.betroffene ?? [];
+			// Die Zuteilung läuft über `b.id`; angezeigt wird der Wahlbereichsname.
+			const betroffene = (bereichsSitze.grenzfall?.betroffene ?? []).map(
+				(id) => bereiche.find((b) => b.id === id)?.name ?? id
+			);
 			meldeLosfall(losfaelle, losentscheide, {
 				kontext: `${partei}: Verteilung auf die Wahlbereiche`, betroffene,
 				sitze: bereichsSitze.grenzfall?.sitze ?? 0, vorlaeufig: betroffene.slice(0, bereichsSitze.grenzfall?.sitze ?? 0),

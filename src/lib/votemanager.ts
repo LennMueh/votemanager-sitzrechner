@@ -220,7 +220,14 @@ export interface GebietsErgebnis {
 	kennzahlen: Record<string, number>;
 }
 
-function parseStand(hinweise: string[] | undefined): Auszaehlstand {
+/**
+ * Der Auszählstand hängt allein an `Komponente.info.hinweis`.
+ *
+ * Exportiert, damit die Übersicht ihn ohne `parseErgebnis()` bestimmen kann: dort
+ * werden Tausende Ergebnisdokumente nur wegen dieser einen Zahl gelesen, und der
+ * Rest des Dokuments (alle Zeilen samt `sub_zeilen`) wird nicht gebraucht.
+ */
+export function parseStand(hinweise: string[] | undefined): Auszaehlstand {
 	const text = (hinweise ?? []).join(' ');
 	const m = text.match(/([\d.]+)\s+von\s+([\d.]+)/);
 	const eingegangen = m ? parseZahl(m[1]) : 0;

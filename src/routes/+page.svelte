@@ -20,9 +20,11 @@
 	let region = $state('');
 	let behoerde = $state('');
 
-	async function laden() {
+	/** `still` für die Nachführung per SSE: die soll die Seite nicht abblenden. */
+	async function laden(tag: string, still = false) {
+		if (!still) laedt = true;
 		try {
-			const a = await fetch(`/api/uebersicht${zusatz}`);
+			const a = await fetch(`/api/uebersicht${tag ? `?wahltag=${tag}` : ''}`);
 			const j = await a.json();
 			if (!a.ok) throw new Error(j.fehler ?? a.statusText);
 			daten = j;
@@ -34,9 +36,15 @@
 		}
 	}
 
+	// Der Wahltag kommt als Argument, nicht aus `zusatz`: `zusatz` hängt über
+	// `aktiverWahltag` an `daten`, das `laden()` selbst setzt. Gelesen würde er
+	// synchron vor dem `await`, der Effect hinge also an `daten` — ohne `?wahltag`
+	// in der Adresse lief er dadurch zweimal, mit zweitem Voll-Abruf der Übersicht
+	// und Abriss samt Neuaufbau der SSE-Verbindung.
 	$effect(() => {
-		laden();
-		return strom(['uebersicht'], () => laden());
+		const tag = page.url.searchParams.get('wahltag') ?? '';
+		void laden(tag);
+		return strom(['uebersicht'], () => void laden(tag, true));
 	});
 
 	const gefiltert = $derived(
@@ -56,18 +64,39 @@
 		SH: 'Schleswig-Holstein', TH: 'Thüringen'
 	};
 	const landName = (x: string) => LAENDER[x] ?? x;
-	const regionen = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => !land || e.land === land).map((e) => e.region)));
-	const behoerden = $derived(eindeutig((daten?.eintraege ?? []).filter((e) => (!land || e.land === land) && (!region || e.region === region)).map((e) => e.ags)));
 	const name = (ags: string) => daten?.eintraege.find((e) => e.ags === ags)?.behoerde ?? ags;
 	const regionName = (r: string) => daten?.eintraege.find((e) => e.region === r)?.regionName ?? r;
 	const meldungen = (eintraege: UebersichtEintrag[]) => ({
 		eingegangen: eintraege.reduce((summe, e) => summe + (e.stand?.eingegangen ?? 0), 0),
 		erwartet: eintraege.reduce((summe, e) => summe + (e.stand?.erwartet ?? 0), 0)
 	});
-	const meldungsstand = (eintraege: UebersichtEintrag[]) => {
-		const { eingegangen, erwartet } = meldungen(eintraege);
-		return `${eingegangen} von ${erwartet} Schnellmeldungen`;
-	};
+	/**
+	 * Die Kacheln der aktuellen Ebene in einem einzigen Durchlauf.
+	 *
+	 * Vorher filterte der Meldungsstand je Kachel erneut über alle Einträge: bei
+	 * knapp zweitausend Wahlen und hundert Kacheln sind das hunderttausende
+	 * Durchläufe pro Neuzeichnung — und genau das machte das Durchklicken zäh,
+	 * obwohl dabei gar nichts nachgeladen wird.
+	 *
+	 * Sortiert wird nach dem angezeigten Namen. Vorher entschied der Schlüssel,
+	 * weshalb die Regionen nach Regionalschlüssel und damit scheinbar willkürlich
+	 * standen.
+	 */
+	const karten = $derived.by(() => {
+		const ebene = !land ? 'land' : !region ? 'region' : 'behoerde';
+		const m = new Map<string, { wert: string; titel: string; ein: number; erw: number }>();
+		for (const e of daten?.eintraege ?? []) {
+			if (land && e.land !== land) continue;
+			if (region && e.region !== region) continue;
+			const wert = ebene === 'land' ? e.land : ebene === 'region' ? e.region : e.ags;
+			const titel = ebene === 'land' ? landName(e.land) : ebene === 'region' ? e.regionName : e.behoerde;
+			const k = m.get(wert) ?? { wert, titel, ein: 0, erw: 0 };
+			k.ein += e.stand?.eingegangen ?? 0;
+			k.erw += e.stand?.erwartet ?? 0;
+			m.set(wert, k);
+		}
+		return [...m.values()].sort((a, b) => a.titel.localeCompare(b.titel, 'de'));
+	});
 
 	const gesamt = $derived.by(() => {
 		const e = (daten?.eintraege ?? []).filter((x) =>
@@ -104,7 +133,7 @@
 	});
 </script>
 
-<main>
+<main aria-busy={laedt}>
 	<header>
 		<div>
 			<p class="kicker">Wahlergebnisse</p>
@@ -160,9 +189,9 @@
 		<input class="suche" type="search" bind:value={suche} placeholder="Vertretung suchen …" aria-label="Vertretung suchen" />
 
 		<nav class="hierarchie" aria-label="Wahlebene">
-			{#if !land}<div class="karten">{#each laender as x}<button onclick={() => (land = x)}><strong>{landName(x)}</strong><span>{meldungsstand(daten.eintraege.filter((e) => e.land === x))}</span></button>{/each}</div>
-			{:else if !region}<button class="zurueck" onclick={() => (land = '')}>← Bundesländer</button><div class="karten">{#each regionen as x}<button onclick={() => (region = x)}><strong>{regionName(x)}</strong><span>{meldungsstand(daten.eintraege.filter((e) => e.land === land && e.region === x))}</span></button>{/each}</div>
-			{:else if !behoerde}<button class="zurueck" onclick={() => (region = '')}>← Regionen</button><div class="karten">{#each behoerden as x}<button onclick={() => (behoerde = x)}><strong>{name(x)}</strong><span>{meldungsstand(daten.eintraege.filter((e) => e.land === land && e.region === region && e.ags === x))}</span></button>{/each}</div>
+			{#if !land}<div class="karten">{#each karten as k (k.wert)}<button onclick={() => (land = k.wert)}><strong>{k.titel}</strong><span>{k.ein} von {k.erw} Schnellmeldungen</span></button>{/each}</div>
+			{:else if !region}<button class="zurueck" onclick={() => (land = '')}>← Bundesländer</button><div class="karten">{#each karten as k (k.wert)}<button onclick={() => (region = k.wert)}><strong>{k.titel}</strong><span>{k.ein} von {k.erw} Schnellmeldungen</span></button>{/each}</div>
+			{:else if !behoerde}<button class="zurueck" onclick={() => (region = '')}>← Regionen</button><div class="karten">{#each karten as k (k.wert)}<button onclick={() => (behoerde = k.wert)}><strong>{k.titel}</strong><span>{k.ein} von {k.erw} Schnellmeldungen</span></button>{/each}</div>
 			{:else}<button class="zurueck" onclick={() => (behoerde = '')}>← Behörden</button>
 			<section>
 				<h2>{name(behoerde)}</h2>
@@ -401,6 +430,14 @@
 
 	.laedt {
 		color: var(--text-2);
+	}
+
+	/* Beim Terminwechsel bleibt die alte Liste stehen, bis die neue da ist —
+	   ohne Rückmeldung wirkt das wie ein Hänger. Abblenden statt leerräumen:
+	   ein Leerräumen erzeugt nur ein Blinken. */
+	main[aria-busy='true'] {
+		opacity: 0.55;
+		transition: opacity 0.15s ease;
 	}
 
 	.leer { padding: 2rem; text-align: center; color: var(--text-2); border: 1px dashed var(--rand); border-radius: var(--radius); }

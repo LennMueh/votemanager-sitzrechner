@@ -31,8 +31,10 @@ describe('strukturierte Losfälle', () => {
 			partei: 'P', listenstimmen: 100, kandidaten: [kandidat('A', 100, 1), kandidat('B', 0, 2)]
 		}])], 1);
 		const los = erg.losfaelle.find((x) => x.rechtsgrundlage.includes('Abs. 4'))!;
-		expect(los.betroffene).toEqual(['liste', 'kandidaten']);
-		expect(los.vorlaeufig).toEqual(['liste']);
+		// Angezeigt werden die Bezeichnungen des Gesetzes, nicht die Map-Schlüssel:
+		// die Beteiligten eines Losfalls stehen in der Oberfläche.
+		expect(los.betroffene).toEqual(['Liste', 'Bewerber mit Stimmen']);
+		expect(los.vorlaeufig).toEqual(['Liste']);
 	});
 
 	it('erfasst alle Bewerber an der Mandatsgrenze (§ 36 Abs. 5)', () => {

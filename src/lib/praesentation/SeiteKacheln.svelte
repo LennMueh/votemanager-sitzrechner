@@ -46,8 +46,8 @@
 
 <div class="gruppen">
 	{#each gruppen as g (g.partei)}
-		<section class="gruppe" class:breit={g.mitglieder.length > 8}>
-			<h2 style:--farbe={g.farbe ?? 'var(--text-3)'}>
+		<section class="gruppe" class:breit={g.mitglieder.length > 8} style:--farbe={g.farbe ?? 'var(--text-3)'}>
+			<h2>
 				<span class="strich"></span>
 				<span class="partei">{g.partei}</span>
 				<span class="anzahl zahl">{g.sitze}</span>
@@ -189,9 +189,18 @@
 		border: 1px solid var(--text-3);
 	}
 
+	/* Gestrichelter Rand und Schraffur bleiben das Unterscheidungsmerkmal, beide
+	   in der Farbe des Wahlvorschlags, dem der Sitz zugefallen wäre. Die
+	   Schraffur hier bewusst blass: das ist eine Textkachel, und „Sitz unbesetzt"
+	   muss auf dem Beamer lesbar bleiben. */
 	li.unbesetzt {
 		border-style: dashed;
-		background: transparent;
+		border-color: var(--farbe);
+		background: repeating-linear-gradient(
+			45deg,
+			color-mix(in srgb, var(--farbe) 12%, transparent) 0 calc(0.3rem * var(--skala)),
+			transparent calc(0.3rem * var(--skala)) calc(0.6rem * var(--skala))
+		);
 	}
 
 	li.unbesetzt .person {

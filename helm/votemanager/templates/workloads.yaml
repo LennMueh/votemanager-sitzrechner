@@ -32,6 +32,9 @@ spec:
             # Der Wahlabend beginnt 18:00 Ortszeit. Ohne TZ läuft der Container in
             # UTC, und naechsterZustand schaltet erst um 20:00 CEST auf 30 s.
             - { name: TZ, value: "Europe/Berlin" }
+            # Je Pod, nicht insgesamt: replicas mal poolSize muss unter
+            # max_connections von PostgreSQL bleiben.
+            - { name: DATABASE_POOL_SIZE, value: {{ .Values.database.poolSize | quote }} }
           readinessProbe: { httpGet: { path: /api/ready, port: http }, periodSeconds: 5 }
           livenessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
           startupProbe: { httpGet: { path: /api/health, port: http }, failureThreshold: 30, periodSeconds: 2 }
