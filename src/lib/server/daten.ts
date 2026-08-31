@@ -8,10 +8,12 @@
 import { direktwahl, stimmenverhaeltnis, type Sitzverteilung, type Direktergebnis, type Stimmenverhaeltnis } from '$lib/nkwg';
 import { rechtsstand } from '$lib/wahlrecht';
 import {
+	amtlicheGewaehlte,
 	parseErgebnis,
 	type Auszaehlstand,
 	type VertretungRef
 } from '$lib/votemanager';
+import type { Mandatsart, Sitz } from '$lib/nkwg';
 import { db } from './db';
 import { vertretungsSchluessel, waehleGegenwahl } from './vergleich';
 import sitzzahlen from '$lib/sitzzahlen.json';
@@ -283,7 +285,11 @@ export interface VertretungErgebnis {
 	stimmverhaeltnis?: Stimmenverhaeltnis;
 	direkt?: Direktergebnis;
 	/** Von votemanager selbst veröffentlicht, erst im amtlichen Endergebnis. */
-	amtlich?: { anzahl: number; gewaehlte: string[][] };
+	amtlich?: { anzahl: number; spalten: string[]; gewaehlte: string[][] };
+	/** Stammen die angezeigten Sitze aus der amtlichen Liste statt aus der Rechnung? */
+	verteilungAmtlich?: boolean;
+	/** Abweichungen der eigenen Rechnung vom amtlichen Ergebnis, je Wahlvorschlag. */
+	gegenprobe?: string[];
 	/** Wonach gerechnet wurde — leer, solange für das Land nichts hinterlegt ist. */
 	recht?: {
 		land: string;
@@ -297,6 +303,97 @@ export interface VertretungErgebnis {
 	warnung?: string;
 	zeitpunkt: string;
 	stale?: boolean;
+}
+
+/**
+ * Mandatsart aus dem Wortlaut des Landes ableiten.
+ *
+ * Die amtlichen Listen schreiben „direkt gewählt" (NI), „Personenwahl" (HE, SN,
+ * ST), „Direktmandat" (BW), „Gebietsliste 1" (SL), „Reservelistenplatz 1" (NW)
+ * oder schlicht „Gewählt". Der Text wird unverändert angezeigt; die Art dient
+ * nur der Form im Sitzdiagramm, deshalb genügt hier eine grobe Zuordnung.
+ */
+function mandatsart(mandat: string | undefined): Mandatsart {
+	if (!mandat) return 'liste';
+	if (/direkt|personenwahl|wahlbezirk/i.test(mandat)) return 'personenwahl';
+	return 'liste';
+}
+
+/**
+ * Sitzverteilung aus der amtlichen Liste der Gewählten.
+ *
+ * Sobald votemanager sie veröffentlicht, ist sie die Wahrheit — auch dort, wo
+ * die eigene Rechnung Namen liefern könnte. Im Saarland und in
+ * Nordrhein-Westfalen ist sie sogar die einzige Quelle für die Namen, weil dort
+ * die Reihenfolge auf dem Wahlvorschlag entscheidet und die während der
+ * Auszählung nicht veröffentlicht wird.
+ *
+ * Farbe und Stimmenanteil kommen aus dem Stimmenverhältnis. Für rund 1,4 % der
+ * Gewählten im Archiv findet sich dort kein passender Wahlvorschlag — dann
+ * bleibt die Farbe leer und der Name trotzdem lesbar. Das ist die richtige
+ * Richtung: der Name ist der Daseinsgrund, die Farbe Beiwerk.
+ */
+function amtlicheVerteilung(
+	amtlich: { anzahl: number; spalten: string[]; gewaehlte: string[][] },
+	stimmen: Stimmenverhaeltnis
+): Sitzverteilung {
+	const meta = new Map(stimmen.parteien.map((p) => [p.partei, p]));
+	const gewaehlte = amtlicheGewaehlte(amtlich.spalten, amtlich.gewaehlte);
+
+	const sitze: Sitz[] = gewaehlte.map((g) => {
+		const p = meta.get(g.partei);
+		return {
+			partei: g.partei,
+			parteiLang: p?.parteiLang,
+			farbe: p?.farbe,
+			name: g.name,
+			stimmen: g.stimmen,
+			wahlbereich: g.wahlbereich,
+			art: mandatsart(g.mandat),
+			mandat: g.mandat ?? 'gewählt'
+		};
+	});
+
+	const jePartei = new Map<string, number>();
+	for (const g of gewaehlte) jePartei.set(g.partei, (jePartei.get(g.partei) ?? 0) + 1);
+
+	return {
+		sitzeGesamt: amtlich.anzahl,
+		gueltigeStimmen: stimmen.stimmenGesamt,
+		parteien: [...jePartei].map(([partei, anzahl]) => ({
+			partei,
+			parteiLang: meta.get(partei)?.parteiLang,
+			farbe: meta.get(partei)?.farbe,
+			stimmen: meta.get(partei)?.stimmen ?? 0,
+			prozent: meta.get(partei)?.prozent ?? 0,
+			sitze: anzahl
+		})).sort((a, b) => b.sitze - a.sitze || b.stimmen - a.stimmen),
+		sitze,
+		losentscheide: [],
+		losfaelle: []
+	};
+}
+
+/**
+ * Eigene Rechnung gegen das amtliche Ergebnis — der Referenztest zur Laufzeit.
+ *
+ * Verglichen werden nur die Sitze je Wahlvorschlag, nicht die Namen: wo die
+ * Listenreihenfolge entscheidet, kann die eigene Rechnung keine Namen liefern,
+ * und eine Meldung darüber wäre Lärm. Eine Abweichung hier heißt dagegen, dass
+ * für das Land das falsche Recht hinterlegt ist — das will man am Wahlabend
+ * sehen und nicht erst bei der nächsten Ernte.
+ */
+export function gegenprobe(gerechnet: Sitzverteilung | undefined, amtlich: Sitzverteilung): string[] {
+	if (!gerechnet) return [];
+	const parteien = new Set([
+		...gerechnet.parteien.map((p) => p.partei),
+		...amtlich.parteien.map((p) => p.partei)
+	]);
+	const zahl = (v: Sitzverteilung, partei: string) =>
+		v.parteien.find((p) => p.partei === partei)?.sitze ?? 0;
+	return [...parteien]
+		.filter((partei) => zahl(gerechnet, partei) !== zahl(amtlich, partei))
+		.map((partei) => `${partei}: gerechnet ${zahl(gerechnet, partei)}, amtlich ${zahl(amtlich, partei)}`);
 }
 
 export async function berechneVertretung(
@@ -370,9 +467,32 @@ export async function berechneVertretung(
 			{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }
 		]);
 
+		/**
+		 * Letzter Schritt vor jeder Rückgabe: liegt die amtliche Liste der
+		 * Gewählten vor, ersetzt sie die gerechnete Verteilung. Sie ist die
+		 * Wahrheit — und im Saarland und in Nordrhein-Westfalen die einzige
+		 * Quelle für die Namen, weil dort die Listenreihenfolge entscheidet.
+		 *
+		 * Die eigene Rechnung wird nicht weggeworfen, sondern gegengeprüft. Das
+		 * ist der Referenztest zur Laufzeit: eine Abweichung heißt, dass für das
+		 * Land das falsche Recht hinterlegt ist.
+		 */
+		const fertig = (): VertretungErgebnis => {
+			if (!gesamt.amtlicheSitze?.gewaehlte.length || !erg.stimmverhaeltnis) return erg;
+			const amtlicheVert = amtlicheVerteilung(gesamt.amtlicheSitze, erg.stimmverhaeltnis);
+			if (!amtlicheVert.sitze.length) return erg;
+			erg.gegenprobe = gegenprobe(erg.verteilung, amtlicheVert);
+			erg.verteilung = amtlicheVert;
+			erg.verteilungAmtlich = true;
+			// Die Warnung „keine Sitzverteilung verfügbar" gilt nicht mehr, wenn die
+			// amtliche Liste da ist — sie stammt aus dem Zweig ohne Sitzzahl.
+			if (erg.warnung?.startsWith('Für diese Auswahl ist keine Sitzverteilung')) erg.warnung = undefined;
+			return erg;
+		};
+
 		if (!recht) {
 			erg.warnung = `Für ${gesamtZeile.land} ist noch kein Kommunalwahlrecht hinterlegt — angezeigt wird nur das Stimmenverhältnis.`;
-			return erg;
+			return fertig();
 		}
 
 		// Amtliche Sitzzahl schlägt alles, sobald votemanager sie liefert; darunter
@@ -384,7 +504,7 @@ export async function berechneVertretung(
 		erg.sitzzahlQuellen = befund.quellen;
 		if (!n) {
 			erg.warnung = 'Für diese Auswahl ist keine Sitzverteilung verfügbar — angezeigt wird das Stimmenverhältnis.';
-			return erg;
+			return fertig();
 		}
 		if (!recht.wahlbereiche) {
 			// Verteilt das Land nicht über Wahlbereiche zwischen (alle außer
@@ -397,13 +517,13 @@ export async function berechneVertretung(
 				[{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }],
 				n
 			);
-			return erg;
+			return fertig();
 		}
 		if (!bereicheVollstaendig) {
 			erg.warnung = 'Wahlbereiche sind noch nicht vollständig archiviert — es wird noch keine Mandatsverteilung berechnet.';
-			return erg;
+			return fertig();
 		}
 		erg.verteilung = recht.verteile(bereiche, n);
-		return erg;
+		return fertig();
 	});
 }

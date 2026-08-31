@@ -216,7 +216,7 @@ export interface GebietsErgebnis {
 	direktBewerber: DirektBewerber[];
 	stand: Auszaehlstand;
 	/** Nur im amtlichen Endergebnis vorhanden — am Wahlabend nicht. */
-	amtlicheSitze?: { anzahl: number; gewaehlte: string[][] };
+	amtlicheSitze?: { anzahl: number; spalten: string[]; gewaehlte: string[][] };
 	kennzahlen: Record<string, number>;
 }
 
@@ -358,6 +358,9 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 	const amtlicheSitze = sitzeRoh && sitzAnzahl
 		? {
 				anzahl: sitzAnzahl,
+				// Die Überschriften mitnehmen: ohne sie ließe sich die Tabelle nur
+				// über Spaltenpositionen deuten, und die stimmen nicht überall.
+				spalten: sitzeRoh.tabelle?.ueberschriften ?? [],
 				gewaehlte: sitzeRoh.tabelle?.zeilen ?? []
 			}
 		: undefined;
@@ -369,6 +372,52 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 		amtlicheSitze,
 		kennzahlen
 	};
+}
+
+/** Eine Zeile der amtlichen Liste der Gewählten. */
+export interface AmtlicherSitz {
+	partei: string;
+	name: string;
+	/** „Gebietsliste 1", „Personenwahl", „direkt gewählt" — Wortlaut des Landes. */
+	mandat?: string;
+	stimmen?: number;
+	/** Baden-Württemberg nennt bei unechter Teilortswahl den Wohnbezirk. */
+	wahlbereich?: string;
+}
+
+/**
+ * Liest die amtliche Liste der Gewählten **über die Spaltenüberschriften**.
+ *
+ * Die Tabelle kommt in vier Formen mit drei bis fünf Spalten. Eine Deutung nach
+ * Position wäre in Baden-Württemberg falsch: dort steht an zweiter Stelle der
+ * Teilort — „Heidenheim, Schnaitheim, Aufhausen u. Mergelstetten" —, und der
+ * sieht aus wie ein Name „Nachname, Vorname". Jede archivierte Tabelle aller
+ * neun Länder trägt `ueberschriften`; damit ist der Fall eindeutig, und es muss
+ * nichts geraten werden.
+ *
+ * Zeilen ohne erkennbare Namensspalte fallen weg — lieber eine Zeile weniger als
+ * ein Teilort, der als Person angezeigt wird.
+ */
+export function amtlicheGewaehlte(spalten: string[], zeilen: string[][]): AmtlicherSitz[] {
+	const finde = (muster: RegExp) => spalten.findIndex((s) => muster.test(s));
+	const iPartei = finde(/^(partei|wahlvorschlag)$/i);
+	const iName = finde(/^(kandidat|bewerber)/i);
+	const iMandat = finde(/^mandat$/i);
+	const iStimmen = finde(/^stimmen$/i);
+	const iBereich = finde(/^(wahlkreis|wohnbezirk|wahlbereich|ortsteil)$/i);
+	if (iName < 0) return [];
+
+	return zeilen.flatMap((z): AmtlicherSitz[] => {
+		const name = z[iName]?.trim();
+		if (!name) return [];
+		return [{
+			partei: (iPartei >= 0 ? z[iPartei] : '')?.trim() ?? '',
+			name,
+			mandat: iMandat >= 0 ? z[iMandat]?.trim() || undefined : undefined,
+			stimmen: iStimmen >= 0 && z[iStimmen] ? parseZahl(z[iStimmen]) : undefined,
+			wahlbereich: iBereich >= 0 ? z[iBereich]?.trim() || undefined : undefined
+		}];
+	});
 }
 
 // ---------------------------------------------------------------------------

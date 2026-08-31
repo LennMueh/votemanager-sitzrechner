@@ -82,6 +82,16 @@
 		</p>
 	{/if}
 
+	<!-- Der Referenztest zur Laufzeit: weicht die eigene Rechnung vom amtlichen
+	     Ergebnis ab, ist für dieses Land das falsche Recht hinterlegt. Das gehört
+	     nicht in eine Fußnote. -->
+	{#if ergebnis.gegenprobe?.length}
+		<p class="hinweis">
+			<strong>Die eigene Rechnung weicht vom amtlichen Ergebnis ab.</strong> Angezeigt wird
+			das amtliche. Abweichung je Wahlvorschlag: {ergebnis.gegenprobe.join('; ')}.
+		</p>
+	{/if}
+
 	{#if !stand.vollstaendig && stand.erwartet > 0}
 		<p class="zwischenstand">
 			Zwischenstand — {ergebnis.direkt ? 'das Ergebnis' : 'die Sitzverteilung'} kann sich mit
@@ -219,7 +229,13 @@
 
 	{#if ergebnis.recht || ergebnis.sitzzahl}
 		<p class="grundlage">
-			{#if ergebnis.recht}Gerechnet nach {ergebnis.recht.rechtsgrundlage} ({ergebnis.recht.name}).{/if}
+			{#if ergebnis.verteilungAmtlich}
+				Gewählte aus dem amtlichen Endergebnis.{#if ergebnis.recht}
+					Die Sitzzahlen sind nach {ergebnis.recht.rechtsgrundlage} ({ergebnis.recht.name})
+					nachgerechnet.{/if}
+			{:else if ergebnis.recht}
+				Gerechnet nach {ergebnis.recht.rechtsgrundlage} ({ergebnis.recht.name}).
+			{/if}
 			{#if ergebnis.sitzzahl && ergebnis.sitzzahlHerkunft}
 				{ergebnis.sitzzahl} Sitze, {HERKUNFT[ergebnis.sitzzahlHerkunft]}{#if ergebnis.sitzzahlHerkunft === 'vorwahl'}
 					vom {tag(ergebnis.sitzzahlQuellen?.find((q) => q.herkunft === 'vorwahl')?.stand)}{/if}.

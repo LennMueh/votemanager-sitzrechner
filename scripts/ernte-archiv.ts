@@ -23,7 +23,7 @@ import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { db } from '../src/lib/server/db.ts';
-import { parseErgebnis } from '../src/lib/votemanager.ts';
+import { amtlicheGewaehlte, parseErgebnis } from '../src/lib/votemanager.ts';
 
 const arg = (name: string, standard: string): string =>
 	process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1] ?? standard;
@@ -45,19 +45,6 @@ function schnipsel(s: string): string {
 
 function pruefsumme(inhalt: unknown): string {
 	return 'sha256:' + createHash('sha256').update(JSON.stringify(inhalt)).digest('hex');
-}
-
-/**
- * Die amtliche Tabelle der Gewählten hat je Land unterschiedlich viele Spalten:
- * drei (Partei, Name, „Gebietsliste 1"), vier (… Mandatsart, Stimmen) oder fünf
- * (Baden-Württemberg schiebt bei unechter Teilortswahl den Teilort dazwischen).
- * Gemeinsam ist nur: Spalte 0 ist der Wahlvorschlag, und der Name steht als
- * „Nachname, Vorname" irgendwo dahinter.
- */
-const NAME = /^[^,]+,\s*\S/;
-function paar(zeile: string[]): [string, string] | undefined {
-	const name = zeile.slice(1).find((z) => NAME.test(z)) ?? zeile[1];
-	return name ? [zeile[0], name] : undefined;
 }
 
 const sql = db();
@@ -87,7 +74,11 @@ for (const z of zeilen) {
 	if (!erg.amtlicheSitze?.anzahl) { zaehl(`${z.land}: keine Sitzzahl`); continue; }
 	if (!erg.vorschlaege.length) { zaehl(`${z.land}: keine Wahlvorschläge`); continue; }
 
-	const amtlich = erg.amtlicheSitze.gewaehlte.map(paar).filter((p): p is [string, string] => !!p);
+	// Über die Spaltenüberschriften statt über Positionen: Baden-Württemberg
+	// schiebt bei unechter Teilortswahl den Wohnbezirk an zweite Stelle, und der
+	// sieht aus wie „Nachname, Vorname".
+	const amtlich = amtlicheGewaehlte(erg.amtlicheSitze.spalten, erg.amtlicheSitze.gewaehlte)
+		.map((g): [string, string] => [g.partei, g.name]);
 	if (amtlich.length !== erg.amtlicheSitze.gewaehlte.length) {
 		zaehl(`${z.land}: Gewähltenzeile ohne Namen`);
 		continue;

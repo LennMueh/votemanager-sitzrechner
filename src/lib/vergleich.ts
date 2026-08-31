@@ -1,3 +1,4 @@
+import { amtlicheGewaehlte } from '$lib/votemanager';
 import type { VertretungErgebnis } from '$lib/server/daten';
 
 export interface VergleichPerson {
@@ -10,8 +11,18 @@ const normal = (text: string) => text.normalize('NFKD').replace(/\p{M}/gu, '').t
 
 function personen(ergebnis: Pick<VertretungErgebnis, 'verteilung' | 'amtlich'>): VergleichPerson[] {
 	const berechnet = ergebnis.verteilung?.sitze.flatMap((s) => s.name ? [{ liste: s.partei, name: s.name, mandat: s.mandat }] : []) ?? [];
-	return berechnet.length ? berechnet : (ergebnis.amtlich?.gewaehlte ?? []).flatMap(([liste, name, mandat]) =>
-		liste && name ? [{ liste, name, mandat: mandat ?? '' }] : []);
+	if (berechnet.length) return berechnet;
+	// Rückfall für Stände ohne Verteilung. Über die Überschriften statt über
+	// Spaltenpositionen: Baden-Württemberg schiebt bei unechter Teilortswahl den
+	// Wohnbezirk an zweite Stelle, und der sieht aus wie „Nachname, Vorname".
+	const amtlich = ergebnis.amtlich;
+	return amtlich
+		? amtlicheGewaehlte(amtlich.spalten, amtlich.gewaehlte).map((g) => ({
+				liste: g.partei,
+				name: g.name,
+				mandat: g.mandat ?? ''
+			}))
+		: [];
 }
 
 export function vergleichePersonen(

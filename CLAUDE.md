@@ -192,9 +192,28 @@ entfernen, sonst landen saarländische Listen wieder im Direktwahl-Zweig.
 Die amtlichen Listen verraten die Personenzuteilung: Hessen, Sachsen,
 Sachsen-Anhalt und Niedersachsen führen „Personenwahl" mit Stimmenzahl, das
 Saarland „Gebietsliste 1" und Nordrhein-Westfalen „Reservelistenplatz 1". Wo die
-Listenreihenfolge entscheidet, veröffentlicht votemanager sie während der
-Auszählung nicht — dort bleiben die Sitze **namenlos** statt eine Reihenfolge zu
-erfinden. Oberfläche und Präsentationsmodus sagen das.
+Listenreihenfolge entscheidet, veröffentlicht votemanager sie **während der
+Auszählung** nicht — dort bleiben die Sitze so lange namenlos, statt eine
+Reihenfolge zu erfinden. Oberfläche und Präsentationsmodus sagen das.
+
+### Sobald das amtliche Endergebnis da ist
+
+Dann ersetzt die amtliche Liste der Gewählten die gerechnete Verteilung
+(`amtlicheVerteilung()` in `daten.ts`): echte Namen, echter Mandatstext, Farbe
+und Prozente aus dem Stimmenverhältnis. Damit bekommt auch das Saarland Namen.
+
+Gelesen wird sie **über die Spaltenüberschriften** (`amtlicheGewaehlte()` in
+`votemanager.ts`), nie über Positionen. Die Tabelle hat je nach Land drei bis
+fünf Spalten, und in der fünfspaltigen baden-württembergischen Form steht an
+zweiter Stelle der Wohnbezirk — „Heidenheim, Schnaitheim, Aufhausen u.
+Mergelstetten" sieht aus wie „Nachname, Vorname" und würde von jeder
+Mustererkennung dafür gehalten. Jede archivierte Tabelle aller neun Länder trägt
+`ueberschriften`; die Deutung ist damit eindeutig.
+
+Die eigene Rechnung wird nicht weggeworfen, sondern **gegengeprüft**: weichen die
+Sitze je Wahlvorschlag ab, meldet `gegenprobe` das sichtbar. Das ist der
+Referenztest zur Laufzeit — er zeigt ein falsch hinterlegtes Landesrecht am
+Wahlabend statt erst bei der nächsten Ernte.
 
 Offen: Mecklenburg-Vorpommern (Verfahren trifft, Personen nicht — die amtliche
 Liste nennt „Bewerber im Wahlbezirk … nach § 63 (4)"), Baden-Württemberg
