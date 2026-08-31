@@ -29,12 +29,30 @@ database:
   secretKey: database-url
   storage: 10Gi
   storageClass: ""
+  # Verbindungen je Web-Pod (DATABASE_POOL_SIZE). Mal replicas ist das die Last
+  # auf max_connections von PostgreSQL (Standard 100): bei 10 und zwei Repliken
+  # 20, bei sechs Repliken 60 plus Poller. Wer web hochskaliert, muss diesen Wert
+  # im Blick behalten — deshalb steht er hier und nicht nur im Code.
+  poolSize: 10
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    # 1500m statt 1: PostgreSQL lief mit 0,9 von 1 Kern am Deckel und wurde zu
+    # 18 % gedrosselt. Es ist der Engpass der Anwendung, nicht die Web-Schicht.
+    limits: { cpu: "1500m", memory: 1Gi }
 
 web:
+  # Zwei Repliken reichen: über sechs Stunden gemessen brauchten beide zusammen
+  # nie mehr als 0,23 Kerne. Mehr Repliken verteilen die Last ohnehin nur
+  # begrenzt — jeder Browser hält eine dauerhafte SSE-Verbindung, und die bleibt
+  # für ihre ganze Sitzung auf demselben Pod. Vor einem Wahlabend hochsetzen,
+  # dann aber database.poolSize gegen max_connections gegenrechnen.
   replicas: 2
   resources:
     requests: { cpu: 100m, memory: 128Mi }
-    limits: { cpu: 500m, memory: 512Mi }
+    # 1 statt 500m: gegen eine Spitze auf einem angehefteten Pod hilft nur ein
+    # höheres Limit pro Pod. Bei 500m wurde ein Pod zu 41 % gedrosselt, während
+    # der andere bei null lag.
+    limits: { cpu: "1", memory: 512Mi }
 
 poller:
   resources:
