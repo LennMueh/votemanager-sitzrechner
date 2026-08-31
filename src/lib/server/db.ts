@@ -139,13 +139,20 @@ export async function erstellePollerSpeicher(
 			-- Pfade und kein einziger geholter.
 			takt AS (SELECT CASE WHEN EXISTS (SELECT 1 FROM termin WHERE datum = current_date)
 				THEN 0 ELSE ${nachernte} END AS quote)
-			(SELECT * FROM faellig WHERE zustand <> 'nachernte'
+			-- Unerreichbare Pfade zählen zur Vorratsarbeit, nicht zur Hauptauswahl.
+			-- Es sind über tausend, die überwiegend dauerhaft 404 liefern; in der
+			-- Hauptauswahl belegten sie Plätze und die zwei Drossel-Slots je Host,
+			-- scheiterten erneut und sperrten den Host für die lebenden Pfade gleich
+			-- mit. Ganz aussperren wäre falsch: ein Pfad verlässt diesen Zustand
+			-- ausschließlich über einen erfolgreichen Abruf (siehe dokumentZustand).
+			(SELECT * FROM faellig WHERE zustand NOT IN ('nachernte', 'unerreichbar')
 				ORDER BY rang DESC, prioritaet DESC, naechste_pruefung
 				LIMIT (SELECT ${limit - reserve} - quote FROM takt))
 			UNION
-			(SELECT * FROM faellig WHERE zustand <> 'nachernte' ORDER BY naechste_pruefung LIMIT ${reserve})
+			(SELECT * FROM faellig WHERE zustand NOT IN ('nachernte', 'unerreichbar')
+				ORDER BY naechste_pruefung LIMIT ${reserve})
 			UNION
-			(SELECT * FROM faellig WHERE zustand = 'nachernte'
+			(SELECT * FROM faellig WHERE zustand IN ('nachernte', 'unerreichbar')
 				ORDER BY prioritaet DESC, naechste_pruefung LIMIT (SELECT quote FROM takt))`;
 			return zeilen.map((z) => ({
 				id: z.id,
@@ -276,14 +283,42 @@ export async function erstellePollerSpeicher(
 			});
 		},
 
-		async fehler(aufgabe, fehler, naechstePruefung) {
+		async fehler(aufgabe, fehler, naechstePruefung, endgueltig = false, hostBelasten = !endgueltig) {
 			const host = new URL(aufgabe.url).host;
 			await sql.begin(async (tx) => {
+				// `status` wird bewusst NICHT genullt. Die Spalte bedeutet „zuletzt
+				// erfolgreich geholt, mit diesem Code"; der Fehlschlag steht in
+				// `fehler` und `fehler_anzahl`. Genullt machte sie `status IS NULL`
+				// mehrdeutig — und genau daran prüft nachernteBefoerdern, ob ein Pfad
+				// schon geerntet wurde. Ein einziger Fehler ließ einen längst
+				// geernteten Pfad wieder als „nie geholt" gelten, worauf ihn die
+				// Nachernte alle fünf Minuten erneut beförderte. Aus demselben Grund
+				// kippte `strukturGeladen` (siehe faellige) nach einem Fehlschlag
+				// zurück und schaltete den Frühstart in den Wahlabend ab.
+				//
+				// `zuletzt_geprueft` wird auch im Fehlerfall gesetzt: sonst steht dort
+				// der letzte Erfolg, und jede Betriebsdiagnose über diese Spalte hält
+				// täglich angefasste Pfade für nie geprüft.
+				//
+				// Bei einer endgültigen Antwort (404/410) wird der Pfad sofort
+				// stillgelegt, statt fünf Versuche gegen eine Ressource zu verbrauchen,
+				// die es nicht gibt.
+				const schwelle = endgueltig ? 1 : 5;
 				await tx`UPDATE pfad_stand SET fehler_anzahl = fehler_anzahl + 1,
-					fehler = ${String(fehler)}, naechste_pruefung = ${naechstePruefung}, status = null,
-					zustand_vor_fehler = CASE WHEN fehler_anzahl + 1 >= 5 AND zustand <> 'unerreichbar' THEN zustand ELSE zustand_vor_fehler END,
-					zustand = CASE WHEN fehler_anzahl + 1 >= 5 THEN 'unerreichbar' ELSE zustand END
+					fehler = ${String(fehler)}, naechste_pruefung = ${naechstePruefung},
+					zuletzt_geprueft = now(),
+					zustand_vor_fehler = CASE WHEN fehler_anzahl + 1 >= ${schwelle} AND zustand <> 'unerreichbar' THEN zustand ELSE zustand_vor_fehler END,
+					zustand = CASE WHEN fehler_anzahl + 1 >= ${schwelle} THEN 'unerreichbar' ELSE zustand END
 				WHERE id = ${aufgabe.id}`;
+
+				// Ein 404 ist die korrekte Auskunft eines funktionierenden Servers und
+				// darf ihn nicht sperren. Die Nachernte läuft historische Termine
+				// zurück und bildet dabei zwangsläufig Pfade, die es nie gab; im
+				// Archiv sind das 9921 von 10687 Pfadfehlern. Angerechnet sperrten sie
+				// den Host — und schlossen damit auch die lebenden Pfade desselben
+				// Hosts aus, deren Erfolg die Sperre gelöst hätte.
+				if (!hostBelasten) return;
+
 				const [stand] = await tx<{ fehler_anzahl: number }[]>`
 					INSERT INTO host_stand (host, fehler_anzahl, letzter_fehler)
 					VALUES (${host}, 1, ${String(fehler)}) ON CONFLICT (host) DO UPDATE SET
@@ -329,11 +364,19 @@ export async function erstellePollerSpeicher(
 		async nachernteBefoerdern(jetzt) {
 			const zeilen = await sql<{ anzahl: number }[]>`
 				WITH befoerdert AS (
-					UPDATE pfad_stand p SET zustand = 'nachernte', naechste_pruefung = ${jetzt}
+					-- greatest statt hart auf jetzt: sonst holt die Beförderung alle
+					-- fünf Minuten genau die Pfade zurück auf „sofort fällig", die der
+					-- Fehlerpfad gerade sorgfältig vertagt hat. Der Backoff war gegen
+					-- die Beförderung wirkungslos.
+					UPDATE pfad_stand p SET zustand = 'nachernte',
+						naechste_pruefung = greatest(coalesce(p.naechste_pruefung, ${jetzt}), ${jetzt})
 					FROM instanz i
 					WHERE i.id = p.instanz_id
 						AND p.zustand = 'ruhend'
 						AND p.status IS NULL
+						-- Ein Pfad, der schon einmal gescheitert ist, gehört nicht in
+						-- die Vorratsarbeit: er läuft über den Fehler-Backoff.
+						AND p.fehler_anzahl = 0
 						AND (p.pfad LIKE '%js/app.js' OR p.pfad LIKE '%termin.json' OR p.prioritaet = 90)
 						AND EXISTS (SELECT 1 FROM termin t WHERE t.instanz_id = i.id AND t.datum < current_date)
 						AND EXISTS (SELECT 1 FROM instanz k JOIN termin t ON t.instanz_id = k.id
