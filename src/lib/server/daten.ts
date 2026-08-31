@@ -10,6 +10,7 @@ import { rechtsstand } from '$lib/wahlrecht';
 import {
 	amtlicheGewaehlte,
 	parseErgebnis,
+	parseStand,
 	type Auszaehlstand,
 	type VertretungRef
 } from '$lib/votemanager';
@@ -72,22 +73,29 @@ async function sitzzahlVorwahl(
 	ref: VertretungRef,
 	wahltag: string
 ): Promise<{ sitze: number; stand: string } | undefined> {
-	const zeilen = await sql<Array<{ wahltag: string; name: string; gebiet_name: string; inhalt: unknown }>>`
-		SELECT to_char(t.datum,'YYYYMMDD') wahltag, w.name, w.gebiet_name, d.inhalt
+	// Zwei Schritte statt einem: der Abgleich läuft über `name` und `gebiet_name`,
+	// das Dokument wird erst danach gebraucht. In einem Zug geholt kämen sämtliche
+	// Altwahlen der Behörde als vollständige Ergebnis-JSONs mit, obwohl die
+	// Schleife nach dem ersten Treffer abbricht — und das bei jedem Aufruf von
+	// /api/vertretung.
+	const zeilen = await sql<Array<{ wahltag: string; name: string; gebiet_name: string; pfad_stand_id: number }>>`
+		SELECT to_char(t.datum,'YYYYMMDD') wahltag, w.name, w.gebiet_name, p.id::int pfad_stand_id
 		FROM wahl w
 		JOIN termin t ON t.id=w.termin_id
 		JOIN instanz i ON i.id=t.instanz_id
 		JOIN behoerde b ON b.id=i.behoerde_id
 		JOIN pfad_stand p ON p.instanz_id=i.id
 			AND p.pfad LIKE '%/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
-		JOIN LATERAL (SELECT inhalt FROM dokument d WHERE d.pfad_stand_id=p.id ORDER BY id DESC LIMIT 1) d ON true
 		WHERE b.kennung=${ref.ags} AND to_char(t.datum,'YYYYMMDD') < ${wahltag}
 		ORDER BY t.datum DESC`;
 
 	const gesucht = vertretungsSchluessel(ref.ags, ref.titel, ref.gebietName);
 	for (const z of zeilen) {
 		if (vertretungsSchluessel(ref.ags, z.name, z.gebiet_name) !== gesucht) continue;
-		const anzahl = parseErgebnis(z.inhalt as never).amtlicheSitze?.anzahl;
+		const [dokument] = await sql<Array<{ inhalt: unknown }>>`
+			SELECT inhalt FROM dokument WHERE pfad_stand_id=${z.pfad_stand_id} ORDER BY id DESC LIMIT 1`;
+		if (!dokument) continue;
+		const anzahl = parseErgebnis(dokument.inhalt as never).amtlicheSitze?.anzahl;
 		if (anzahl) return { sitze: anzahl, stand: z.wahltag };
 	}
 	return undefined;
@@ -236,14 +244,23 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 	if (!ausgewaehlt) return { wahltag: '', wahltermine: [], termine: [], zeitpunkt: new Date().toISOString(), eintraege: [] };
 	return zwischengespeichert(`uebersicht:${ausgewaehlt}`, async () => {
 		const sql = db();
-		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; inhalt: unknown | null }>>`
+		// Aus dem Ergebnisdokument braucht die Übersicht nur den Auszählstand, und der
+		// hängt allein an `Komponente.info.hinweis` (siehe parseStand). Deshalb genau
+		// diesen Teilbaum selektieren statt der vollständigen Dokumente: an einem
+		// Wahltag hängen daran bis zu zweitausend Wahlen, deren gesamte Zeilen samt
+		// sub_zeilen sonst gelesen, übertragen und in parseErgebnis() zerlegt würden.
+		// `da` unterscheidet „kein Dokument archiviert" von „Dokument ohne Hinweis";
+		// über `hinweis IS NULL` allein ginge das nicht, den Fall gibt es wirklich
+		// (Wahlbezirks-Ergebnisse tragen keinen Auszählstand).
+		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; hinweis: string[] | null; da: boolean | null }>>`
 			WITH regionsname AS (${regionsname(sql)})
 			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, b.regionalschluessel region,
 				coalesce(r.name, b.regionalschluessel) "regionName",
-				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.inhalt
+				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.hinweis, d.da
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
-			LEFT JOIN LATERAL (SELECT d.inhalt FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
+			LEFT JOIN LATERAL (SELECT d.inhalt->'Komponente'->'info'->'hinweis' AS hinweis, true AS da
+				FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
 				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 				ORDER BY d.id DESC LIMIT 1) d ON true
 			WHERE t.datum=${`${ausgewaehlt.slice(0, 4)}-${ausgewaehlt.slice(4, 6)}-${ausgewaehlt.slice(6, 8)}`}::date ORDER BY b.name, w.name`;
@@ -256,11 +273,11 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json')` : [];
 		const eintraege = zeilen.map((z): UebersichtEintrag => {
 			const ref: VertretungRef = { instanzId: z.instanz_id, ags: z.ags, behoerde: z.behoerde, wahlId: Number(z.wahl_id), gebietId: z.gebiet_id, gebietName: z.gebiet_name, titel: z.titel, direktwahl: /(bürgermeister|landrat|stichwahl)/i.test(z.titel) };
-			const vergleichbar = Boolean(z.inhalt && waehleGegenwahl(
+			const vergleichbar = Boolean(z.da && waehleGegenwahl(
 				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name },
 				kandidaten.filter((k) => k.ags === z.ags)
 			));
-			return z.inhalt ? { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), stand: parseErgebnis(z.inhalt as never).stand } : { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
+			return z.da ? { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), stand: parseStand(z.hinweis ?? undefined) } : { ...ref, land: z.land, region: z.region, regionName: z.regionName, vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
 		});
 		return { wahltag: ausgewaehlt, wahltermine: termine.wahltermine, termine: termine.termine, zeitpunkt: new Date().toISOString(), eintraege };
 	});
