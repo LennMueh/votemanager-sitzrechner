@@ -2,5 +2,13 @@ apiVersion: v2
 name: votemanager
 description: VoteManager result viewer and poller
 type: application
-version: 0.1.0
+# Die HelmRelease bezieht diesen Chart mit reconcileStrategy: ChartVersion. Flux
+# baut das Chart-Artefakt deshalb NUR neu, wenn diese Zahl steigt — eine reine
+# Inhaltsänderung wird nie ausgerollt. Genau daran sind die angehobenen
+# CPU-Grenzen hängengeblieben: im Repo standen 1500m für PostgreSQL, im Cluster
+# lief weiter 1000m. Wer hier etwas ändert, erhöht die Version mit.
+#
+# 0.2.0: PostgreSQL-Ressourcen über database.resources konfigurierbar und
+# angehoben, web-Limit von 500m auf 1, database.poolSize durchgereicht.
+version: 0.2.0
 appVersion: "0.1.0"
