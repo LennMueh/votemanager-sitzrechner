@@ -333,9 +333,10 @@ function mandatsart(mandat: string | undefined): Mandatsart {
  * bleibt die Farbe leer und der Name trotzdem lesbar. Das ist die richtige
  * Richtung: der Name ist der Daseinsgrund, die Farbe Beiwerk.
  */
-function amtlicheVerteilung(
+export function amtlicheVerteilung(
 	amtlich: { anzahl: number; spalten: string[]; gewaehlte: string[][] },
-	stimmen: Stimmenverhaeltnis
+	stimmen: Stimmenverhaeltnis,
+	gerechnet?: Sitzverteilung
 ): Sitzverteilung {
 	const meta = new Map(stimmen.parteien.map((p) => [p.partei, p]));
 	const gewaehlte = amtlicheGewaehlte(amtlich.spalten, amtlich.gewaehlte);
@@ -354,11 +355,27 @@ function amtlicheVerteilung(
 		};
 	});
 
+	sitze.push(...fehlendeSitze(amtlich.anzahl, sitze, gerechnet));
+
+	// Die Namen sind die härtere Tatsache als die Zahl: `anzahl` stammt aus der
+	// Summe eines Tortendiagramms bzw. aus einem Hinweistext, nicht aus der
+	// Gewählten-Tabelle. Nennt die Tabelle mehr Personen als die Zahl behauptet,
+	// gilt die Tabelle — im Archiv gibt es das (Ortsbeirat Frankfurt-Mitte/Nord
+	// 2016: anzahl 19, zwanzig amtliche Namen).
+	const sitzeGesamt = Math.max(amtlich.anzahl, sitze.length);
+
+	// Über alle Sitze zählen, nicht nur über die Gewählten: sonst fällt ein
+	// Wahlvorschlag, dessen einziger Sitz unbesetzt bleibt, ganz aus Legende und
+	// Sitzdiagramm heraus. `sitze` ist damit wie in der eigenen Rechnung die
+	// Zuteilung einschließlich unbesetzter Plätze.
 	const jePartei = new Map<string, number>();
-	for (const g of gewaehlte) jePartei.set(g.partei, (jePartei.get(g.partei) ?? 0) + 1);
+	for (const s of sitze) {
+		if (!s.partei) continue;
+		jePartei.set(s.partei, (jePartei.get(s.partei) ?? 0) + 1);
+	}
 
 	return {
-		sitzeGesamt: amtlich.anzahl,
+		sitzeGesamt,
 		gueltigeStimmen: stimmen.stimmenGesamt,
 		parteien: [...jePartei].map(([partei, anzahl]) => ({
 			partei,
@@ -375,6 +392,61 @@ function amtlicheVerteilung(
 }
 
 /**
+ * Die Lücke zwischen amtlicher Sitzzahl und amtlich Gewählten als unbesetzte
+ * Sitze — Invariante: Gewählte + Unbesetzte === Sitzzahl.
+ *
+ * Die amtliche Liste führt nur, wer gewählt ist; bleibt ein Sitz nach § 36 Abs. 7
+ * NKWG (und den Entsprechungen) unbesetzt, steht dort schlicht keine Zeile. Ohne
+ * Auffüllen zeigte das Sitzdiagramm sechs Punkte, während die Seite daneben
+ * „7 Sitze, amtlich" schrieb. Im Referenzkorpus trifft das 20 von 785 Fällen.
+ *
+ * Wem der leere Platz zufiele, sagt die amtliche Liste nicht — die eigene
+ * Rechnung schon. Übernommen wird sie aber nur, wenn sie die Lücke **vollständig**
+ * erklärt: gleich viele unbesetzte Sitze, und bei den Besetzten je Wahlvorschlag
+ * Übereinstimmung. Das ist kein Zirkelschluss, weil `gegenprobe()` genau diese
+ * Übereinstimmung unabhängig prüft und unbesetzte Sitze dabei ignoriert.
+ * Andernfalls bleibt der Sitz ohne Wahlvorschlag: die Invariante gilt, ohne eine
+ * Zuordnung zu behaupten, für die es keinen Beleg gibt.
+ */
+function fehlendeSitze(anzahl: number, gewaehlt: Sitz[], gerechnet?: Sitzverteilung): Sitz[] {
+	const fehlend = anzahl - gewaehlt.length;
+	if (fehlend <= 0) return [];
+
+	const eigene = gerechnet?.sitze.filter((s) => s.unbesetzt) ?? [];
+	if (eigene.length === fehlend && gerechnet) {
+		const links = besetzteJePartei(gerechnet.sitze);
+		const rechts = besetzteJePartei(gewaehlt);
+		const parteien = new Set([...links.keys(), ...rechts.keys()]);
+		const einig = [...parteien].every((p) => (links.get(p) ?? 0) === (rechts.get(p) ?? 0));
+		if (einig) return eigene.map((s) => ({ ...s }));
+	}
+
+	return Array.from({ length: fehlend }, () => ({
+		partei: '',
+		art: 'unbesetzt' as const,
+		mandat: 'unbesetzt',
+		unbesetzt: true,
+		grund: 'Die amtliche Liste nennt weniger Gewählte als Sitze'
+	}));
+}
+
+/**
+ * Besetzte Sitze je Wahlvorschlag — unbesetzte zählen nicht mit.
+ *
+ * Gezählt wird über `sitze`, nicht über `parteien[].sitze`: letzteres ist auf der
+ * gerechneten Seite die *Zuteilung* und enthält damit auch die Sitze, die nach
+ * § 36 Abs. 7 NKWG (und den Entsprechungen) unbesetzt bleiben.
+ */
+function besetzteJePartei(sitze: Sitz[]): Map<string, number> {
+	const zahl = new Map<string, number>();
+	for (const s of sitze) {
+		if (s.unbesetzt) continue;
+		zahl.set(s.partei, (zahl.get(s.partei) ?? 0) + 1);
+	}
+	return zahl;
+}
+
+/**
  * Eigene Rechnung gegen das amtliche Ergebnis — der Referenztest zur Laufzeit.
  *
  * Verglichen werden nur die Sitze je Wahlvorschlag, nicht die Namen: wo die
@@ -382,18 +454,22 @@ function amtlicheVerteilung(
  * und eine Meldung darüber wäre Lärm. Eine Abweichung hier heißt dagegen, dass
  * für das Land das falsche Recht hinterlegt ist — das will man am Wahlabend
  * sehen und nicht erst bei der nächsten Ernte.
+ *
+ * Verglichen werden ausdrücklich die **besetzten** Sitze. Über `parteien[].sitze`
+ * war das ein Fehlalarm: der Ortsrat Oedeme 2021 meldete „GRÜNE: gerechnet 3,
+ * amtlich 2", obwohl die Rechnung stimmte — die GRÜNEN bekamen drei Sitze und
+ * hatten nur zwei Bewerber. Die amtliche Liste führt eben nur Gewählte; dieselbe
+ * Korrektur macht `referenzen.test.ts` seit jeher. Der Vergleich ist damit
+ * zugleich unabhängig davon, ob die amtliche Verteilung aufgefüllt wurde.
  */
 export function gegenprobe(gerechnet: Sitzverteilung | undefined, amtlich: Sitzverteilung): string[] {
 	if (!gerechnet) return [];
-	const parteien = new Set([
-		...gerechnet.parteien.map((p) => p.partei),
-		...amtlich.parteien.map((p) => p.partei)
-	]);
-	const zahl = (v: Sitzverteilung, partei: string) =>
-		v.parteien.find((p) => p.partei === partei)?.sitze ?? 0;
-	return [...parteien]
-		.filter((partei) => zahl(gerechnet, partei) !== zahl(amtlich, partei))
-		.map((partei) => `${partei}: gerechnet ${zahl(gerechnet, partei)}, amtlich ${zahl(amtlich, partei)}`);
+	const links = besetzteJePartei(gerechnet.sitze);
+	const rechts = besetzteJePartei(amtlich.sitze);
+	const parteien = [...new Set([...links.keys(), ...rechts.keys()])].filter(Boolean);
+	return parteien
+		.filter((partei) => (links.get(partei) ?? 0) !== (rechts.get(partei) ?? 0))
+		.map((partei) => `${partei}: gerechnet ${links.get(partei) ?? 0}, amtlich ${rechts.get(partei) ?? 0}`);
 }
 
 export async function berechneVertretung(
@@ -479,8 +555,12 @@ export async function berechneVertretung(
 		 */
 		const fertig = (): VertretungErgebnis => {
 			if (!gesamt.amtlicheSitze?.gewaehlte.length || !erg.stimmverhaeltnis) return erg;
-			const amtlicheVert = amtlicheVerteilung(gesamt.amtlicheSitze, erg.stimmverhaeltnis);
-			if (!amtlicheVert.sitze.length) return erg;
+			const amtlicheVert = amtlicheVerteilung(gesamt.amtlicheSitze, erg.stimmverhaeltnis, erg.verteilung);
+			// Auf besetzte Sitze prüfen, nicht auf die Gesamtzahl: fehlt in der Tabelle
+			// die Namensspalte, liefert `amtlicheGewaehlte()` nichts, und das Auffüllen
+			// ergäbe eine Verteilung aus lauter leeren Plätzen. Die eigene Rechnung ist
+			// dann die bessere Auskunft.
+			if (!amtlicheVert.sitze.some((s) => !s.unbesetzt)) return erg;
 			erg.gegenprobe = gegenprobe(erg.verteilung, amtlicheVert);
 			erg.verteilung = amtlicheVert;
 			erg.verteilungAmtlich = true;
