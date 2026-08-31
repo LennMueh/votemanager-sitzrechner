@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { konfiguration } from './config';
 import { Drossel } from './drossel';
-import { holeJson, retryAfter } from './http';
+import { endgueltig, holeJson, retryAfter } from './http';
 import { parseRegistry, Poller, type PollerAufgabe, type PollerSpeicher } from './index';
 import { apiWurzel, termineUrl } from './urls';
 import { fehlerBackoff, naechsterZustand, pruefIntervall } from './zustand';
@@ -221,5 +221,68 @@ describe('Poller-Kern', () => {
 		});
 		expect(() => parseRegistry([{ ags: '../x', url: 'http://example.test' }])).toThrow('Ungültige Behörde');
 		expect(parseRegistry({ data: [['<a href="https://wahlen.bonn.de/">Stadt Bonn</a>', 'Bonn', 'Nordrhein-Westfalen']] })).toEqual([]);
+	});
+});
+
+/**
+ * Der Fehlerpfad war vollständig ungetestet: `speicher.fehler` stand in jeder
+ * Attrappe als vi.fn(), wurde aber von keinem Test ausgelöst. Genau darin ist die
+ * 404-Spirale entstanden — 9921 von 10687 Pfadfehlern im Archiv sind HTTP 404 auf
+ * historische Pfade, und jeder davon sperrte den Host aller Behörden mit.
+ */
+describe('Fehlerpfad des Pollers', () => {
+	const aufgabe: PollerAufgabe = {
+		id: '1', url: 'https://example.test/alt/app.js', pfad: 'alt/app.js',
+		zustand: 'nachernte', prioritaet: 40, fehler: 0
+	};
+	const speicherMit = (fehler: PollerSpeicher['fehler'], erfolg: PollerSpeicher['erfolg'] = vi.fn()): PollerSpeicher => ({
+		faellige: async () => [aufgabe], erfolg, fehler,
+		registryFaellig: async () => false, registryStand: async () => ({}),
+		registrySpeichern: vi.fn(), behoerdenSpeichern: vi.fn()
+	});
+	const lauf = (speicher: PollerSpeicher, antwort: () => Promise<Response>) =>
+		new Poller(speicher, { kontakt: 'ops@example.test', backfill: true, globalProSekunde: 1_000, parallelProHost: 2 },
+			vi.fn(antwort) as unknown as typeof fetch).einmal(new Date('2026-01-01'));
+
+	it('erkennt 404 und 410 als endgültig, alles andere nicht', () => {
+		expect(endgueltig(Object.assign(new Error('weg'), { status: 404 }))).toBe(true);
+		expect(endgueltig(Object.assign(new Error('weg'), { status: 410 }))).toBe(true);
+		expect(endgueltig(Object.assign(new Error('später'), { status: 503 }))).toBe(false);
+		expect(endgueltig(Object.assign(new Error('zu viel'), { status: 429 }))).toBe(false);
+		expect(endgueltig(new Error('Netz weg'))).toBe(false);
+	});
+
+	it('meldet einen 404 als endgültig — der Host wird nicht belastet', async () => {
+		const fehler = vi.fn();
+		await lauf(speicherMit(fehler), async () => new Response('weg', { status: 404 }));
+		// Viertes Argument: endgültig. Der Pfad wird stillgelegt, statt fünf
+		// Versuche gegen eine Ressource zu verbrauchen, die es nicht gibt.
+		expect(fehler).toHaveBeenCalledWith(aufgabe, expect.any(Error), expect.any(Date), true);
+	});
+
+	it('behandelt einen 503 weiter als Ausfall des Hosts', async () => {
+		const fehler = vi.fn();
+		await lauf(speicherMit(fehler), async () => new Response('kaputt', { status: 503 }));
+		expect(fehler).toHaveBeenCalledWith(aufgabe, expect.any(Error), expect.any(Date), false);
+	});
+
+	it('trägt den Statuscode am Fehler, nicht nur im Text', async () => {
+		const fehler = vi.fn();
+		await lauf(speicherMit(fehler), async () => new Response('weg', { status: 404 }));
+		const geworfen = fehler.mock.calls[0][1] as Error & { status?: number };
+		expect(geworfen.status).toBe(404);
+		expect(geworfen.message).toContain('HTTP 404');
+	});
+
+	it('lastet einen Fehler beim Speichern nicht dem Host an', async () => {
+		// Der Abruf war erfolgreich; scheitert danach der Parser oder die Datenbank,
+		// ist das kein Ausfall des Hosts. Lag der Speicheraufruf im selben try wie
+		// der Abruf, sperrte ein Datenfehler in einem einzigen Dokument den Host —
+		// bei votemanager.kdo.de also alle 3143 Behörden.
+		const fehler = vi.fn();
+		const erfolg = vi.fn(async () => { throw new Error('Ungültiges Datum'); });
+		await lauf(speicherMit(fehler, erfolg), async () => Response.json({ stand: 1 }));
+		expect(erfolg).toHaveBeenCalled();
+		expect(fehler).toHaveBeenCalledWith(aufgabe, expect.any(Error), expect.any(Date), false, false);
 	});
 });

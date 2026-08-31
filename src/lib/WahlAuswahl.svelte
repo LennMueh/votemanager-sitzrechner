@@ -18,17 +18,31 @@
 	let standard = $state('');
 	let alleTermine = $state<Wahltermin[]>([]);
 
+	// Der Katalog wird je Termin geholt, nicht am Stück: über alle Termine sind es
+	// 30.518 Einträge, angezeigt wird immer nur ein Tag. Der erste Aufruf kommt
+	// ohne Termin aus — der Server nimmt dann den Standardtermin und liefert die
+	// Terminliste gleich mit, sodass es bei einem Umlauf bleibt.
+	const gewuenschterTermin = $derived.by(() => {
+		const ausUrl = page.url.searchParams.get('wahltag');
+		if (ausUrl) return `${ausUrl.slice(0, 4)}-${ausUrl.slice(4, 6)}-${ausUrl.slice(6, 8)}`;
+		return termin;
+	});
+
 	$effect(() => {
-		fetch('/api/katalog')
+		const gesucht = gewuenschterTermin;
+		laedt = true;
+		fetch(`/api/katalog${gesucht ? `?termin=${gesucht}` : ''}`)
 			.then(async (r) => {
-				if (!r.ok) throw new Error(r.statusText);
-				return r.json();
+				const x = await r.json();
+				if (!r.ok) throw new Error(x.fehler ?? r.statusText);
+				return x;
 			})
 			.then((x) => {
 				eintraege = x.eintraege;
 				alleTermine = x.termine ?? [];
 				standard = page.url.searchParams.get('wahltag') ?? x.wahltag;
-				termin = standard ? `${standard.slice(0, 4)}-${standard.slice(4, 6)}-${standard.slice(6, 8)}` : '';
+				if (!termin) termin = x.termin ?? '';
+				fehler = '';
 			})
 			.catch((e) => (fehler = String(e)))
 			.finally(() => (laedt = false));

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { konfiguration, type PollerKonfiguration } from './config.ts';
 import { Drossel } from './drossel.ts';
-import { holeJson, type AbrufStand } from './http.ts';
+import { endgueltig, holeJson, type AbrufStand } from './http.ts';
 import { REGISTRY_URL } from './urls.ts';
 import { fehlerBackoff, type Zustand } from './zustand.ts';
 
@@ -34,7 +34,20 @@ export interface PollerSpeicher {
 		hash?: string;
 		geprueft: Date;
 	}): Promise<void>;
-	fehler(aufgabe: PollerAufgabe, fehler: unknown, naechstePruefung: Date): Promise<void>;
+	/**
+	 * @param endgueltig Der Server hat „gibt es nicht" gesagt (404/410) — der Pfad
+	 *   wird stillgelegt, statt fünf Versuche zu verbrauchen.
+	 * @param hostBelasten Ob der Fehler dem Host angelastet wird. Falsch bei
+	 *   endgültigen Antworten und bei Fehlern, die beim Speichern entstehen: der
+	 *   Host hat in beiden Fällen sauber geliefert.
+	 */
+	fehler(
+		aufgabe: PollerAufgabe,
+		fehler: unknown,
+		naechstePruefung: Date,
+		endgueltig?: boolean,
+		hostBelasten?: boolean
+	): Promise<void>;
 	registryFaellig(jetzt: Date): Promise<boolean>;
 	/**
 	 * Befördert Pfade vergangener Wahlen auf `nachernte` und liefert die Anzahl.
@@ -138,6 +151,7 @@ export class Poller {
 	}
 
 	private async bearbeite(aufgabe: PollerAufgabe, jetzt: Date): Promise<void> {
+		let ergebnis;
 		try {
 			// Ein neuer gefilterter Probe-Lauf muss die Terminliste erneut auswerten:
 			// Bei 304 gäbe es keinen Inhalt, aus dem der neu gewählte Wahltag
@@ -145,9 +159,24 @@ export class Poller {
 			const stand = this.config.wahltage?.length && aufgabe.url.endsWith('/api/termine.json')
 				? {}
 				: aufgabe.stand;
-			const ergebnis = await this.drossel.ausfuehren(aufgabe.url, () =>
+			ergebnis = await this.drossel.ausfuehren(aufgabe.url, () =>
 				holeJson(aufgabe.url, stand, { kontakt: this.config.kontakt, fetch: this.fetchImpl })
 			);
+		} catch (fehler) {
+			const retryAfterMs = (fehler as { retryAfterMs?: number }).retryAfterMs;
+			await this.speicher.fehler(
+				aufgabe,
+				fehler,
+				new Date(jetzt.getTime() + fehlerBackoff(aufgabe.fehler + 1, retryAfterMs)),
+				endgueltig(fehler)
+			);
+			return;
+		}
+
+		// Bewusst außerhalb des try oben: ein Parser- oder Datenbankfehler beim
+		// Speichern ist kein Abruffehler. Lag er im selben try, wurde er dem Host
+		// angelastet — und sperrte bei votemanager.kdo.de alle 3143 Behörden.
+		try {
 			const inhalt = ergebnis.geaendert ? ergebnis.inhalt : undefined;
 			await this.speicher.erfolg(aufgabe, {
 				geaendert: ergebnis.geaendert,
@@ -157,11 +186,13 @@ export class Poller {
 				geprueft: jetzt
 			});
 		} catch (fehler) {
-			const retryAfterMs = (fehler as { retryAfterMs?: number }).retryAfterMs;
+			// Der Pfad wird vertagt, der Host bleibt unbehelligt: er hat geliefert.
 			await this.speicher.fehler(
 				aufgabe,
 				fehler,
-				new Date(jetzt.getTime() + fehlerBackoff(aufgabe.fehler + 1, retryAfterMs))
+				new Date(jetzt.getTime() + fehlerBackoff(aufgabe.fehler + 1)),
+				false,
+				false
 			);
 		}
 	}
