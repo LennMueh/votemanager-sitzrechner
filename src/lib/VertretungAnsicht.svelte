@@ -14,6 +14,17 @@
 	);
 	const gewaehlte = $derived(ergebnis.verteilung?.sitze.filter((s) => s.name) ?? []);
 	const unbesetzt = $derived(ergebnis.verteilung?.sitze.filter((s) => s.unbesetzt) ?? []);
+	// Nach Wahlvorschlag gruppiert: erst dadurch hat die Farbe des unbesetzten
+	// Sitzes einen Namen daneben stehen — § 36 Abs. 7 trifft eine bestimmte Liste.
+	const unbesetztJePartei = $derived.by(() => {
+		const m = new Map<string, { partei: string; farbe?: string; anzahl: number }>();
+		for (const s of unbesetzt) {
+			const e = m.get(s.partei) ?? { partei: s.partei, farbe: s.farbe, anzahl: 0 };
+			e.anzahl++;
+			m.set(s.partei, e);
+		}
+		return [...m.values()];
+	});
 	const mitSitzen = $derived(ergebnis.verteilung?.parteien.filter((p) => p.sitze > 0) ?? []);
 	const mehrereBereiche = $derived(ergebnis.wahlbereiche.length > 1);
 
@@ -27,6 +38,10 @@
 	const streit = $derived(
 		(ergebnis.sitzzahlQuellen ?? []).filter((q) => q.sitze !== ergebnis.sitzzahl)
 	);
+
+	/** „A", „A und B", „A, B und C" — Beteiligte eines Losentscheids lesbar aufzählen. */
+	const und = (x: string[]) =>
+		x.length > 1 ? `${x.slice(0, -1).join(', ')} und ${x.at(-1)}` : (x[0] ?? '');
 
 	const fmt = new Intl.NumberFormat('de-DE');
 	const pct = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -157,22 +172,38 @@
 					<span class="anteil zahl">{pct.format(p.prozent)} %</span>
 				</li>
 			{/each}
-			{#if unbesetzt.length}
+			<!-- Ohne Wahlvorschlag bleibt es bei „unbesetzt": aus der amtlichen Liste
+			     allein lässt sich nicht sagen, wem der leere Platz zufiele. -->
+			{#each unbesetztJePartei as u (u.partei)}
 				<li>
-					<span class="punkt leer"></span>
-					<strong>unbesetzt</strong>
-					<span class="zahl sitzzahl">{unbesetzt.length}</span>
+					<span class="punkt leer" style:--farbe={u.farbe ?? 'var(--text-3)'}></span>
+					{#if u.partei}<strong>{u.partei}</strong>{/if}
+					<span class="unbesetzt-wort">unbesetzt</span>
+					<span class="zahl sitzzahl">{u.anzahl}</span>
 				</li>
-			{/if}
+			{/each}
 		</ul>
 
 		{#if ergebnis.verteilung.losentscheide.length}
+			<!-- Wer ein Mandat durch das Los gewinnen oder verlieren kann, wird
+			     namentlich genannt. `betroffene` steht im Ergebnis, war aber bislang
+			     nur im Fließtext einzelner Losfälle enthalten. -->
 			<div class="hinweis">
 				<strong>Losentscheid nötig</strong> — das Gesetz lässt hier losen, das Ergebnis steht
 				insoweit nicht fest:
 				<ul>
-					{#each ergebnis.verteilung.losfaelle as l (l.kontext)}
-						<li>{l.text}; provisorisch ausgewählt: {l.vorlaeufig.join(', ') || 'niemand'}.</li>
+					{#each ergebnis.verteilung.losfaelle as l, i (l.kontext + i)}
+						<li>
+							<strong>{l.kontext}</strong> —
+							{#if l.betroffene.length}
+								Stimmengleichheit zwischen {und(l.betroffene)} um
+								{l.sitze}&nbsp;{l.sitze === 1 ? 'Sitz' : 'Sitze'}
+							{:else}
+								{l.text}
+							{/if}
+							({l.rechtsgrundlage}). Vorläufig ausgewählt:
+							<em>{und(l.vorlaeufig) || 'niemand'}</em>.
+						</li>
 					{/each}
 				</ul>
 			</div>
@@ -209,7 +240,7 @@
 				{/each}
 				{#each unbesetzt as s, i (s.partei + i)}
 					<tr class="unbesetzt">
-						<td><span class="punkt leer"></span>{s.partei}</td>
+						<td><span class="punkt leer" style:--farbe={s.farbe ?? 'var(--text-3)'}></span>{s.partei || '—'}</td>
 						<td colspan={mehrereBereiche ? 3 : 2}>
 							unbesetzt — {s.grund}
 						</td>
@@ -378,9 +409,24 @@
 		vertical-align: -1px;
 	}
 
+	/* Schraffur und gestrichelter Rand bleiben das Unterscheidungsmerkmal; die
+	   Farbe des Wahlvorschlags kommt hinzu, damit sichtbar ist, wem der Sitz
+	   zugefallen wäre. Der Parteiname steht daneben — nie Farbe allein.
+	   Die Streifen bewusst grob: der Punkt ist 11px groß und trägt einen 2px
+	   breiten Rand, feinere Streifen verschwänden auf der Restfläche. */
 	.punkt.leer {
-		background: transparent;
-		border: 2px dashed var(--text-3);
+		background: repeating-linear-gradient(
+			45deg,
+			var(--farbe, var(--text-3)) 0 2px,
+			transparent 2px 4px
+		);
+		box-shadow: none;
+		border: 2px dashed var(--farbe, var(--text-3));
+	}
+
+	.unbesetzt-wort {
+		color: var(--text-3);
+		font-style: italic;
 	}
 
 	table {
