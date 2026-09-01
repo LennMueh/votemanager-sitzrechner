@@ -3,7 +3,7 @@ import { konfiguration, type PollerKonfiguration } from './config.ts';
 import { Drossel } from './drossel.ts';
 import { endgueltig, holeJson, type AbrufStand } from './http.ts';
 import { REGISTRY_URL } from './urls.ts';
-import { fehlerBackoff, type Zustand } from './zustand.ts';
+import { ENDGUELTIG_MS, fehlerBackoff, type Zustand } from './zustand.ts';
 
 /** Abstand zwischen zwei Nachernte-Beförderungen. */
 const BEFOERDERUNG_MS = 5 * 60_000;
@@ -164,11 +164,12 @@ export class Poller {
 			);
 		} catch (fehler) {
 			const retryAfterMs = (fehler as { retryAfterMs?: number }).retryAfterMs;
+			const dauerhaft = endgueltig(fehler);
 			await this.speicher.fehler(
 				aufgabe,
 				fehler,
-				new Date(jetzt.getTime() + fehlerBackoff(aufgabe.fehler + 1, retryAfterMs)),
-				endgueltig(fehler)
+				new Date(jetzt.getTime() + (dauerhaft ? ENDGUELTIG_MS : fehlerBackoff(aufgabe.fehler + 1, retryAfterMs))),
+				dauerhaft
 			);
 			return;
 		}

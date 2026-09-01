@@ -4,7 +4,7 @@ import { Drossel } from './drossel';
 import { endgueltig, holeJson, retryAfter } from './http';
 import { parseRegistry, Poller, type PollerAufgabe, type PollerSpeicher } from './index';
 import { apiWurzel, termineUrl } from './urls';
-import { fehlerBackoff, naechsterZustand, pruefIntervall } from './zustand';
+import { ENDGUELTIG_MS, fehlerBackoff, naechsterZustand, pruefIntervall } from './zustand';
 import { parseErgebnis } from '../../votemanager';
 import { deutschesDatum, filtereTermine, terminZustand } from '../db';
 
@@ -258,6 +258,17 @@ describe('Fehlerpfad des Pollers', () => {
 		// Viertes Argument: endgültig. Der Pfad wird stillgelegt, statt fünf
 		// Versuche gegen eine Ressource zu verbrauchen, die es nicht gibt.
 		expect(fehler).toHaveBeenCalledWith(aufgabe, expect.any(Error), expect.any(Date), true);
+	});
+
+	it('vertagt einen 404 um dreißig Tage statt um dreißig Sekunden', async () => {
+		// fehlerBackoff() gibt beim ersten Fehler 30 s — richtig für einen Ausfall,
+		// falsch für ein „gibt es nicht". Über den 24-Stunden-Deckel kamen so 10.514
+		// tote Pfade täglich erneut in die Auswahl und belegten die Vorratsscheibe
+		// vollständig, während die Nachernte leer lag.
+		const fehler = vi.fn();
+		await lauf(speicherMit(fehler), async () => new Response('weg', { status: 404 }));
+		const frist = fehler.mock.calls[0][2] as Date;
+		expect(frist.getTime() - new Date('2026-01-01').getTime()).toBe(ENDGUELTIG_MS);
 	});
 
 	it('behandelt einen 503 weiter als Ausfall des Hosts', async () => {

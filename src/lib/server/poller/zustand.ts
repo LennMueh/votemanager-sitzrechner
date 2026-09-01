@@ -119,6 +119,20 @@ export function pruefIntervall(zustand: Zustand): number | undefined {
 	}
 }
 
+/**
+ * Frist nach einer endgültigen Auskunft (404/410).
+ *
+ * fehlerBackoff() gibt beim ersten Fehler 30 Sekunden — richtig für einen
+ * Ausfall, falsch für ein „gibt es nicht". Die Nachernte läuft historische
+ * Termine zurück und bildet dabei zwangsläufig Pfade, die es nie gab; über den
+ * 24-Stunden-Deckel kamen davon 10.514 täglich erneut in die Auswahl und
+ * belegten die Vorratsscheibe vollständig, während die Nachernte leer lag.
+ *
+ * Derselbe Takt wie bei ruhenden Pfaden: der Zustand 'unerreichbar' bleibt, der
+ * Rückweg über einen erfolgreichen Abruf bleibt — nur eben monatlich.
+ */
+export const ENDGUELTIG_MS = 30 * 24 * 60 * MINUTE;
+
 /** Verdopplung ab 30 s. Ein Retry-After des Anbieters schlägt den Deckel — wir
  *  verkürzen nie, was uns die fremde Infrastruktur ausdrücklich vorgibt. */
 export function fehlerBackoff(fehler: number, retryAfterMs?: number, deckel = 24 * 60 * MINUTE): number {
