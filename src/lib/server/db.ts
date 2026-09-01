@@ -93,32 +93,47 @@ export async function erstellePollerSpeicher(
 					termin_datum: string | null;
 					struktur_geladen: boolean;
 				}>
-			>`WITH faellig AS (SELECT p.id::text, p.pfad, p.instanz_id, coalesce(i.api_wurzel, i.termin_url) AS basis,
-				p.zustand, p.prioritaet, p.etag, p.last_modified, p.fehler_anzahl,
-				p.zuletzt_geaendert, p.zustand_vor_fehler,
-				-- Kein JOIN termin: 115 Instanzen tragen zwei Termine, das würde
-				-- Zeilen vervielfachen. Auswahlregel wie waehleStandardtermin():
-				-- der nächste noch anstehende Termin, sonst der letzte vergangene.
-				(SELECT to_char(t.datum, 'YYYY-MM-DD') FROM termin t WHERE t.instanz_id = i.id
-					ORDER BY (t.datum < current_date), abs(t.datum - current_date) LIMIT 1) AS termin_datum,
-				EXISTS (SELECT 1 FROM pfad_stand w WHERE w.instanz_id = i.id
-					AND w.pfad LIKE '%/wahl.json' AND w.status IS NOT NULL) AS struktur_geladen,
-				p.naechste_pruefung,
+			>`
+			-- Der Host je Instanz, einmal statt je Zeile. Vorher stand der Ausdruck
+			-- in der JOIN-Bedingung gegen host_stand; weil ein Ausdruck als
+			-- Join-Bedingung keinen Hash zulässt, wurde daraus eine Nested Loop mit
+			-- 1.508.285 verworfenen Zeilenpaaren, jedes mit einem Regex — 11,4 der
+			-- 17,6 Sekunden, die diese Abfrage brauchte.
+			--
+			-- Der Instanz-Host genügt: alle 553.306 archivierten Pfade sind absolut,
+			-- und bei keinem einzigen weicht sein Host von dem der Instanz ab. Er ist
+			-- damit dasselbe, was new URL(pfad, basis).host in der Zeilenabbildung
+			-- unten ergibt — nur ohne Regex je Zeile.
+			WITH instanzhost AS (
+				SELECT i.id, substring(coalesce(i.api_wurzel, i.termin_url) FROM '^https?://([^/]+)') AS host
+				FROM instanz i
+			),
+			gesperrt AS (SELECT host FROM host_stand WHERE naechster_abruf > now()),
+			-- Nur was für Filter und Rangfolge gebraucht wird. Alles Abgeleitete
+			-- kommt unten für die rund hundert ausgewählten Zeilen, nicht für die
+			-- 52.216 fälligen: termin_datum allein war ein Subplan mit 52.216
+			-- Schleifendurchläufen, um hundert Werte zu behalten.
+			faellig AS (SELECT p.id, p.zustand, p.prioritaet, p.naechste_pruefung,
 				-- prioritaet ist statisch, der Zustand nicht: ein Ergebnispfad von
 				-- 2021 behält seine 85 für immer und schlug damit die termin.json
 				-- der laufenden Wahl. Der Zustand entscheidet deshalb zuerst.
-				CASE p.zustand WHEN 'wahlabend' THEN 4 WHEN 'vorlauf' THEN 3 WHEN 'nachlauf' THEN 2
-					WHEN 'ruhend' THEN 0 WHEN 'unerreichbar' THEN 0 WHEN 'nachernte' THEN 0 ELSE 1 END AS rang
+				--
+				-- 'geplant' steht neben 'nachlauf' und nicht bei 'beobachtung':
+				-- beide hatten Rang 1 und Priorität 45, und von den 22.855 fälligen
+				-- beobachtung-Pfaden war jeder älter als der älteste geplante. Über
+				-- den Stichentscheid naechste_pruefung bekam 'geplant' dadurch null
+				-- von hundert Plätzen — bei 5.845 fälligen, über Stunden unverändert.
+				-- Darüber läuft die Entdeckung neuer Termine. Der Rang beendet sich
+				-- selbst: ein Pfad verlässt 'geplant' mit dem ersten Erfolg.
+				CASE p.zustand WHEN 'wahlabend' THEN 4 WHEN 'vorlauf' THEN 3
+					WHEN 'nachlauf' THEN 2 WHEN 'geplant' THEN 2
+					WHEN 'ruhend' THEN 0 WHEN 'unerreichbar' THEN 0 WHEN 'nachernte' THEN 0
+					ELSE 1 END AS rang
 			FROM pfad_stand p JOIN instanz i ON i.id = p.instanz_id
 			JOIN behoerde b ON b.id = i.behoerde_id
-			-- Spiegelt new URL(pfad, basis).host aus der Zeilenabbildung unten.
-			-- ponytail: Ausdruck im JOIN statt eigener Spalte; erst bei spürbarer
-			-- Planzeit auf eine generierte host-Spalte in pfad_stand umstellen.
-			LEFT JOIN host_stand h ON h.host = substring(
-				CASE WHEN p.pfad ~ '^https?://' THEN p.pfad ELSE coalesce(i.api_wurzel, i.termin_url) END
-				FROM '^https?://([^/]+)')
+			JOIN instanzhost ih ON ih.id = i.id
 			WHERE b.aktiv AND p.naechste_pruefung <= now() AND (${backfill} OR p.zustand <> 'ruhend')
-				AND (h.naechster_abruf IS NULL OR h.naechster_abruf <= now())
+				AND NOT EXISTS (SELECT 1 FROM gesperrt g WHERE g.host = ih.host)
 				-- Korreliert auf die Instanz: unkorreliert hieß das „irgendwo läuft
 				-- eine Wahl" und sperrte jeden Backfill, solange auch nur ein Pfad
 				-- live war. Zwei Wochen lang war das dauerhaft der Fall.
@@ -138,22 +153,35 @@ export async function erstellePollerSpeicher(
 			-- hätten die Nachernte damit für immer abgeschaltet — 5.770 wartende
 			-- Pfade und kein einziger geholter.
 			takt AS (SELECT CASE WHEN EXISTS (SELECT 1 FROM termin WHERE datum = current_date)
-				THEN 0 ELSE ${nachernte} END AS quote)
+				THEN 0 ELSE ${nachernte} END AS quote),
 			-- Unerreichbare Pfade zählen zur Vorratsarbeit, nicht zur Hauptauswahl.
-			-- Es sind über tausend, die überwiegend dauerhaft 404 liefern; in der
+			-- Es sind über zehntausend, die überwiegend dauerhaft 404 liefern; in der
 			-- Hauptauswahl belegten sie Plätze und die zwei Drossel-Slots je Host,
 			-- scheiterten erneut und sperrten den Host für die lebenden Pfade gleich
 			-- mit. Ganz aussperren wäre falsch: ein Pfad verlässt diesen Zustand
 			-- ausschließlich über einen erfolgreichen Abruf (siehe dokumentZustand).
-			(SELECT * FROM faellig WHERE zustand NOT IN ('nachernte', 'unerreichbar')
-				ORDER BY rang DESC, prioritaet DESC, naechste_pruefung
-				LIMIT (SELECT ${limit - reserve} - quote FROM takt))
-			UNION
-			(SELECT * FROM faellig WHERE zustand NOT IN ('nachernte', 'unerreichbar')
-				ORDER BY naechste_pruefung LIMIT ${reserve})
-			UNION
-			(SELECT * FROM faellig WHERE zustand IN ('nachernte', 'unerreichbar')
-				ORDER BY prioritaet DESC, naechste_pruefung LIMIT (SELECT quote FROM takt))`;
+			auswahl AS (
+				(SELECT id FROM faellig WHERE zustand NOT IN ('nachernte', 'unerreichbar')
+					ORDER BY rang DESC, prioritaet DESC, naechste_pruefung
+					LIMIT (SELECT ${limit - reserve} - quote FROM takt))
+				UNION
+				(SELECT id FROM faellig WHERE zustand NOT IN ('nachernte', 'unerreichbar')
+					ORDER BY naechste_pruefung LIMIT ${reserve})
+				UNION
+				(SELECT id FROM faellig WHERE zustand IN ('nachernte', 'unerreichbar')
+					ORDER BY prioritaet DESC, naechste_pruefung LIMIT (SELECT quote FROM takt)))
+			SELECT p.id::text, p.pfad, p.instanz_id, coalesce(i.api_wurzel, i.termin_url) AS basis,
+				p.zustand, p.prioritaet, p.etag, p.last_modified, p.fehler_anzahl,
+				p.zuletzt_geaendert, p.zustand_vor_fehler,
+				-- Kein JOIN termin: 115 Instanzen tragen zwei Termine, das würde
+				-- Zeilen vervielfachen. Auswahlregel wie waehleStandardtermin():
+				-- der nächste noch anstehende Termin, sonst der letzte vergangene.
+				(SELECT to_char(t.datum, 'YYYY-MM-DD') FROM termin t WHERE t.instanz_id = i.id
+					ORDER BY (t.datum < current_date), abs(t.datum - current_date) LIMIT 1) AS termin_datum,
+				EXISTS (SELECT 1 FROM pfad_stand w WHERE w.instanz_id = i.id
+					AND w.pfad LIKE '%/wahl.json' AND w.status IS NOT NULL) AS struktur_geladen
+			FROM auswahl a JOIN pfad_stand p ON p.id = a.id
+			JOIN instanz i ON i.id = p.instanz_id`;
 			return zeilen.map((z) => ({
 				id: z.id,
 				url: new URL(z.pfad, z.basis.endsWith('/') ? z.basis : `${z.basis}/`).href,
