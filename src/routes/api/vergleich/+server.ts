@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { berechneVertretung, holeWahltermine } from '$lib/server/daten';
+import { berechneVertretung, holeWahltermine, wahlpfad } from '$lib/server/daten';
 import { waehleGegenwahl } from '$lib/server/vergleich';
 import type { RequestHandler } from './$types';
 
@@ -46,7 +46,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 		WHERE b.kennung=${basis[0].ags} AND EXISTS (
 			SELECT 1 FROM pfad_stand p JOIN dokument d ON d.pfad_stand_id=p.id
-			WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json')`;
+			WHERE p.instanz_id=i.id AND ${wahlpfad(db())} = '/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json')`;
 	const ziel = waehleGegenwahl(basis[0], kandidaten);
 	if (!ziel) return json({ fehler: `Keine passende Gegenwahl für ${basis[0].name}` }, { status: 404 });
 

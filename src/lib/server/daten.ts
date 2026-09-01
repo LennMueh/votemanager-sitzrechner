@@ -41,6 +41,25 @@ const TABELLE = new Map(
 	)
 );
 
+/**
+ * Die letzten beiden Segmente eines Ergebnispfades, also
+ * `/wahl_<wahlId>/ergebnis_<gebietId>_0.json`.
+ *
+ * Das Ergebnisdokument einer Wahl wird über den Pfad gefunden, dessen Anfang je
+ * Anbieter anders aussieht. Bisher geschah das über `LIKE '%/wahl_…'`: ein
+ * führender Platzhalter, den kein Index bedienen kann — 549.000 Pfade wurden je
+ * Wahl durchsucht, was allein in der Übersicht 3,4 der 16 Sekunden kostete.
+ * Als Gleichheit auf diesem Ausdruck ist es ein Indexzugriff (siehe
+ * `migrationen/005_pfadsuffix.sql`).
+ *
+ * Nebenbei eine Korrektur: in `LIKE` ist `_` ein Platzhalter für ein beliebiges
+ * Zeichen, `ergebnis_` und `_0.json` trafen also mehr, als sie sollten. Auf dem
+ * Bestand macht das keinen Unterschied (geprüft: 7.210 Treffer wie zuvor).
+ */
+export function wahlpfad(sql: ReturnType<typeof db>) {
+	return sql`substring(p.pfad from '/wahl_[^/]+/[^/]+$')`;
+}
+
 /** Sitzzahl einer Vertretung — Vorbelegung, siehe sitzzahlen*.json. */
 export function sitzzahl(ref: VertretungRef): number | undefined {
 	return TABELLE.get(vertretungsSchluessel(ref.ags, ref.titel, ref.gebietName))?.sitze;
@@ -86,7 +105,7 @@ async function sitzzahlVorwahl(
 		JOIN instanz i ON i.id=t.instanz_id
 		JOIN behoerde b ON b.id=i.behoerde_id
 		JOIN pfad_stand p ON p.instanz_id=i.id
-			AND p.pfad LIKE '%/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
+			AND ${wahlpfad(sql)} = '/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 		WHERE b.kennung=${ref.ags} AND to_char(t.datum,'YYYYMMDD') < ${wahltag}
 		ORDER BY t.datum DESC`;
 
@@ -149,16 +168,37 @@ interface Eintrag<T> {
 	wert: T;
 }
 // PostgreSQL ist der gemeinsame Cache; lokal bleibt nur der letzte gute Stand für Fehlerfälle.
-const FRISCH_MS = 0;
+//
+// Kurz, weil der Poller ohnehin nur im 30-Sekunden-Takt nachlädt: die Frist kann
+// keinen Stand verstecken, den es schon gibt. Sie war auf 0 und damit
+// wirkungslos — bei zwei Web-Pods, mehreren offenen Browsern und der
+// SSE-Nachführung rechnete jeder Abruf die volle Übersicht neu.
+const FRISCH_MS = 3_000;
 const speicher = new Map<string, Eintrag<unknown>>();
+// Laufende Ladevorgänge. Das Wichtigere von beidem: die Frist hilft erst nach
+// dem ersten Ergebnis, gleichzeitige Abrufe desselben Schlüssels rechnen ohne
+// sie alle parallel — genau der Fall, wenn ein SSE-Ereignis alle Browser
+// gleichzeitig nachladen lässt.
+const laufend = new Map<string, Promise<unknown>>();
 
-async function zwischengespeichert<T extends object>(schluessel: string, laden: () => Promise<T>): Promise<T & { stale?: boolean }> {
+export async function zwischengespeichert<T extends object>(schluessel: string, laden: () => Promise<T>): Promise<T & { stale?: boolean }> {
 	const alt = speicher.get(schluessel) as Eintrag<T> | undefined;
 	if (alt && Date.now() - alt.zeit < FRISCH_MS) return alt.wert;
+	let arbeit = laufend.get(schluessel) as Promise<T> | undefined;
+	if (!arbeit) {
+		arbeit = laden().then((wert) => {
+			speicher.set(schluessel, { zeit: Date.now(), wert });
+			return wert;
+		});
+		laufend.set(schluessel, arbeit);
+		// Eigene Kette zum Aufräumen, damit ein Fehlschlag den Eintrag ebenso
+		// entfernt und dabei keine unbehandelte Ablehnung hinterlässt.
+		void arbeit.catch(() => {}).finally(() => laufend.delete(schluessel));
+	}
+	// Bewusst im try: auch der angehängte Aufrufer soll den letzten guten Stand
+	// bekommen statt der rohen Ausnahme.
 	try {
-		const wert = await laden();
-		speicher.set(schluessel, { zeit: Date.now(), wert });
-		return wert;
+		return await arbeit;
 	} catch (e) {
 		// Der Wahlabend darf nicht an einem Timeout scheitern: letzten guten
 		// Stand weiterreichen und als veraltet kennzeichnen.
@@ -275,7 +315,7 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 			LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
 			LEFT JOIN LATERAL (SELECT d.inhalt->'Komponente'->'info'->'hinweis' AS hinweis, true AS da
 				FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
-				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
+				WHERE p.instanz_id=i.id AND ${wahlpfad(sql)} = '/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 				ORDER BY d.id DESC LIMIT 1) d ON true
 			WHERE t.datum=${`${ausgewaehlt.slice(0, 4)}-${ausgewaehlt.slice(4, 6)}-${ausgewaehlt.slice(6, 8)}`}::date ORDER BY b.name, w.name`;
 		const ags = [...new Set(zeilen.map((z) => z.ags))];
@@ -284,12 +324,22 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			WHERE b.kennung IN ${sql(ags)} AND EXISTS (
 				SELECT 1 FROM pfad_stand p JOIN dokument d ON d.pfad_stand_id=p.id
-				WHERE p.instanz_id=i.id AND p.pfad LIKE ${'%' + '/wahl_'} || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json')` : [];
+				WHERE p.instanz_id=i.id AND ${wahlpfad(sql)} = '/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json')` : [];
+		// Kandidaten einmal nach AGS gruppieren statt je Zeile zu filtern. Die
+		// Filterung kostete bei 8.095 Zeilen gegen 28.538 Kandidaten 231 Millionen
+		// Vergleiche und damit 10,8 der 16 Sekunden des Abrufs; gruppiert sind es
+		// 0,19 s bei gleichem Ergebnis.
+		const jeAgs = new Map<string, Array<{ ags: string; wahltag: string; name: string; gebietName: string }>>();
+		for (const k of kandidaten) {
+			const liste = jeAgs.get(k.ags);
+			if (liste) liste.push(k);
+			else jeAgs.set(k.ags, [k]);
+		}
 		const eintraege = zeilen.map((z): UebersichtEintrag => {
 			const ref: VertretungRef = { instanzId: z.instanz_id, ags: z.ags, behoerde: z.behoerde, wahlId: Number(z.wahl_id), gebietId: z.gebiet_id, gebietName: z.gebiet_name, titel: z.titel, direktwahl: /(bürgermeister|landrat|stichwahl)/i.test(z.titel) };
 			const vergleichbar = Boolean(z.da && waehleGegenwahl(
 				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name },
-				kandidaten.filter((k) => k.ags === z.ags)
+				jeAgs.get(z.ags) ?? []
 			));
 			return z.da ? { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze: sitzzahl(ref), stand: parseStand(z.hinweis ?? undefined) } : { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
 		});

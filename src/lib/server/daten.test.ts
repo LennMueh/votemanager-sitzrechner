@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { amtlicheVerteilung, gegenprobe, waehleSitzzahl, waehleStandardtermin } from './daten';
+import { describe, expect, it, vi } from 'vitest';
+import { amtlicheVerteilung, gegenprobe, waehleSitzzahl, waehleStandardtermin, zwischengespeichert } from './daten';
 import { vertretungsSchluessel } from './vergleich';
 import type { Sitz, Sitzverteilung, Stimmenverhaeltnis } from '$lib/nkwg';
 import sitzzahlen from '$lib/sitzzahlen.json';
@@ -206,5 +206,49 @@ describe('Gegenprobe der eigenen Rechnung', () => {
 	it('bleibt ohne eigene Rechnung stumm', () => {
 		const v = amtlicheVerteilung({ anzahl: 6, spalten: SPALTEN, gewaehlte: OEDEME }, stimmen);
 		expect(gegenprobe(undefined, v)).toEqual([]);
+	});
+});
+
+describe('Zwischenspeicher der Übersicht', () => {
+	it('rechnet gleichzeitige Abrufe desselben Schlüssels nur einmal', async () => {
+		// Der eigentliche Grund für den Single-Flight: die Frist hilft erst nach dem
+		// ersten Ergebnis. Ein SSE-Ereignis lässt alle offenen Browser gleichzeitig
+		// nachladen — ohne diese Zusammenfassung rechnet jeder Abruf die volle
+		// Übersicht parallel, auf beiden Web-Pods.
+		let laeufe = 0;
+		let aufloesen!: (wert: { n: number }) => void;
+		const laden = () => {
+			laeufe++;
+			return new Promise<{ n: number }>((resolve) => (aufloesen = resolve));
+		};
+		const beide = Promise.all([
+			zwischengespeichert('gleichzeitig', laden),
+			zwischengespeichert('gleichzeitig', laden)
+		]);
+		aufloesen({ n: 1 });
+		expect(await beide).toEqual([{ n: 1 }, { n: 1 }]);
+		expect(laeufe).toBe(1);
+	});
+
+	it('liefert innerhalb der Frist den gespeicherten Stand', async () => {
+		let laeufe = 0;
+		const laden = async () => ({ n: ++laeufe });
+		expect(await zwischengespeichert('frist', laden)).toEqual({ n: 1 });
+		expect(await zwischengespeichert('frist', laden)).toEqual({ n: 1 });
+		expect(laeufe).toBe(1);
+	});
+
+	it('reicht bei einem Fehlschlag den letzten guten Stand weiter — auch an den angehängten Aufrufer', async () => {
+		await zwischengespeichert('stale', async () => ({ n: 1 }));
+		// Die Uhr vorstellen statt wirklich zu warten: die Frist wird über
+		// Date.now() geprüft.
+		vi.useFakeTimers();
+		vi.setSystemTime(Date.now() + 3_050);
+		const beide = await Promise.all([
+			zwischengespeichert('stale', async () => { throw new Error('Datenbank weg'); }),
+			zwischengespeichert('stale', async () => { throw new Error('Datenbank weg'); })
+		]);
+		expect(beide).toEqual([{ n: 1, stale: true }, { n: 1, stale: true }]);
+		vi.useRealTimers();
 	});
 });
