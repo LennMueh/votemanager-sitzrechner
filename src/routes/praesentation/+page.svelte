@@ -69,6 +69,8 @@
 	let wegJeSchluessel = $state<Record<string, { partei: string; name: string }[]>>({});
 	let index = $state(0);
 	let pausiert = $state(false);
+	/** Zähler, der den Takt neu anwirft — siehe `vor()` und `weiter()`. */
+	let taktAnker = $state(0);
 	let fehler = $state('');
 
 	// Letzter bekannter Stand der Gewählten je Vertretung, für die Hervorhebung.
@@ -108,19 +110,29 @@
 	}
 
 	const ladeAlle = () => Promise.all(auswahl.map(ladeEine));
-	const stromSchluessel = $derived(auswahl.flatMap((k) => {
-		if (/^i\d+:/.test(k)) return [`v:${k}`];
-		const e = ergebnisse[k];
-		return e?.ref.instanzId ? [`v:i${e.ref.instanzId}:${e.ref.wahlId}:${e.ref.gebietId}`] : [];
-	}));
+	/**
+	 * Als String abgeleitet, nicht als Array: ein Derived-Array ist nach jedem
+	 * Datenabruf eine neue Referenz und risse die SSE-Verbindung jedes Mal ab und
+	 * ohne Replay wieder auf. Dieselbe Falle wie in `+page.svelte` und `v/`.
+	 */
+	const stromSchluessel = $derived(
+		auswahl
+			.flatMap((k) => {
+				if (/^i\d+:/.test(k)) return [`v:${k}`];
+				const e = ergebnisse[k];
+				return e?.ref.instanzId ? [`v:i${e.ref.instanzId}:${e.ref.wahlId}:${e.ref.gebietId}`] : [];
+			})
+			.sort()
+			.join(',')
+	);
 
 	$effect(() => {
 		if (auswahl.length) void ladeAlle();
 	});
 
 	$effect(() => {
-		if (!stromSchluessel.length) return;
-		return strom(stromSchluessel, () => void ladeAlle());
+		if (!stromSchluessel) return;
+		return strom(stromSchluessel.split(','), () => void ladeAlle());
 	});
 
 	/**
@@ -153,10 +165,18 @@
 		})
 	);
 
+	/**
+	 * Der Takt darf nicht an `seiten` hängen: das Derived ist nach jedem
+	 * SSE-Update ein neues Array, der Effekt liefe neu und setzte den Interval
+	 * vor Ablauf zurück — bei lebhafter Auszählung schaltete die Leinwand dann
+	 * nie weiter, während der Fortschrittsbalken durchlief. Die Seitenzahl
+	 * deshalb erst im Callback lesen; der läuft asynchron und wird nicht verfolgt.
+	 */
 	$effect(() => {
-		if (seiten.length < 2 || pausiert) return;
+		if (pausiert) return;
+		taktAnker;
 		const t = setInterval(() => {
-			index = (index + 1) % seiten.length;
+			if (seiten.length > 1) index = (index + 1) % seiten.length;
 		}, taktMs);
 		return () => clearInterval(t);
 	});
@@ -176,14 +196,41 @@
 	}
 
 	function vor() {
-		if (seiten.length) index = (index - 1 + seiten.length) % seiten.length;
+		if (!seiten.length) return;
+		index = (index - 1 + seiten.length) % seiten.length;
+		// Takt neu anwerfen, sonst folgt die nächste Seite unvermittelt und der
+		// Fortschrittsbalken zeigt eine Restzeit, die es nicht gibt.
+		taktAnker++;
 	}
 
 	function weiter() {
-		if (seiten.length) index = (index + 1) % seiten.length;
+		if (!seiten.length) return;
+		index = (index + 1) % seiten.length;
+		taktAnker++;
 	}
 
+	/**
+	 * Bedieninstrumente gehören nicht dauerhaft auf eine Leinwand: nach kurzer
+	 * Ruhe verschwinden Leiste und Mauszeiger, jede Regung holt sie zurück.
+	 */
+	const RUHE_MS = 3000;
+	let ruht = $state(false);
+	let uhr: ReturnType<typeof setTimeout>;
+	const verborgen = $derived(ruht && !pausiert);
+
+	function regung() {
+		ruht = false;
+		clearTimeout(uhr);
+		uhr = setTimeout(() => (ruht = true), RUHE_MS);
+	}
+
+	$effect(() => {
+		regung();
+		return () => clearTimeout(uhr);
+	});
+
 	function taste(e: KeyboardEvent) {
+		regung();
 		if (seiten.length === 0) return;
 		// Steht der Fokus in einem Bedienelement, gehören die Tasten diesem: sonst
 		// blättert der Pfeil im Takt-Auswahlfeld die Präsentation weiter, und die
@@ -202,7 +249,7 @@
 	}
 </script>
 
-<svelte:window onkeydown={taste} />
+<svelte:window onkeydown={taste} onpointermove={regung} />
 
 {#if auswahl.length === 0}
 	<!-- Auswahlbildschirm -->
@@ -221,8 +268,8 @@
 	</main>
 {:else}
 	<!-- Beamer-Ansicht -->
-	<div class="rahmen">
-		<div class="leiste">
+	<div class="rahmen" class:ruht={verborgen}>
+		<div class="leiste" class:weg={verborgen}>
 			<span class="zaehler zahl">{index + 1} / {seiten.length}</span>
 			<span class="tasten" aria-hidden="true">
 				Leertaste: {pausiert ? 'weiter' : 'Pause'} · ← → blättern · F Vollbild
@@ -339,23 +386,44 @@
 
 	/* Beamer */
 	.rahmen {
+		position: relative;
 		height: 100dvh;
 		display: flex;
 		flex-direction: column;
 		background: var(--flaeche);
 	}
 
+	.rahmen.ruht {
+		cursor: none;
+	}
+
+	/*
+	 * Overlay statt Flex-Zeile: so bleibt die Höhe der Bühne beim Ein- und
+	 * Ausblenden gleich. Sie misst ihren Inhalt und leitet daraus --skala ab —
+	 * eine springende Höhe hieße Neuskalierung bei jeder Mausbewegung.
+	 */
 	.leiste {
+		position: absolute;
+		inset: 0 0 auto;
+		z-index: 1;
+		transition: opacity 0.4s;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 1rem;
 		padding: 0.55rem clamp(.75rem, 2.5vw, 2rem);
 		border-bottom: 1px solid var(--rand);
-		background: color-mix(in srgb, var(--flaeche) 90%, transparent);
+		background: var(--flaeche);
 		color: var(--text-3);
 		font-size: 0.9rem;
 		flex: none;
+	}
+
+	/* Nur unsichtbar, nie aus dem Baum: sonst fiele ein fokussierter Knopf unter
+	   den Fingern weg. Fokus in der Leiste hält sie deshalb sichtbar. */
+	.leiste.weg:not(:focus-within) {
+		opacity: 0;
+		pointer-events: none;
 	}
 
 	.tasten {
