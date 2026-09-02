@@ -211,12 +211,11 @@
 
 	/**
 	 * Bedieninstrumente gehören nicht dauerhaft auf eine Leinwand: nach kurzer
-	 * Ruhe verschwinden Leiste und Mauszeiger, jede Regung holt sie zurück.
+	 * Ruhe verschwindet der Mauszeiger, jede Regung holt ihn zurück.
 	 */
 	const RUHE_MS = 3000;
 	let ruht = $state(false);
 	let uhr: ReturnType<typeof setTimeout>;
-	const verborgen = $derived(ruht && !pausiert);
 
 	function regung() {
 		ruht = false;
@@ -224,9 +223,51 @@
 		uhr = setTimeout(() => (ruht = true), RUHE_MS);
 	}
 
+	/**
+	 * Die Leiste liegt unten und deckt dort Inhalt zu. Sie erscheint deshalb nur,
+	 * wenn der Zeiger auf ihrem Streifen steht — nicht schon bei jeder Bewegung
+	 * irgendwo im Bild. Sonst holt sich, wer nur den Zeiger über die
+	 * Sitzverteilung schiebt, eine Leiste ins Bild, die er nicht angefasst hat.
+	 *
+	 * Maßgebend ist der Kasten der Leiste selbst, nicht ein geschätzter Rand:
+	 * sie umbricht je nach Breite auf zwei bis drei Zeilen, und ausgeblendet ist
+	 * sie nur durchsichtig — steht also weiter im Baum und lässt sich messen.
+	 */
+	let leiste = $state<HTMLDivElement>();
+	let leisteAn = $state(true);
+	let leisteUhr: ReturnType<typeof setTimeout>;
+	const verborgen = $derived(!pausiert && !leisteAn);
+
+	/** `befristet`: nach der Ruhezeit von selbst wieder weg. */
+	function leisteZeigen(befristet: boolean) {
+		leisteAn = true;
+		clearTimeout(leisteUhr);
+		if (befristet) leisteUhr = setTimeout(() => (leisteAn = false), RUHE_MS);
+	}
+
+	function zeiger(e: PointerEvent) {
+		regung();
+		// Touch und Stift kennen kein Schweben: dort bleibt es beim Ruhe-Timer,
+		// sonst wäre die Leiste auf dem Handy nicht mehr erreichbar.
+		if (e.pointerType !== 'mouse') return leisteZeigen(true);
+
+		// Auf der Leiste unbefristet: sie darf nicht unter dem Zeiger wegfallen,
+		// während man auf einen Knopf zielt.
+		if (e.clientY >= (leiste?.getBoundingClientRect().top ?? 0)) leisteZeigen(false);
+		else {
+			clearTimeout(leisteUhr);
+			leisteAn = false;
+		}
+	}
+
 	$effect(() => {
 		regung();
-		return () => clearTimeout(uhr);
+		// Beim Start einmal zeigen, damit die Bedienung überhaupt auffällt.
+		leisteZeigen(true);
+		return () => {
+			clearTimeout(uhr);
+			clearTimeout(leisteUhr);
+		};
 	});
 
 	function taste(e: KeyboardEvent) {
@@ -249,7 +290,7 @@
 	}
 </script>
 
-<svelte:window onkeydown={taste} onpointermove={regung} />
+<svelte:window onkeydown={taste} onpointermove={zeiger} />
 
 {#if auswahl.length === 0}
 	<!-- Auswahlbildschirm -->
@@ -268,8 +309,16 @@
 	</main>
 {:else}
 	<!-- Beamer-Ansicht -->
-	<div class="rahmen" class:ruht={verborgen}>
-		<div class="leiste" class:weg={verborgen}>
+	<div class="rahmen" class:ruht={ruht && !pausiert}>
+		<!-- Oben, weil die Leiste unten liegt: als letztes Element im Rahmen
+		     verschwände der Fortschritt unter ihr. -->
+		{#if !pausiert && seiten.length > 1}
+			{#key index}
+				<div class="takt"><span style:animation-duration="{taktMs}ms"></span></div>
+			{/key}
+		{/if}
+
+		<div class="leiste" class:weg={verborgen} bind:this={leiste}>
 			<span class="zaehler zahl">{index + 1} / {seiten.length}</span>
 			<span class="tasten" aria-hidden="true">
 				Leertaste: {pausiert ? 'weiter' : 'Pause'} · ← → blättern · F Vollbild
@@ -340,12 +389,6 @@
 		{:else}
 			<p class="laedt">Lade …</p>
 		{/if}
-
-		{#if !pausiert && seiten.length > 1}
-			{#key index}
-				<div class="takt"><span style:animation-duration="{taktMs}ms"></span></div>
-			{/key}
-		{/if}
 	</div>
 {/if}
 
@@ -401,10 +444,15 @@
 	 * Overlay statt Flex-Zeile: so bleibt die Höhe der Bühne beim Ein- und
 	 * Ausblenden gleich. Sie misst ihren Inhalt und leitet daraus --skala ab —
 	 * eine springende Höhe hieße Neuskalierung bei jeder Mausbewegung.
+	 *
+	 * Unten, nicht oben: der Kopf benennt die Vertretung, und genau die will
+	 * man wissen, während man die Maus bewegt. Oben deckte die Leiste den Titel
+	 * zu und auf schmalen Schirmen umbrochen auch den Behördennamen. Verdeckt
+	 * wird jetzt der Fuß — Fußnote und unterste Kachelreihe.
 	 */
 	.leiste {
 		position: absolute;
-		inset: 0 0 auto;
+		inset: auto 0 0;
 		z-index: 1;
 		transition: opacity 0.4s;
 		display: flex;
@@ -412,7 +460,7 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 0.55rem clamp(.75rem, 2.5vw, 2rem);
-		border-bottom: 1px solid var(--rand);
+		border-top: 1px solid var(--rand);
 		background: var(--flaeche);
 		color: var(--text-3);
 		font-size: 0.9rem;
