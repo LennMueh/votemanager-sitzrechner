@@ -26,6 +26,7 @@ amtlichen Endergebnis. Diese Lücke schließt die Anwendung.
 | `npm run ernte` | Amtliche NI-Referenzfälle offline einfrieren |
 | `npm run migrieren` | PostgreSQL-Migrationen idempotent einspielen |
 | `npm run poller -- --einmalig` | Einen Poller-Durchlauf ausführen |
+| `npm run wahlabend -- --quelle=20260830` | Einen mitgeschriebenen Wahlabend abspielen |
 
 **Gegen echte Daten entwickeln:** Alles akzeptiert `?wahltag=20210912` und rechnet
 dann gegen die Kommunalwahl 2021 — vollständig ausgezählt, amtlich bestätigt.
@@ -311,6 +312,26 @@ letzten archivierten Stand und verteilen Änderungen über PostgreSQL und SSE.
 
 Aus demselben Grund gibt es **bewusst keine CI, die bei jedem Push die
 Golden Tests fährt**.
+
+### Den Wahlabend proben, ohne einen abzuwarten
+
+`npm run wahlabend` geht deshalb auch **nicht ins Netz**. Der Poller schreibt je
+Änderung eine eigene `dokument`-Zeile — ein mitgeschriebener Wahlabend liegt
+damit fertig im Archiv (30.08.2026, Saarland und Hessen: bis zu 122 Stände je
+Ergebnispfad). Das Skript spielt sie im Zeitraffer zurück und prüft damit die
+ganze Kette: `dokument`/`ereignis` → Trigger `melde_ereignis` → `pg_notify` →
+`strom.ts` → SSE → Übersicht und Präsentationsmodus.
+
+Geschrieben wird in eine **Schatten-Instanz** (Suffix `#simulation` in
+`termin_url`, eigenes `termin.datum`, `zustand='ruhend'`). Das Archiv bleibt
+unberührt, der echte Poller fasst die Schattenpfade nie an, und
+`npm run wahlabend -- --aufraeumen` räumt alles über ein DELETE mit CASCADE weg.
+
+Zwei Bremsen: `--takt` unter 3000 ms überspringt Stände, weil `FRISCH_MS` in
+`daten.ts` Übersicht und Vertretung drei Sekunden festhält; und die
+Ereignis-Schlüssel in `src/lib/server/wahlabend.ts` müssen zeichengleich zu
+denen in `db.ts` (`erfolg`) bleiben — weichen sie ab, kommt zwar ein NOTIFY an,
+aber niemand hat es abonniert.
 
 ## Sprache
 

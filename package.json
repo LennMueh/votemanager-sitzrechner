@@ -15,6 +15,7 @@
     "ernte": "node --experimental-strip-types scripts/ernte-referenzen.ts",
     "migrieren": "node --experimental-strip-types migrationen/migrieren.ts",
     "poller": "node --experimental-strip-types scripts/poller.ts",
+    "wahlabend": "node --experimental-strip-types scripts/wahlabend.ts",
     "ernte-archiv": "node --experimental-strip-types scripts/ernte-archiv.ts"
   },
   "devDependencies": {
