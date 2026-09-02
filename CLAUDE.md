@@ -70,6 +70,13 @@ Basis: `https://votemanager.kdo.de/<YYYYMMDD>/<AGS>/api/praesentation/`
   echten Fehlers; die Open-Data-CSVs kennen diesen Fall gar nicht.
 - **Die Open-Data-CSVs werden bewusst nicht benutzt.** Sie enthalten keine Namen;
   man bräuchte die JSON ohnehin, und die bringt die Stimmen schon mit.
+- **Eine Zeile „Wahlbeteiligung" gibt es nicht** — in keinem der elf archivierten
+  Länder, in keinem Jahrgang. `Komponente.info.tabelle` führt nur Berechtigte und
+  Wähler, und beide kommen über den ganzen Abend mit: der Nenner bezieht sich auf
+  die bereits ausgezählten Bezirke und wächst mit dem Zähler. `wahlbeteiligung()`
+  in `votemanager.ts` rechnet daraus; die Labels sind Freitext des Hosts
+  („Wählerinnen/Wähler", „Abstimmende", „Stimmberechtigte" …), deshalb Familien
+  statt Gleichheit. Fehlt eine der beiden Zeilen, wird nichts angezeigt.
 
 **Wahlbereiche** (`holeWahlbereiche`): es gibt keine verlässliche Angabe, ob eine
 Übersichts-Ebene zu *unserem* Wahlgebiet gehört — bei Gemeindewahlen teilen sich

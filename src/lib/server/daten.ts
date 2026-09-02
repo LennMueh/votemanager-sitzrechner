@@ -12,7 +12,8 @@ import {
 	parseErgebnis,
 	parseStand,
 	type Auszaehlstand,
-	type VertretungRef
+	type VertretungRef,
+	type Wahlbeteiligung
 } from '$lib/votemanager';
 import type { Mandatsart, Sitz } from '$lib/nkwg';
 import { db } from './db';
@@ -434,6 +435,8 @@ export interface VertretungErgebnis {
 	ref: VertretungRef;
 	stand: Auszaehlstand;
 	kennzahlen: Record<string, number>;
+	/** Fehlt, wo der Feed keine Wählerzahl führt — dann wird sie nicht angezeigt. */
+	beteiligung?: Wahlbeteiligung;
 	wahlbereiche: string[];
 	sitzzahl?: number;
 	/** Woher die Sitzzahl stammt und welche Werte konkurrierten. */
@@ -675,6 +678,7 @@ export async function berechneVertretung(
 			ref,
 			stand: gesamt.stand,
 			kennzahlen: gesamt.kennzahlen,
+			beteiligung: gesamt.beteiligung,
 			wahlbereiche: bereiche.map((b) => b.name),
 			amtlich: gesamt.amtlicheSitze,
 			zeitpunkt: gesamtZeile.erfasst_am.toISOString()

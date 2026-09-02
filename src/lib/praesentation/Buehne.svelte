@@ -17,6 +17,8 @@
 		stand.erwartet > 0 ? Math.round((stand.eingegangen / stand.erwartet) * 100) : 0
 	);
 
+	const pct = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 });
+
 	const MIN_SKALA = 0.5;
 	/** Kleine Vertretungen (7 Sitze) sollen die Leinwand füllen, nicht kleben. */
 	const MAX_SKALA = 2.2;
@@ -88,7 +90,13 @@
 		</div>
 		<div class="stand">
 			<strong class="zahl">{stand.eingegangen} von {stand.erwartet}</strong>
+			<!-- Einzeilig angehängt statt als eigene Zeile: der Kopf liegt
+			     außerhalb des gemessenen Inhalts, jede zusätzliche Zeile nähme
+			     den Kacheln Platz, ohne dass --skala das ausgleicht. -->
 			<span>Schnellmeldungen · <span class="zahl">{prozent} %</span></span>
+			{#if ergebnis.beteiligung}
+				<span> · <span class="zahl">{pct.format(ergebnis.beteiligung.anteil * 100)} %</span> Beteiligung</span>
+			{/if}
 			<div class="balken" role="img" aria-label="{prozent} Prozent ausgezählt">
 				<div style:width="{prozent}%" class:fertig={stand.vollstaendig}></div>
 			</div>

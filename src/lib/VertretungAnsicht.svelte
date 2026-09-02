@@ -61,6 +61,17 @@
 				<div style:width="{prozent}%" class:fertig={stand.vollstaendig}></div>
 			</div>
 			<span class="zahl">{prozent} % ausgezählt</span>
+			<!-- Die Beteiligung nennt votemanager nie selbst; sie wird aus den
+			     Kennzahlen-Zeilen gerechnet und fehlt, wo der Feed keine
+			     Wählerzahl führt. Dann steht hier nichts. -->
+			{#if ergebnis.beteiligung}
+				<p class="beteiligung">
+					<span class="zahl">{pct.format(ergebnis.beteiligung.anteil * 100)} %</span> Wahlbeteiligung
+					<span class="klein zahl">
+						({fmt.format(ergebnis.beteiligung.waehler)} von {fmt.format(ergebnis.beteiligung.berechtigte)})
+					</span>
+				</p>
+			{/if}
 		</div>
 	</header>
 
@@ -363,6 +374,12 @@
 
 	.balken div.fertig {
 		background: #2e7d32;
+	}
+
+	.beteiligung {
+		margin: 0.5rem 0 0;
+		border-top: 1px solid var(--rand);
+		padding-top: 0.4rem;
 	}
 
 	.zwischenstand {

@@ -218,6 +218,8 @@ export interface GebietsErgebnis {
 	/** Nur im amtlichen Endergebnis vorhanden — am Wahlabend nicht. */
 	amtlicheSitze?: { anzahl: number; spalten: string[]; gewaehlte: string[][] };
 	kennzahlen: Record<string, number>;
+	/** Fehlt, wo der Feed keine Wählerzahl führt — dann wird nichts angezeigt. */
+	beteiligung?: Wahlbeteiligung;
 }
 
 /**
@@ -238,6 +240,56 @@ export function parseStand(hinweise: string[] | undefined): Auszaehlstand {
 		text: m ? `${eingegangen} von ${erwartet}` : (hinweise?.[0] ?? 'unbekannt'),
 		vollstaendig: erwartet > 0 && eingegangen >= erwartet
 	};
+}
+
+export interface Wahlbeteiligung {
+	berechtigte: number;
+	waehler: number;
+	/** 0 bis 1. */
+	anteil: number;
+}
+
+const BERECHTIGTE = /^(wahl|stimm|abstimmungs)berechtigte/i;
+const WAEHLER = /^(wähler|abstimmende)/i;
+const AUSGEZAEHLT = /\(in den ausgezählten Bezirken\)/;
+
+/**
+ * Wahlbeteiligung aus den Kennzahlen-Zeilen.
+ *
+ * Der Feed nennt sie nie selbst: in keinem der elf archivierten Länder und in
+ * keinem Jahrgang gibt es eine Zeile „Wahlbeteiligung". Es gibt nur Berechtigte
+ * und Wähler, und die kommen über den ganzen Abend mit — der Nenner bezieht sich
+ * auf die bereits ausgezählten Bezirke und wächst deshalb mit dem Zähler.
+ *
+ * Die Labels sind Freitext des jeweiligen Hosts, deshalb Familien statt
+ * Gleichheit: „Wähler", „Wähler/innen", „Wähler/-innen", „Wählerinnen/Wähler",
+ * „Wählerinnen und Wähler", „Abstimmende" — und dazu „Wahlberechtigte",
+ * „Stimmberechtigte", „Abstimmungsberechtigte". Umlaute dürfen dabei nicht
+ * gefaltet werden, sonst fällt „Wahlberechtigte" in die Wählerfamilie.
+ *
+ * Stehen beide Bezugsgrößen nebeneinander, gilt die ausgezählte: nur sie passt
+ * zum Zähler. Frankfurt 2021 führt beide — 19.182 von 39.329 ausgezählten,
+ * daneben 40.481 insgesamt — und votemanager selbst schreibt 48,8 %, nicht die
+ * 47,4 % auf die Gesamtzahl.
+ *
+ * Nicht aus `gueltigeStimmen` rechnen: das ist bei Kumulieren keine Wählerzahl.
+ */
+export function wahlbeteiligung(kennzahlen: Record<string, number>): Wahlbeteiligung | undefined {
+	const labels = Object.keys(kennzahlen);
+	const waehlerLabel = labels.find((l) => WAEHLER.test(l));
+	if (!waehlerLabel) return undefined;
+
+	const berechtigteLabels = labels.filter((l) => BERECHTIGTE.test(l));
+	const passend = AUSGEZAEHLT.test(waehlerLabel)
+		? berechtigteLabels.find((l) => AUSGEZAEHLT.test(l))
+		: undefined;
+	const berechtigteLabel = passend ?? berechtigteLabels[0];
+	if (!berechtigteLabel) return undefined;
+
+	const berechtigte = kennzahlen[berechtigteLabel];
+	const waehler = kennzahlen[waehlerLabel];
+	if (!berechtigte) return undefined;
+	return { berechtigte, waehler, anteil: waehler / berechtigte };
 }
 
 export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
@@ -377,7 +429,8 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 		direktBewerber,
 		stand: parseStand(k.info?.hinweis),
 		amtlicheSitze,
-		kennzahlen
+		kennzahlen,
+		beteiligung: wahlbeteiligung(kennzahlen)
 	};
 }
 
