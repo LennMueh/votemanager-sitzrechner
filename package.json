@@ -9,13 +9,13 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "harvest": "node --experimental-strip-types scripts/harvest-sitzzahlen.ts",
     "kreise": "node --experimental-strip-types scripts/ernte-kreise.ts",
     "schuss": "node --experimental-strip-types scripts/schuss.ts",
     "ernte": "node --experimental-strip-types scripts/ernte-referenzen.ts",
     "migrieren": "node --experimental-strip-types migrationen/migrieren.ts",
     "poller": "node --experimental-strip-types scripts/poller.ts",
     "wahlabend": "node --experimental-strip-types scripts/wahlabend.ts",
+    "einwohner": "node --experimental-strip-types scripts/ernte-einwohner.ts",
     "ernte-archiv": "node --experimental-strip-types scripts/ernte-archiv.ts"
   },
   "devDependencies": {

@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { amtlicheVerteilung, gegenprobe, waehleSitzzahl, waehleStandardtermin, zwischengespeichert } from './daten';
 import { vertretungsSchluessel } from './vergleich';
 import type { Sitz, Sitzverteilung, Stimmenverhaeltnis } from '$lib/nkwg';
-import sitzzahlen from '$lib/sitzzahlen.json';
-import sitzzahlenManuell from '$lib/sitzzahlen-manuell.json';
+import register from '$lib/sitzzahlen-manuell.json';
 
 describe('dynamischer Standardtermin', () => {
 	it('nimmt den nächsten Termin, sonst den neuesten vergangenen', () => {
@@ -21,7 +20,7 @@ describe('Sitzzahlen-Tabellen', () => {
 		// aufeinander, gewinnt stillschweigend die letzte. Das darf nicht passieren.
 		const gesehen = new Map<string, { sitze: number; quelle: string }>();
 		const streit: string[] = [];
-		for (const tabelle of [sitzzahlen.vertretungen, sitzzahlenManuell.vertretungen]) {
+		for (const tabelle of [register.gesetzlich, register.bekanntmachungen]) {
 			for (const [roh, wert] of Object.entries(tabelle as Record<string, { sitze: number }>)) {
 				const trenner = roh.indexOf('|');
 				const schluessel = vertretungsSchluessel(roh.slice(0, trenner), roh.slice(trenner + 1));

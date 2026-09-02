@@ -21,7 +21,7 @@ amtlichen Endergebnis. Diese Lücke schließt die Anwendung.
 | `npx vitest run src/lib/nkwg.test.ts` | Eine Testdatei |
 | `npx vitest run -t "Ortsrat Oedeme"` | Einzelner Test über den Namen |
 | `npm run build` | Produktionsbau |
-| `npm run harvest` | `src/lib/sitzzahlen.json` aus den 2021-Daten neu erzeugen |
+| `npm run einwohner -- --stichtag=20250630` | Einwohnerzahlen für § 46 NKomVG aus LSN-Online einfrieren |
 | `npm run schuss` | Präsentationsmodus aufnehmen und auf Überlauf prüfen (Dev-Server muss laufen) |
 | `npm run ernte` | Amtliche NI-Referenzfälle offline einfrieren |
 | `npm run migrieren` | PostgreSQL-Migrationen idempotent einspielen |
@@ -79,53 +79,76 @@ Ein-Wahlbereich-Fall (§ 36). **Diese Gegenprobe nicht entfernen.**
 
 ## Sitzzahlen
 
-Die Zahl der zu vergebenden Sitze steht **nicht im Feed** — sie folgt aus § 46
-NKomVG nach Einwohnerzahl. `src/lib/sitzzahlen.json` ist per `npm run harvest`
-aus dem amtlichen Endergebnis 2021 geerntet (Schlüssel `<ags>|<Titel>`).
+Die Zahl der zu vergebenden Sitze steht **nicht im Feed** — der `sitze`-Block
+erscheint erst im amtlichen Endergebnis. Vier Quellen füllen die Lücke, in dieser
+Rangfolge (`waehleSitzzahl()` in `daten.ts`, sichtbar am Ergebnis):
 
-Vor dem 13.09.2026 gegen die Bekanntmachungen der Wahlleitungen prüfen. Fehlt
-eine Sitzzahl, **rechnet die Anwendung bewusst nicht** und sagt das sichtbar.
+1. **amtlich** — `wahl.sitze_amtlich`, vom Poller beim Archivieren aus
+   `Komponente.sitze` geschrieben. Schlägt alles.
+2. **hinterlegt** — Bekanntmachung der Wahlleitung oder gesetzliche Festzahl aus
+   `src/lib/sitzzahlen-manuell.json`. Steht **über** der Rechnung, weil nur sie
+   eine Verringerungssatzung nach § 46 Abs. 4 NKomVG kennt.
+3. **berechnet** — § 46 NKomVG auf die maßgebende Einwohnerzahl, nur Niedersachsen.
+4. **vorwahl** — amtliche Sitzzahl der letzten Wahl derselben Körperschaft aus dem
+   Archiv, mit Wahltag.
 
-`npm run harvest` schreibt `sitzzahlen.json` vollständig neu. Handgepflegte
-Einträge gehören deshalb in `src/lib/sitzzahlen-manuell.json`; `daten.ts` führt
-beide zusammen.
+Fehlt alles, **rechnet die Anwendung bewusst nicht** und sagt das.
 
-### Woher die Sitzzahl kommt
+### `wahl.sitze_amtlich` trägt zwei der vier Quellen
 
-Rangfolge in `bestimmeSitzzahl()`, sichtbar am Ergebnis:
+Die amtliche Zahl beim Archivieren festzuhalten (`db.ts`, `erfolg()`), statt sie in
+jedem Lesepfad erneut aus dem `jsonb` zu klauben, macht die Vorwahl zu einem Join.
+Vorher kostete sie zwei Abfragen **je Vertretung** — weshalb die Übersicht sie gar
+nicht erst kannte (die vollständige Abfrage: 1,25 s je Neuaufbau). Jetzt reist sie
+auf der Kandidatenabfrage mit, die für den Wahlvergleich ohnehin gestellt wird.
 
-1. **amtlich** — aus `Komponente.sitze` des laufenden Wahlabends, schlägt alles.
-2. **hinterlegt** — `sitzzahlen*.json`, aus der Bekanntmachung der Wahlleitung.
-3. **vorwahl** — amtliche Sitzzahl der letzten Wahl derselben Körperschaft aus
-   dem Archiv, mit Wahltag.
+`scripts/wahlabend.ts` schreibt die Spalte ebenfalls: die Wiedergabe umgeht
+`erfolg()`, sonst stünde die Sitzzahl während einer Simulation still.
 
-Die **Übersicht** kennt nur die ersten beiden Stufen, aber sie kennt sie wirklich:
-`amtlicheSitzeSQL()` rechnet die amtliche Zahl in derselben LATERAL-Unterabfrage
-aus, die ohnehin den Auszählstand holt — kein zusätzlicher Zugriff. Vorher las sie
-allein `sitzzahlen*.json` und meldete deshalb für 2.794 der 2.847 Wahlen des
-12.09.2021 „Sitzzahl unbekannt", obwohl die Zahl im Archiv lag; jetzt sind es 1.008,
-und das sind die Direkt- und Stichwahlen, die keine haben. Die Vorwahl bleibt
-draußen, weil sie einen Datenbankzugriff **je Vertretung** kostet — am 13.09.2026
-neuntausend je Neuaufbau.
+### § 46 NKomVG rechnen
 
-Der Ausdruck lebt bewusst in SQL statt in JavaScript: als Teilbaum wöge
-`tortenDiagramm.entries` je Übersicht 890 kB (2021) bis 3 MB (2026), als Summe
-zwei Byte je Zeile. Wer `parseErgebnis()` in `votemanager.ts` ändert, ändert
-`amtlicheSitzeSQL()` mit.
+`src/lib/wahlrecht/ni-sitzzahl.ts` hält die Staffel aus § 46 Abs. 1–3 als **reine
+Funktion**, `ni-einwohner.ts` die Schlüsselkunde zwischen votemanager und dem
+Landesamt für Statistik. Maßgebend ist nach § 177 Abs. 2 Satz 1 NKomVG die
+Einwohnerzahl zu einem Stichtag **12 bis 18 Monate vor dem Wahltag** — für den
+13.09.2026 der 30.06.2025. Die eingefrorene Tabelle gilt deshalb für genau ein
+Wahlfenster; ohne diese Schranke hinge die Zahl von 2025 auch an der Wahl 2021.
 
-Die Vorwahl steht hinten, weil die Sitzzahl der **Einwohnerzahl zu einem
-gesetzlichen Stichtag** folgt und sich zwischen zwei Wahlen ändert: der Kreistag
-Freudenstadt wuchs 2019→2024 von 41 auf 44, der Gemeinderat Hochdorf schrumpfte
-von 13 auf 12. Abweichende Quellen werden **nicht aufgelöst, sondern angezeigt** —
-sie bedeuten Wachstum über eine Staffelschwelle oder eine Satzung, die die Zahl
-senkt (§ 46 Abs. 4 NKomVG erlaubt −2, −4 oder −6).
+`npm run einwohner` holt die Zahlen einmal aus LSN-Online (Tabelle A100001G,
+Erhebung 12411) und legt sie nach `src/lib/wahlrecht/einwohner-ni.json`. Ein
+Browser, weil LSN-Online sitzungsgebunden ist und keine API hat; **eingefroren**,
+weil der Wahlabend an keinem fremden Dienst hängen darf und die Zahlen im Diff
+nachprüfbar sein sollen. Drei Ebenen sind nötig: Landkreis, Einheits-/Samtgemeinde
+und Mitgliedsgemeinde — eine Samtgemeinde ist keine Summe, die man sich sparen
+könnte.
 
-**Der Schlüssel ist nicht der Titel.** votemanager benennt dieselbe Wahl in jedem
-Zyklus anders („Gemeindewahl" 2021 gegen „Wahl des Gemeinderates" 2026,
-„Landkreises Lüneburg" gegen „Landkreis Lüneburg"). Über den rohen Titel passten
-von 56 hinterlegten Sitzzahlen noch **fünf** auf die 1.945 Vertretungen der Wahl
-2026; über `vertretungsSchluessel()` (`server/vergleich.ts`, dieselben
-Normalisierer wie der Wahlvergleich) sind es 52.
+**Der Korpus entscheidet.** `ni-sitzzahl.test.ts` rechnet § 46 mit den
+Einwohnerzahlen vom 30.06.2020 gegen die 915 archivierten amtlichen Sitzzahlen der
+Wahl 2021: **93,8 % Treffer**, und **jede** der 56 Abweichungen liegt bei genau 2,
+4 oder 6 — den Stufen, um die § 46 Abs. 4 eine Satzung senken darf. Läge auch nur
+eine Abweichung außerhalb dieses Rasters, wäre die Staffel falsch abgeschrieben.
+Genau das prüft der Test; die Quote darf nur steigen.
+
+Nicht gerechnet wird für **Ortsräte** (§ 92) und **Stadtbezirksräte** (§ 93): sie
+folgen der Einwohnerzahl der Ortschaft bzw. des Bezirks, und die veröffentlicht
+keine Statistikbehörde. Ohne diese Ausnahme bekämen die dreizehn hannoverschen
+Stadtbezirksräte die Einwohnerzahl der ganzen Landeshauptstadt.
+
+### Das Register: was keine Formel kennt
+
+`src/lib/sitzzahlen-manuell.json` hat zwei Blöcke, weil es zwei Dinge sind:
+`gesetzlich` (feste Zahlen ohne Wahltag, etwa § 205 Abs. 2 KSVG für die
+Regionalversammlung Saarbrücken) und `bekanntmachungen` (je Wahltag, mit Quelle).
+
+Der Wahltag im Schlüssel ist kein Beiwerk: eine Bekanntmachung gilt für genau eine
+Wahl. Die Änderungsbekanntmachung der Samtgemeinde Bardowick vom 01.09.2026 setzt
+den Flecken Bardowick von 21 auf 19; ohne Wahltag schlüge sie auch auf 2021 durch,
+wo 21 richtig war.
+
+Die früher hier geerntete `sitzzahlen.json` ist **weg**. Ihre 53 Einträge waren
+zeichengleich zu dem, was das Archiv über die Vorwahl ohnehin liefert — standen
+aber als „hinterlegt" darüber und verdeckten damit genau die Alterung, an der
+Bardowick auffiel.
 
 ### Nachernte
 

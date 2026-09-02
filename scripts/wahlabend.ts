@@ -15,6 +15,7 @@
  * Das Skript geht bewusst nicht ins Netz — votemanager sieht davon nichts.
  */
 import { db, schliesseDb } from '../src/lib/server/db.ts';
+import { parseErgebnis } from '../src/lib/votemanager.ts';
 import { plane, schluessel, type Quellstand } from '../src/lib/server/wahlabend.ts';
 
 const argument = (name: string) => process.argv.find((x) => x.startsWith(`--${name}=`))?.split('=', 2)[1];
@@ -129,6 +130,15 @@ async function spiele(stand: Quellstand, mitEreignis: boolean): Promise<void> {
 			ON CONFLICT (pfad_stand_id, sha256) DO NOTHING RETURNING id::text`;
 		if (!dokument) return;
 		await tx`UPDATE pfad_stand SET zuletzt_geprueft=now(), zuletzt_geaendert=now(), status=200 WHERE id=${ziel.id}`;
+		// Dasselbe, was db.ts im Erfolgsfall tut: die Wiedergabe umgeht erfolg(),
+		// ohne diesen Zusatz stünde die Sitzzahl während einer Simulation still.
+		const wahl = ziel.pfad.match(/wahl_(\d+)\/ergebnis_(.+)_0\.json$/);
+		if (wahl) {
+			const anzahl = parseErgebnis(stand.inhalt as never).amtlicheSitze?.anzahl;
+			if (anzahl) await tx`UPDATE wahl w SET sitze_amtlich=${anzahl}
+				FROM termin t WHERE t.id=w.termin_id AND t.instanz_id=${ziel.instanzId}
+					AND w.wahl_id=${wahl[1]} AND w.gebiet_id=${wahl[2]}`;
+		}
 		if (!mitEreignis) return;
 		for (const s of schluessel(ziel.instanzId, ziel.pfad)) {
 			await tx`INSERT INTO ereignis (schluessel, dokument_id) VALUES (${s}, ${dokument.id})`;

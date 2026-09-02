@@ -295,6 +295,20 @@ export async function erstellePollerSpeicher(
 						// sie heiß, statt die Gegenprobe zu riskieren.
 						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${art === 'wahlbezirk' ? 45 : 75}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
+				} else if (/wahl_\d+\/ergebnis_.+_0\.json$/.test(aufgabe.pfad)) {
+					// Die amtliche Sitzzahl beim Archivieren festhalten, statt sie in
+					// jedem Lesepfad erneut aus dem jsonb zu klauben. Erst dadurch ist
+					// die Sitzzahl der Vorwahl ein Join statt zweier Abfragen je
+					// Vertretung — und die Übersicht kennt sie überhaupt.
+					//
+					// Nur bei einer Zahl schreiben, nie auf NULL zurück: ein
+					// Zwischenstand ohne `sitze`-Block darf eine schon bekannte
+					// amtliche Zahl nicht löschen.
+					const treffer = aufgabe.pfad.match(/wahl_(\d+)\/ergebnis_(.+)_0\.json$/)!;
+					const anzahl = parseErgebnis(ergebnis.inhalt as never).amtlicheSitze?.anzahl;
+					if (anzahl) await tx`UPDATE wahl w SET sitze_amtlich=${anzahl}
+						FROM termin t WHERE t.id=w.termin_id AND t.instanz_id=${instanzId}
+							AND w.wahl_id=${treffer[1]} AND w.gebiet_id=${treffer[2]}`;
 				} else if (/wahl_\d+\/uebersicht_.+_0\.json$/.test(aufgabe.pfad)) {
 					const zeilen = (ergebnis.inhalt as { tabelle?: { zeilen?: Array<{ name?: string; title?: string; link?: { id?: string; title?: string } }> } }).tabelle?.zeilen ?? [];
 					const treffer = aufgabe.pfad.match(/wahl_(\d+)\/uebersicht_(.+)_0\.json$/)!;

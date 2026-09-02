@@ -1,0 +1,4376 @@
+{
+	"_stichtag": "20250630",
+	"_rechtsgrundlage": "§ 177 Abs. 2 Satz 1 NKomVG",
+	"_quelle": "LSN-Online, Tabelle A100001G (Erhebung 12411, Fortschreibung des Bevölkerungsstandes), abgerufen am 2026-09-02",
+	"_hinweis": "Per npm run einwohner eingefroren. Zur Laufzeit wird nichts abgerufen. Schlüssel: 03 + amtlicher LSN-Schlüssel — fünfstellig Landkreis, achtstellig mit 4 an sechster Stelle Samtgemeinde, sonst Gemeinde.",
+	"gebiete": {
+		"03101": {
+			"name": "Braunschweig, Stadt",
+			"einwohner": 253016
+		},
+		"03102": {
+			"name": "Salzgitter, Stadt",
+			"einwohner": 104755
+		},
+		"03103": {
+			"name": "Wolfsburg, Stadt",
+			"einwohner": 129339
+		},
+		"03151": {
+			"name": "Gifhorn",
+			"einwohner": 175832
+		},
+		"03151001": {
+			"name": "Adenbüttel",
+			"einwohner": 1790
+		},
+		"03151002": {
+			"name": "Barwedel",
+			"einwohner": 975
+		},
+		"03151003": {
+			"name": "Bergfeld",
+			"einwohner": 884
+		},
+		"03151004": {
+			"name": "Bokensdorf",
+			"einwohner": 1244
+		},
+		"03151005": {
+			"name": "Brome, Flecken",
+			"einwohner": 3113
+		},
+		"03151006": {
+			"name": "Calberlah",
+			"einwohner": 5260
+		},
+		"03151007": {
+			"name": "Dedelstorf",
+			"einwohner": 1211
+		},
+		"03151008": {
+			"name": "Ehra-Lessien",
+			"einwohner": 1639
+		},
+		"03151009": {
+			"name": "Gifhorn, Stadt",
+			"einwohner": 42788
+		},
+		"03151010": {
+			"name": "Groß Oesingen",
+			"einwohner": 2061
+		},
+		"03151011": {
+			"name": "Hankensbüttel",
+			"einwohner": 4348
+		},
+		"03151012": {
+			"name": "Hillerse",
+			"einwohner": 2478
+		},
+		"03151013": {
+			"name": "Isenbüttel",
+			"einwohner": 6055
+		},
+		"03151014": {
+			"name": "Jembke",
+			"einwohner": 2099
+		},
+		"03151015": {
+			"name": "Leiferde",
+			"einwohner": 4215
+		},
+		"03151016": {
+			"name": "Meine",
+			"einwohner": 8260
+		},
+		"03151017": {
+			"name": "Meinersen",
+			"einwohner": 7987
+		},
+		"03151018": {
+			"name": "Müden (Aller)",
+			"einwohner": 5242
+		},
+		"03151019": {
+			"name": "Obernholz",
+			"einwohner": 799
+		},
+		"03151020": {
+			"name": "Osloß",
+			"einwohner": 2204
+		},
+		"03151021": {
+			"name": "Parsau",
+			"einwohner": 1940
+		},
+		"03151022": {
+			"name": "Ribbesbüttel",
+			"einwohner": 2113
+		},
+		"03151023": {
+			"name": "Rötgesbüttel",
+			"einwohner": 2505
+		},
+		"03151024": {
+			"name": "Rühen",
+			"einwohner": 5802
+		},
+		"03151025": {
+			"name": "Sassenburg",
+			"einwohner": 11921
+		},
+		"03151026": {
+			"name": "Schönewörde",
+			"einwohner": 888
+		},
+		"03151027": {
+			"name": "Schwülper",
+			"einwohner": 7298
+		},
+		"03151028": {
+			"name": "Sprakensehl",
+			"einwohner": 1110
+		},
+		"03151029": {
+			"name": "Steinhorst",
+			"einwohner": 1259
+		},
+		"03151030": {
+			"name": "Tappenbeck",
+			"einwohner": 1596
+		},
+		"03151031": {
+			"name": "Tiddische",
+			"einwohner": 1241
+		},
+		"03151032": {
+			"name": "Tülau",
+			"einwohner": 1497
+		},
+		"03151033": {
+			"name": "Ummern",
+			"einwohner": 1474
+		},
+		"03151034": {
+			"name": "Vordorf",
+			"einwohner": 3095
+		},
+		"03151035": {
+			"name": "Wagenhoff",
+			"einwohner": 1138
+		},
+		"03151036": {
+			"name": "Wahrenholz",
+			"einwohner": 3745
+		},
+		"03151037": {
+			"name": "Wasbüttel",
+			"einwohner": 1855
+		},
+		"03151038": {
+			"name": "Wesendorf",
+			"einwohner": 5573
+		},
+		"03151039": {
+			"name": "Weyhausen",
+			"einwohner": 2759
+		},
+		"03151040": {
+			"name": "Wittingen, Stadt",
+			"einwohner": 11085
+		},
+		"03151041": {
+			"name": "Didderse",
+			"einwohner": 1286
+		},
+		"03151401": {
+			"name": "Boldecker Land, SG",
+			"einwohner": 10877
+		},
+		"03151402": {
+			"name": "Brome, SG",
+			"einwohner": 16116
+		},
+		"03151403": {
+			"name": "Hankensbüttel, SG",
+			"einwohner": 8727
+		},
+		"03151404": {
+			"name": "Isenbüttel, SG",
+			"einwohner": 15283
+		},
+		"03151405": {
+			"name": "Meinersen, SG",
+			"einwohner": 19922
+		},
+		"03151406": {
+			"name": "Papenteich, SG",
+			"einwohner": 24234
+		},
+		"03151407": {
+			"name": "Wesendorf, SG",
+			"einwohner": 14879
+		},
+		"03153": {
+			"name": "Goslar",
+			"einwohner": 126559
+		},
+		"03153002": {
+			"name": "Bad Harzburg, Stadt",
+			"einwohner": 19461
+		},
+		"03153008": {
+			"name": "Liebenburg",
+			"einwohner": 7819
+		},
+		"03153012": {
+			"name": "Seesen, Stadt",
+			"einwohner": 18652
+		},
+		"03153016": {
+			"name": "Braunlage, Stadt",
+			"einwohner": 4803
+		},
+		"03153017": {
+			"name": "Goslar, Stadt",
+			"einwohner": 47519
+		},
+		"03153018": {
+			"name": "Clausthal-Zellerfeld, Be.",
+			"einwohner": 13802
+		},
+		"03153019": {
+			"name": "Langelsheim, Stadt",
+			"einwohner": 14503
+		},
+		"03154": {
+			"name": "Helmstedt",
+			"einwohner": 89927
+		},
+		"03154001": {
+			"name": "Bahrdorf",
+			"einwohner": 1747
+		},
+		"03154002": {
+			"name": "Beierstedt",
+			"einwohner": 357
+		},
+		"03154004": {
+			"name": "Danndorf",
+			"einwohner": 2542
+		},
+		"03154005": {
+			"name": "Frellstedt",
+			"einwohner": 813
+		},
+		"03154006": {
+			"name": "Gevensleben",
+			"einwohner": 600
+		},
+		"03154007": {
+			"name": "Grafhorst",
+			"einwohner": 1105
+		},
+		"03154008": {
+			"name": "Grasleben",
+			"einwohner": 2277
+		},
+		"03154009": {
+			"name": "Groß Twülpstedt",
+			"einwohner": 2787
+		},
+		"03154012": {
+			"name": "Jerxheim",
+			"einwohner": 1032
+		},
+		"03154013": {
+			"name": "Königslutter am Elm, Stadt",
+			"einwohner": 15350
+		},
+		"03154014": {
+			"name": "Lehre",
+			"einwohner": 11813
+		},
+		"03154015": {
+			"name": "Mariental",
+			"einwohner": 975
+		},
+		"03154016": {
+			"name": "Querenhorst",
+			"einwohner": 497
+		},
+		"03154017": {
+			"name": "Räbke",
+			"einwohner": 785
+		},
+		"03154018": {
+			"name": "Rennau",
+			"einwohner": 722
+		},
+		"03154019": {
+			"name": "Schöningen, Stadt",
+			"einwohner": 10975
+		},
+		"03154021": {
+			"name": "Süpplingen",
+			"einwohner": 1684
+		},
+		"03154022": {
+			"name": "Süpplingenburg",
+			"einwohner": 655
+		},
+		"03154024": {
+			"name": "Velpke",
+			"einwohner": 4980
+		},
+		"03154025": {
+			"name": "Warberg",
+			"einwohner": 797
+		},
+		"03154026": {
+			"name": "Wolsdorf",
+			"einwohner": 918
+		},
+		"03154027": {
+			"name": "Söllingen",
+			"einwohner": 1469
+		},
+		"03154028": {
+			"name": "Helmstedt, Stadt",
+			"einwohner": 25047
+		},
+		"03154401": {
+			"name": "Grasleben, SG",
+			"einwohner": 4471
+		},
+		"03154402": {
+			"name": "Heeseberg, SG",
+			"einwohner": 3458
+		},
+		"03154403": {
+			"name": "Nord-Elm, SG",
+			"einwohner": 5652
+		},
+		"03154404": {
+			"name": "Velpke, SG",
+			"einwohner": 13161
+		},
+		"03155": {
+			"name": "Northeim",
+			"einwohner": 125136
+		},
+		"03155001": {
+			"name": "Bad Gandersheim, Stadt",
+			"einwohner": 8924
+		},
+		"03155002": {
+			"name": "Bodenfelde, Flecken",
+			"einwohner": 2901
+		},
+		"03155003": {
+			"name": "Dassel, Stadt",
+			"einwohner": 9042
+		},
+		"03155005": {
+			"name": "Hardegsen, Stadt",
+			"einwohner": 7226
+		},
+		"03155006": {
+			"name": "Kalefeld",
+			"einwohner": 5691
+		},
+		"03155007": {
+			"name": "Katlenburg-Lindau",
+			"einwohner": 6768
+		},
+		"03155009": {
+			"name": "Moringen, Stadt",
+			"einwohner": 6518
+		},
+		"03155010": {
+			"name": "Nörten-Hardenberg, Flecken",
+			"einwohner": 7687
+		},
+		"03155011": {
+			"name": "Northeim, Stadt",
+			"einwohner": 27262
+		},
+		"03155012": {
+			"name": "Uslar, Stadt",
+			"einwohner": 13497
+		},
+		"03155013": {
+			"name": "Einbeck, Stadt",
+			"einwohner": 29620
+		},
+		"03157": {
+			"name": "Peine",
+			"einwohner": 137093
+		},
+		"03157001": {
+			"name": "Edemissen",
+			"einwohner": 12271
+		},
+		"03157002": {
+			"name": "Hohenhameln",
+			"einwohner": 9400
+		},
+		"03157005": {
+			"name": "Lengede",
+			"einwohner": 14590
+		},
+		"03157006": {
+			"name": "Peine, Stadt",
+			"einwohner": 50916
+		},
+		"03157007": {
+			"name": "Vechelde",
+			"einwohner": 18125
+		},
+		"03157008": {
+			"name": "Wendeburg",
+			"einwohner": 10199
+		},
+		"03157009": {
+			"name": "Ilsede",
+			"einwohner": 21592
+		},
+		"03158": {
+			"name": "Wolfenbüttel",
+			"einwohner": 117754
+		},
+		"03158002": {
+			"name": "Baddeckenstedt",
+			"einwohner": 2933
+		},
+		"03158004": {
+			"name": "Burgdorf",
+			"einwohner": 2068
+		},
+		"03158005": {
+			"name": "Cramme",
+			"einwohner": 795
+		},
+		"03158006": {
+			"name": "Cremlingen",
+			"einwohner": 12811
+		},
+		"03158007": {
+			"name": "Dahlum",
+			"einwohner": 638
+		},
+		"03158008": {
+			"name": "Denkte",
+			"einwohner": 2693
+		},
+		"03158009": {
+			"name": "Dettum",
+			"einwohner": 1177
+		},
+		"03158010": {
+			"name": "Dorstadt",
+			"einwohner": 734
+		},
+		"03158011": {
+			"name": "Elbe",
+			"einwohner": 1445
+		},
+		"03158012": {
+			"name": "Erkerode",
+			"einwohner": 806
+		},
+		"03158013": {
+			"name": "Evessen",
+			"einwohner": 1231
+		},
+		"03158014": {
+			"name": "Flöthe",
+			"einwohner": 1083
+		},
+		"03158016": {
+			"name": "Haverlah",
+			"einwohner": 1531
+		},
+		"03158017": {
+			"name": "Hedeper",
+			"einwohner": 466
+		},
+		"03158018": {
+			"name": "Heere",
+			"einwohner": 994
+		},
+		"03158019": {
+			"name": "Heiningen",
+			"einwohner": 680
+		},
+		"03158021": {
+			"name": "Kissenbrück",
+			"einwohner": 1696
+		},
+		"03158022": {
+			"name": "Kneitlingen",
+			"einwohner": 736
+		},
+		"03158023": {
+			"name": "Ohrum",
+			"einwohner": 618
+		},
+		"03158025": {
+			"name": "Roklum",
+			"einwohner": 419
+		},
+		"03158027": {
+			"name": "Schöppenstedt, Stadt",
+			"einwohner": 5254
+		},
+		"03158028": {
+			"name": "Sehlde",
+			"einwohner": 851
+		},
+		"03158030": {
+			"name": "Sickte",
+			"einwohner": 5977
+		},
+		"03158031": {
+			"name": "Uehrde",
+			"einwohner": 844
+		},
+		"03158032": {
+			"name": "Vahlberg",
+			"einwohner": 659
+		},
+		"03158033": {
+			"name": "Veltheim (Ohe)",
+			"einwohner": 960
+		},
+		"03158035": {
+			"name": "Winnigstedt",
+			"einwohner": 652
+		},
+		"03158036": {
+			"name": "Wittmar",
+			"einwohner": 1052
+		},
+		"03158037": {
+			"name": "Wolfenbüttel, Stadt",
+			"einwohner": 52376
+		},
+		"03158038": {
+			"name": "Börßum",
+			"einwohner": 2799
+		},
+		"03158039": {
+			"name": "Schladen-Werla",
+			"einwohner": 8513
+		},
+		"03158040": {
+			"name": "Remlingen-Semmenstedt",
+			"einwohner": 2263
+		},
+		"03158402": {
+			"name": "Baddeckenstedt, SG",
+			"einwohner": 9822
+		},
+		"03158403": {
+			"name": "Oderwald, SG",
+			"einwohner": 6709
+		},
+		"03158406": {
+			"name": "Sickte, SG",
+			"einwohner": 10151
+		},
+		"03158407": {
+			"name": "Elm-Asse, SG",
+			"einwohner": 17372
+		},
+		"03159": {
+			"name": "Göttingen",
+			"einwohner": 327309
+		},
+		"03159001": {
+			"name": "Adelebsen, Flecken",
+			"einwohner": 6166
+		},
+		"03159002": {
+			"name": "Bad Grund (Harz)",
+			"einwohner": 7708
+		},
+		"03159003": {
+			"name": "Bad Lauterberg im Harz, St",
+			"einwohner": 10096
+		},
+		"03159004": {
+			"name": "Bad Sachsa, Stadt",
+			"einwohner": 7167
+		},
+		"03159005": {
+			"name": "Bilshausen",
+			"einwohner": 2231
+		},
+		"03159006": {
+			"name": "Bodensee",
+			"einwohner": 754
+		},
+		"03159007": {
+			"name": "Bovenden, Flecken",
+			"einwohner": 14029
+		},
+		"03159008": {
+			"name": "Bühren",
+			"einwohner": 513
+		},
+		"03159009": {
+			"name": "Dransfeld, Stadt",
+			"einwohner": 4299
+		},
+		"03159010": {
+			"name": "Duderstadt, Stadt",
+			"einwohner": 20268
+		},
+		"03159011": {
+			"name": "Ebergötzen",
+			"einwohner": 1958
+		},
+		"03159012": {
+			"name": "Elbingerode",
+			"einwohner": 431
+		},
+		"03159013": {
+			"name": "Friedland",
+			"einwohner": 8632
+		},
+		"03159014": {
+			"name": "Gieboldehausen, Flecken",
+			"einwohner": 3743
+		},
+		"03159015": {
+			"name": "Gleichen",
+			"einwohner": 8652
+		},
+		"03159016": {
+			"name": "Göttingen, Stadt",
+			"einwohner": 126911
+		},
+		"03159017": {
+			"name": "Hann. Münden, Stadt",
+			"einwohner": 23379
+		},
+		"03159018": {
+			"name": "Hattorf am Harz",
+			"einwohner": 3969
+		},
+		"03159019": {
+			"name": "Herzberg am Harz, Stadt",
+			"einwohner": 12700
+		},
+		"03159020": {
+			"name": "Hörden am Harz",
+			"einwohner": 895
+		},
+		"03159021": {
+			"name": "Jühnde",
+			"einwohner": 907
+		},
+		"03159022": {
+			"name": "Krebeck",
+			"einwohner": 1009
+		},
+		"03159023": {
+			"name": "Landolfshausen",
+			"einwohner": 1080
+		},
+		"03159024": {
+			"name": "Niemetal",
+			"einwohner": 1405
+		},
+		"03159025": {
+			"name": "Obernfeld",
+			"einwohner": 941
+		},
+		"03159026": {
+			"name": "Osterode am Harz, Stadt",
+			"einwohner": 21509
+		},
+		"03159027": {
+			"name": "Rhumspringe",
+			"einwohner": 1688
+		},
+		"03159028": {
+			"name": "Rollshausen",
+			"einwohner": 827
+		},
+		"03159029": {
+			"name": "Rosdorf",
+			"einwohner": 12288
+		},
+		"03159030": {
+			"name": "Rüdershausen",
+			"einwohner": 785
+		},
+		"03159031": {
+			"name": "Scheden",
+			"einwohner": 1791
+		},
+		"03159032": {
+			"name": "Seeburg",
+			"einwohner": 1621
+		},
+		"03159033": {
+			"name": "Seulingen",
+			"einwohner": 1331
+		},
+		"03159034": {
+			"name": "Staufenberg",
+			"einwohner": 7500
+		},
+		"03159035": {
+			"name": "Waake",
+			"einwohner": 1266
+		},
+		"03159036": {
+			"name": "Walkenried",
+			"einwohner": 4010
+		},
+		"03159037": {
+			"name": "Wollbrandshausen",
+			"einwohner": 629
+		},
+		"03159038": {
+			"name": "Wollershausen",
+			"einwohner": 427
+		},
+		"03159039": {
+			"name": "Wulften am Harz",
+			"einwohner": 1794
+		},
+		"03159401": {
+			"name": "Dransfeld, SG",
+			"einwohner": 8915
+		},
+		"03159402": {
+			"name": "Gieboldehausen, SG",
+			"einwohner": 13034
+		},
+		"03159403": {
+			"name": "Hattorf am Harz, SG",
+			"einwohner": 7089
+		},
+		"03159404": {
+			"name": "Radolfshausen, SG",
+			"einwohner": 7256
+		},
+		"03241": {
+			"name": "Hannover, Region",
+			"einwohner": 1140191
+		},
+		"03241001": {
+			"name": "Hannover, Landeshauptstadt",
+			"einwohner": 522285
+		},
+		"03241002": {
+			"name": "Barsinghausen, Stadt",
+			"einwohner": 33848
+		},
+		"03241003": {
+			"name": "Burgdorf, Stadt",
+			"einwohner": 30955
+		},
+		"03241004": {
+			"name": "Burgwedel, Stadt",
+			"einwohner": 20363
+		},
+		"03241005": {
+			"name": "Garbsen, Stadt",
+			"einwohner": 59746
+		},
+		"03241006": {
+			"name": "Gehrden, Stadt",
+			"einwohner": 15270
+		},
+		"03241007": {
+			"name": "Hemmingen, Stadt",
+			"einwohner": 18930
+		},
+		"03241008": {
+			"name": "Isernhagen",
+			"einwohner": 24040
+		},
+		"03241009": {
+			"name": "Laatzen, Stadt",
+			"einwohner": 41748
+		},
+		"03241010": {
+			"name": "Langenhagen, Stadt",
+			"einwohner": 54146
+		},
+		"03241011": {
+			"name": "Lehrte, Stadt",
+			"einwohner": 44098
+		},
+		"03241012": {
+			"name": "Neustadt am Rbge., Stadt",
+			"einwohner": 44674
+		},
+		"03241013": {
+			"name": "Pattensen, Stadt",
+			"einwohner": 14696
+		},
+		"03241014": {
+			"name": "Ronnenberg, Stadt",
+			"einwohner": 23869
+		},
+		"03241015": {
+			"name": "Seelze, Stadt",
+			"einwohner": 34261
+		},
+		"03241016": {
+			"name": "Sehnde, Stadt",
+			"einwohner": 23352
+		},
+		"03241017": {
+			"name": "Springe, Stadt",
+			"einwohner": 28698
+		},
+		"03241018": {
+			"name": "Uetze",
+			"einwohner": 20061
+		},
+		"03241019": {
+			"name": "Wedemark",
+			"einwohner": 29729
+		},
+		"03241020": {
+			"name": "Wennigsen (Deister)",
+			"einwohner": 14232
+		},
+		"03241021": {
+			"name": "Wunstorf, Stadt",
+			"einwohner": 41190
+		},
+		"03251": {
+			"name": "Diepholz",
+			"einwohner": 221437
+		},
+		"03251001": {
+			"name": "Affinghausen",
+			"einwohner": 804
+		},
+		"03251002": {
+			"name": "Asendorf",
+			"einwohner": 2823
+		},
+		"03251003": {
+			"name": "Bahrenborstel",
+			"einwohner": 1093
+		},
+		"03251004": {
+			"name": "Barenburg, Flecken",
+			"einwohner": 1215
+		},
+		"03251005": {
+			"name": "Barnstorf, Flecken",
+			"einwohner": 6767
+		},
+		"03251006": {
+			"name": "Barver",
+			"einwohner": 1026
+		},
+		"03251007": {
+			"name": "Bassum, Stadt",
+			"einwohner": 16675
+		},
+		"03251008": {
+			"name": "Borstel",
+			"einwohner": 1171
+		},
+		"03251009": {
+			"name": "Brockum",
+			"einwohner": 1090
+		},
+		"03251011": {
+			"name": "Dickel",
+			"einwohner": 486
+		},
+		"03251012": {
+			"name": "Diepholz, Stadt",
+			"einwohner": 17620
+		},
+		"03251013": {
+			"name": "Drebber",
+			"einwohner": 2981
+		},
+		"03251014": {
+			"name": "Drentwede",
+			"einwohner": 1013
+		},
+		"03251015": {
+			"name": "Ehrenburg",
+			"einwohner": 1509
+		},
+		"03251017": {
+			"name": "Eydelstedt",
+			"einwohner": 1749
+		},
+		"03251018": {
+			"name": "Freistatt",
+			"einwohner": 530
+		},
+		"03251019": {
+			"name": "Hemsloh",
+			"einwohner": 530
+		},
+		"03251020": {
+			"name": "Hüde",
+			"einwohner": 1245
+		},
+		"03251021": {
+			"name": "Kirchdorf",
+			"einwohner": 2197
+		},
+		"03251022": {
+			"name": "Lembruch",
+			"einwohner": 1273
+		},
+		"03251023": {
+			"name": "Lemförde, Flecken",
+			"einwohner": 3435
+		},
+		"03251024": {
+			"name": "Maasen",
+			"einwohner": 436
+		},
+		"03251025": {
+			"name": "Marl",
+			"einwohner": 723
+		},
+		"03251026": {
+			"name": "Martfeld",
+			"einwohner": 2881
+		},
+		"03251027": {
+			"name": "Mellinghausen",
+			"einwohner": 1020
+		},
+		"03251028": {
+			"name": "Neuenkirchen",
+			"einwohner": 1215
+		},
+		"03251029": {
+			"name": "Quernheim",
+			"einwohner": 502
+		},
+		"03251030": {
+			"name": "Rehden",
+			"einwohner": 2225
+		},
+		"03251031": {
+			"name": "Scholen",
+			"einwohner": 763
+		},
+		"03251032": {
+			"name": "Schwaförden",
+			"einwohner": 1457
+		},
+		"03251033": {
+			"name": "Schwarme",
+			"einwohner": 2639
+		},
+		"03251034": {
+			"name": "Siedenburg, Flecken",
+			"einwohner": 1227
+		},
+		"03251035": {
+			"name": "Staffhorst",
+			"einwohner": 517
+		},
+		"03251036": {
+			"name": "Stemshorn",
+			"einwohner": 721
+		},
+		"03251037": {
+			"name": "Stuhr",
+			"einwohner": 33959
+		},
+		"03251038": {
+			"name": "Sudwalde",
+			"einwohner": 988
+		},
+		"03251040": {
+			"name": "Sulingen, Stadt",
+			"einwohner": 13427
+		},
+		"03251041": {
+			"name": "Syke, Stadt",
+			"einwohner": 25280
+		},
+		"03251042": {
+			"name": "Twistringen, Stadt",
+			"einwohner": 13185
+		},
+		"03251043": {
+			"name": "Varrel",
+			"einwohner": 1350
+		},
+		"03251044": {
+			"name": "Wagenfeld",
+			"einwohner": 7066
+		},
+		"03251045": {
+			"name": "Wehrbleck",
+			"einwohner": 804
+		},
+		"03251046": {
+			"name": "Wetschen",
+			"einwohner": 1910
+		},
+		"03251047": {
+			"name": "Weyhe",
+			"einwohner": 30944
+		},
+		"03251049": {
+			"name": "Bruchhausen-Vilsen, Fl.",
+			"einwohner": 8966
+		},
+		"03251401": {
+			"name": "Altes Amt Lemförde, SG",
+			"einwohner": 8989
+		},
+		"03251402": {
+			"name": "Barnstorf, SG",
+			"einwohner": 12510
+		},
+		"03251403": {
+			"name": "Bruchhausen-Vilsen, SG",
+			"einwohner": 17309
+		},
+		"03251404": {
+			"name": "Kirchdorf, SG",
+			"einwohner": 7189
+		},
+		"03251405": {
+			"name": "Rehden, SG",
+			"einwohner": 6177
+		},
+		"03251406": {
+			"name": "Schwaförden, SG",
+			"einwohner": 6736
+		},
+		"03251407": {
+			"name": "Siedenburg, SG",
+			"einwohner": 4371
+		},
+		"03252": {
+			"name": "Hameln-Pyrmont",
+			"einwohner": 149963
+		},
+		"03252001": {
+			"name": "Aerzen, Flecken",
+			"einwohner": 10366
+		},
+		"03252002": {
+			"name": "Bad Münder a.Deister, Stad",
+			"einwohner": 17379
+		},
+		"03252003": {
+			"name": "Bad Pyrmont, Stadt",
+			"einwohner": 19708
+		},
+		"03252004": {
+			"name": "Coppenbrügge, Flecken",
+			"einwohner": 6912
+		},
+		"03252005": {
+			"name": "Emmerthal",
+			"einwohner": 9766
+		},
+		"03252006": {
+			"name": "Hameln, Stadt",
+			"einwohner": 58214
+		},
+		"03252007": {
+			"name": "Hessisch Oldendorf, Stadt",
+			"einwohner": 18450
+		},
+		"03252008": {
+			"name": "Salzhemmendorf, Flecken",
+			"einwohner": 9168
+		},
+		"03254": {
+			"name": "Hildesheim",
+			"einwohner": 266793
+		},
+		"03254002": {
+			"name": "Alfeld (Leine), Stadt",
+			"einwohner": 17982
+		},
+		"03254003": {
+			"name": "Algermissen",
+			"einwohner": 7622
+		},
+		"03254005": {
+			"name": "Bad Salzdetfurth, Stadt",
+			"einwohner": 13010
+		},
+		"03254008": {
+			"name": "Bockenem, Stadt",
+			"einwohner": 9392
+		},
+		"03254011": {
+			"name": "Diekholzen",
+			"einwohner": 5967
+		},
+		"03254013": {
+			"name": "Eime, Flecken",
+			"einwohner": 2542
+		},
+		"03254014": {
+			"name": "Elze, Stadt",
+			"einwohner": 8846
+		},
+		"03254017": {
+			"name": "Giesen",
+			"einwohner": 9317
+		},
+		"03254020": {
+			"name": "Harsum",
+			"einwohner": 10811
+		},
+		"03254021": {
+			"name": "Hildesheim, Stadt",
+			"einwohner": 98254
+		},
+		"03254022": {
+			"name": "Holle",
+			"einwohner": 6545
+		},
+		"03254026": {
+			"name": "Nordstemmen",
+			"einwohner": 11854
+		},
+		"03254028": {
+			"name": "Sarstedt, Stadt",
+			"einwohner": 19423
+		},
+		"03254029": {
+			"name": "Schellerten",
+			"einwohner": 7445
+		},
+		"03254032": {
+			"name": "Söhlde",
+			"einwohner": 7485
+		},
+		"03254041": {
+			"name": "Duingen, Flecken",
+			"einwohner": 4655
+		},
+		"03254042": {
+			"name": "Freden (Leine)",
+			"einwohner": 4517
+		},
+		"03254043": {
+			"name": "Gronau (Leine), Stadt",
+			"einwohner": 10452
+		},
+		"03254044": {
+			"name": "Lamspringe",
+			"einwohner": 5365
+		},
+		"03254045": {
+			"name": "Sibbesse",
+			"einwohner": 5309
+		},
+		"03254406": {
+			"name": "Leinebergland, SG",
+			"einwohner": 17649
+		},
+		"03255": {
+			"name": "Holzminden",
+			"einwohner": 65341
+		},
+		"03255001": {
+			"name": "Arholzen",
+			"einwohner": 327
+		},
+		"03255002": {
+			"name": "Bevern, Flecken",
+			"einwohner": 3677
+		},
+		"03255003": {
+			"name": "Bodenwerder, Stadt",
+			"einwohner": 4632
+		},
+		"03255004": {
+			"name": "Boffzen",
+			"einwohner": 2415
+		},
+		"03255005": {
+			"name": "Brevörde",
+			"einwohner": 554
+		},
+		"03255007": {
+			"name": "Deensen",
+			"einwohner": 1305
+		},
+		"03255008": {
+			"name": "Delligsen, Flecken",
+			"einwohner": 7251
+		},
+		"03255009": {
+			"name": "Derental",
+			"einwohner": 571
+		},
+		"03255010": {
+			"name": "Dielmissen",
+			"einwohner": 738
+		},
+		"03255012": {
+			"name": "Eimen",
+			"einwohner": 808
+		},
+		"03255013": {
+			"name": "Eschershausen, Stadt",
+			"einwohner": 3340
+		},
+		"03255014": {
+			"name": "Fürstenberg",
+			"einwohner": 1003
+		},
+		"03255015": {
+			"name": "Golmbach",
+			"einwohner": 879
+		},
+		"03255016": {
+			"name": "Halle",
+			"einwohner": 1397
+		},
+		"03255017": {
+			"name": "Hehlen",
+			"einwohner": 1623
+		},
+		"03255018": {
+			"name": "Heinade",
+			"einwohner": 777
+		},
+		"03255019": {
+			"name": "Heinsen",
+			"einwohner": 717
+		},
+		"03255020": {
+			"name": "Heyen",
+			"einwohner": 412
+		},
+		"03255021": {
+			"name": "Holenberg",
+			"einwohner": 395
+		},
+		"03255022": {
+			"name": "Holzen",
+			"einwohner": 474
+		},
+		"03255023": {
+			"name": "Holzminden, Stadt",
+			"einwohner": 18887
+		},
+		"03255025": {
+			"name": "Kirchbrak",
+			"einwohner": 869
+		},
+		"03255026": {
+			"name": "Lauenförde, Flecken",
+			"einwohner": 2183
+		},
+		"03255027": {
+			"name": "Lenne",
+			"einwohner": 620
+		},
+		"03255028": {
+			"name": "Lüerdissen",
+			"einwohner": 366
+		},
+		"03255030": {
+			"name": "Negenborn",
+			"einwohner": 680
+		},
+		"03255031": {
+			"name": "Ottenstein, Flecken",
+			"einwohner": 1167
+		},
+		"03255032": {
+			"name": "Pegestorf",
+			"einwohner": 385
+		},
+		"03255033": {
+			"name": "Polle, Flecken",
+			"einwohner": 1105
+		},
+		"03255034": {
+			"name": "Stadtoldendorf, Stadt",
+			"einwohner": 4888
+		},
+		"03255035": {
+			"name": "Vahlbruch",
+			"einwohner": 372
+		},
+		"03255036": {
+			"name": "Wangelnstedt",
+			"einwohner": 524
+		},
+		"03255401": {
+			"name": "Bevern, SG",
+			"einwohner": 5631
+		},
+		"03255403": {
+			"name": "Boffzen, SG",
+			"einwohner": 6172
+		},
+		"03255408": {
+			"name": "Bodenwerder-Polle, SG",
+			"einwohner": 13233
+		},
+		"03255409": {
+			"name": "Eschershausen-Stadtold., S",
+			"einwohner": 14167
+		},
+		"03256": {
+			"name": "Nienburg (Weser)",
+			"einwohner": 121215
+		},
+		"03256001": {
+			"name": "Balge",
+			"einwohner": 1631
+		},
+		"03256002": {
+			"name": "Binnen",
+			"einwohner": 954
+		},
+		"03256003": {
+			"name": "Bücken, Flecken",
+			"einwohner": 2105
+		},
+		"03256004": {
+			"name": "Diepenau, Flecken",
+			"einwohner": 3838
+		},
+		"03256005": {
+			"name": "Drakenburg, Flecken",
+			"einwohner": 1830
+		},
+		"03256006": {
+			"name": "Estorf",
+			"einwohner": 1703
+		},
+		"03256007": {
+			"name": "Eystrup",
+			"einwohner": 3569
+		},
+		"03256008": {
+			"name": "Gandesbergen",
+			"einwohner": 515
+		},
+		"03256009": {
+			"name": "Hämelhausen",
+			"einwohner": 563
+		},
+		"03256010": {
+			"name": "Hassel (Weser)",
+			"einwohner": 1770
+		},
+		"03256011": {
+			"name": "Haßbergen",
+			"einwohner": 1671
+		},
+		"03256012": {
+			"name": "Heemsen",
+			"einwohner": 1811
+		},
+		"03256013": {
+			"name": "Hilgermissen",
+			"einwohner": 2014
+		},
+		"03256014": {
+			"name": "Hoya, Stadt",
+			"einwohner": 3859
+		},
+		"03256015": {
+			"name": "Hoyerhagen",
+			"einwohner": 939
+		},
+		"03256016": {
+			"name": "Husum",
+			"einwohner": 2340
+		},
+		"03256017": {
+			"name": "Landesbergen",
+			"einwohner": 2802
+		},
+		"03256018": {
+			"name": "Leese",
+			"einwohner": 1619
+		},
+		"03256019": {
+			"name": "Liebenau, Flecken",
+			"einwohner": 3706
+		},
+		"03256020": {
+			"name": "Linsburg",
+			"einwohner": 1017
+		},
+		"03256021": {
+			"name": "Marklohe",
+			"einwohner": 4559
+		},
+		"03256022": {
+			"name": "Nienburg (Weser), Stadt",
+			"einwohner": 32580
+		},
+		"03256023": {
+			"name": "Pennigsehl",
+			"einwohner": 1164
+		},
+		"03256024": {
+			"name": "Raddestorf",
+			"einwohner": 1830
+		},
+		"03256025": {
+			"name": "Rehburg-Loccum, Stadt",
+			"einwohner": 9887
+		},
+		"03256026": {
+			"name": "Rodewald",
+			"einwohner": 2560
+		},
+		"03256027": {
+			"name": "Rohrsen",
+			"einwohner": 1135
+		},
+		"03256028": {
+			"name": "Schweringen",
+			"einwohner": 849
+		},
+		"03256029": {
+			"name": "Steimbke",
+			"einwohner": 2422
+		},
+		"03256030": {
+			"name": "Steyerberg, Flecken",
+			"einwohner": 5133
+		},
+		"03256031": {
+			"name": "Stöckse",
+			"einwohner": 1258
+		},
+		"03256032": {
+			"name": "Stolzenau",
+			"einwohner": 7080
+		},
+		"03256033": {
+			"name": "Uchte, Flecken",
+			"einwohner": 4756
+		},
+		"03256034": {
+			"name": "Warmsen",
+			"einwohner": 3106
+		},
+		"03256035": {
+			"name": "Warpe",
+			"einwohner": 678
+		},
+		"03256036": {
+			"name": "Wietzen",
+			"einwohner": 1962
+		},
+		"03256402": {
+			"name": "Heemsen, SG",
+			"einwohner": 6447
+		},
+		"03256407": {
+			"name": "Steimbke, SG",
+			"einwohner": 7257
+		},
+		"03256408": {
+			"name": "Uchte, SG",
+			"einwohner": 13530
+		},
+		"03256409": {
+			"name": "Grafschaft Hoya, SG",
+			"einwohner": 16861
+		},
+		"03256410": {
+			"name": "Mittelweser, SG",
+			"einwohner": 15544
+		},
+		"03256411": {
+			"name": "Weser-Aue, SG",
+			"einwohner": 13976
+		},
+		"03257": {
+			"name": "Schaumburg",
+			"einwohner": 156369
+		},
+		"03257001": {
+			"name": "Ahnsen",
+			"einwohner": 1026
+		},
+		"03257002": {
+			"name": "Apelern",
+			"einwohner": 2394
+		},
+		"03257003": {
+			"name": "Auetal",
+			"einwohner": 5983
+		},
+		"03257004": {
+			"name": "Auhagen",
+			"einwohner": 1259
+		},
+		"03257005": {
+			"name": "Bad Eilsen",
+			"einwohner": 2526
+		},
+		"03257006": {
+			"name": "Bad Nenndorf, Stadt",
+			"einwohner": 11619
+		},
+		"03257007": {
+			"name": "Beckedorf",
+			"einwohner": 1442
+		},
+		"03257008": {
+			"name": "Buchholz",
+			"einwohner": 710
+		},
+		"03257009": {
+			"name": "Bückeburg, Stadt",
+			"einwohner": 19102
+		},
+		"03257010": {
+			"name": "Hagenburg, Flecken",
+			"einwohner": 4473
+		},
+		"03257011": {
+			"name": "Haste",
+			"einwohner": 2792
+		},
+		"03257012": {
+			"name": "Heeßen",
+			"einwohner": 1395
+		},
+		"03257013": {
+			"name": "Helpsen",
+			"einwohner": 1909
+		},
+		"03257014": {
+			"name": "Hespe",
+			"einwohner": 2001
+		},
+		"03257015": {
+			"name": "Heuerßen",
+			"einwohner": 909
+		},
+		"03257016": {
+			"name": "Hohnhorst",
+			"einwohner": 2281
+		},
+		"03257017": {
+			"name": "Hülsede",
+			"einwohner": 1028
+		},
+		"03257018": {
+			"name": "Lauenau, Flecken",
+			"einwohner": 4186
+		},
+		"03257019": {
+			"name": "Lauenhagen",
+			"einwohner": 1277
+		},
+		"03257020": {
+			"name": "Lindhorst",
+			"einwohner": 4173
+		},
+		"03257021": {
+			"name": "Lüdersfeld",
+			"einwohner": 1097
+		},
+		"03257022": {
+			"name": "Luhden",
+			"einwohner": 1131
+		},
+		"03257023": {
+			"name": "Meerbeck",
+			"einwohner": 1816
+		},
+		"03257024": {
+			"name": "Messenkamp",
+			"einwohner": 696
+		},
+		"03257025": {
+			"name": "Niedernwöhren",
+			"einwohner": 1905
+		},
+		"03257026": {
+			"name": "Nienstädt",
+			"einwohner": 4246
+		},
+		"03257027": {
+			"name": "Nordsehl",
+			"einwohner": 668
+		},
+		"03257028": {
+			"name": "Obernkirchen, Stadt",
+			"einwohner": 8923
+		},
+		"03257029": {
+			"name": "Pohle",
+			"einwohner": 823
+		},
+		"03257030": {
+			"name": "Pollhagen",
+			"einwohner": 1042
+		},
+		"03257031": {
+			"name": "Rinteln, Stadt",
+			"einwohner": 25423
+		},
+		"03257032": {
+			"name": "Rodenberg, Stadt",
+			"einwohner": 6249
+		},
+		"03257033": {
+			"name": "Sachsenhagen, Stadt",
+			"einwohner": 1814
+		},
+		"03257034": {
+			"name": "Seggebruch",
+			"einwohner": 1684
+		},
+		"03257035": {
+			"name": "Stadthagen, Stadt",
+			"einwohner": 22540
+		},
+		"03257036": {
+			"name": "Suthfeld",
+			"einwohner": 1416
+		},
+		"03257037": {
+			"name": "Wiedensahl, Flecken",
+			"einwohner": 884
+		},
+		"03257038": {
+			"name": "Wölpinghausen",
+			"einwohner": 1527
+		},
+		"03257401": {
+			"name": "Eilsen, SG",
+			"einwohner": 6788
+		},
+		"03257402": {
+			"name": "Lindhorst, SG",
+			"einwohner": 7621
+		},
+		"03257403": {
+			"name": "Nenndorf, SG",
+			"einwohner": 18108
+		},
+		"03257404": {
+			"name": "Niedernwöhren, SG",
+			"einwohner": 7592
+		},
+		"03257405": {
+			"name": "Nienstädt, SG",
+			"einwohner": 9840
+		},
+		"03257406": {
+			"name": "Rodenberg, SG",
+			"einwohner": 15376
+		},
+		"03257407": {
+			"name": "Sachsenhagen, SG",
+			"einwohner": 9073
+		},
+		"03351": {
+			"name": "Celle",
+			"einwohner": 172447
+		},
+		"03351001": {
+			"name": "Adelheidsdorf",
+			"einwohner": 2689
+		},
+		"03351002": {
+			"name": "Ahnsbeck",
+			"einwohner": 1666
+		},
+		"03351003": {
+			"name": "Beedenbostel",
+			"einwohner": 968
+		},
+		"03351004": {
+			"name": "Bergen, Stadt",
+			"einwohner": 12977
+		},
+		"03351005": {
+			"name": "Bröckel",
+			"einwohner": 2018
+		},
+		"03351006": {
+			"name": "Celle, Stadt",
+			"einwohner": 66989
+		},
+		"03351007": {
+			"name": "Eicklingen",
+			"einwohner": 3152
+		},
+		"03351008": {
+			"name": "Eldingen",
+			"einwohner": 1968
+		},
+		"03351010": {
+			"name": "Faßberg",
+			"einwohner": 5854
+		},
+		"03351012": {
+			"name": "Hambühren",
+			"einwohner": 10178
+		},
+		"03351015": {
+			"name": "Hohne",
+			"einwohner": 1687
+		},
+		"03351016": {
+			"name": "Lachendorf",
+			"einwohner": 6023
+		},
+		"03351017": {
+			"name": "Langlingen",
+			"einwohner": 2132
+		},
+		"03351018": {
+			"name": "Nienhagen",
+			"einwohner": 6397
+		},
+		"03351021": {
+			"name": "Wathlingen",
+			"einwohner": 6375
+		},
+		"03351022": {
+			"name": "Wienhausen, Klostergemein",
+			"einwohner": 3982
+		},
+		"03351023": {
+			"name": "Wietze",
+			"einwohner": 7393
+		},
+		"03351024": {
+			"name": "Winsen (Aller)",
+			"einwohner": 12720
+		},
+		"03351025": {
+			"name": "Eschede",
+			"einwohner": 5422
+		},
+		"03351026": {
+			"name": "Südheide",
+			"einwohner": 11148
+		},
+		"03351402": {
+			"name": "Flotwedel, SG",
+			"einwohner": 11284
+		},
+		"03351403": {
+			"name": "Lachendorf, SG",
+			"einwohner": 12312
+		},
+		"03351404": {
+			"name": "Wathlingen, SG",
+			"einwohner": 15461
+		},
+		"03351501": {
+			"name": "Lohheide, gemfr. Bezirk",
+			"einwohner": 709
+		},
+		"03352": {
+			"name": "Cuxhaven",
+			"einwohner": 198633
+		},
+		"03352002": {
+			"name": "Armstorf",
+			"einwohner": 692
+		},
+		"03352004": {
+			"name": "Belum",
+			"einwohner": 777
+		},
+		"03352008": {
+			"name": "Bülkau",
+			"einwohner": 833
+		},
+		"03352011": {
+			"name": "Cuxhaven, Stadt",
+			"einwohner": 49630
+		},
+		"03352020": {
+			"name": "Hechthausen",
+			"einwohner": 3631
+		},
+		"03352022": {
+			"name": "Hemmoor, Stadt",
+			"einwohner": 8746
+		},
+		"03352024": {
+			"name": "Hollnseth",
+			"einwohner": 848
+		},
+		"03352025": {
+			"name": "Ihlienworth",
+			"einwohner": 1501
+		},
+		"03352029": {
+			"name": "Lamstedt",
+			"einwohner": 3318
+		},
+		"03352032": {
+			"name": "Loxstedt",
+			"einwohner": 15947
+		},
+		"03352036": {
+			"name": "Mittelstenahe",
+			"einwohner": 573
+		},
+		"03352038": {
+			"name": "Neuenkirchen",
+			"einwohner": 1313
+		},
+		"03352039": {
+			"name": "Neuhaus (Oste), Flecken",
+			"einwohner": 1055
+		},
+		"03352041": {
+			"name": "Nordleda",
+			"einwohner": 955
+		},
+		"03352042": {
+			"name": "Oberndorf",
+			"einwohner": 1346
+		},
+		"03352043": {
+			"name": "Odisheim",
+			"einwohner": 463
+		},
+		"03352044": {
+			"name": "Osten",
+			"einwohner": 1716
+		},
+		"03352045": {
+			"name": "Osterbruch",
+			"einwohner": 468
+		},
+		"03352046": {
+			"name": "Otterndorf, Stadt",
+			"einwohner": 7569
+		},
+		"03352050": {
+			"name": "Schiffdorf",
+			"einwohner": 14573
+		},
+		"03352051": {
+			"name": "Steinau",
+			"einwohner": 795
+		},
+		"03352052": {
+			"name": "Stinstedt",
+			"einwohner": 518
+		},
+		"03352055": {
+			"name": "Wanna",
+			"einwohner": 2250
+		},
+		"03352056": {
+			"name": "Wingst",
+			"einwohner": 3308
+		},
+		"03352059": {
+			"name": "Beverstedt",
+			"einwohner": 13273
+		},
+		"03352060": {
+			"name": "Hagen im Bremischen",
+			"einwohner": 10767
+		},
+		"03352061": {
+			"name": "Wurster Nordseeküste",
+			"einwohner": 16735
+		},
+		"03352062": {
+			"name": "Geestland, Stadt",
+			"einwohner": 31149
+		},
+		"03352063": {
+			"name": "Cadenberge",
+			"einwohner": 3884
+		},
+		"03352404": {
+			"name": "Börde Lamstedt, SG",
+			"einwohner": 5949
+		},
+		"03352407": {
+			"name": "Hemmoor, SG",
+			"einwohner": 14093
+		},
+		"03352411": {
+			"name": "Land Hadeln, SG",
+			"einwohner": 26517
+		},
+		"03353": {
+			"name": "Harburg",
+			"einwohner": 265850
+		},
+		"03353001": {
+			"name": "Appel",
+			"einwohner": 2089
+		},
+		"03353002": {
+			"name": "Asendorf",
+			"einwohner": 2209
+		},
+		"03353003": {
+			"name": "Bendestorf",
+			"einwohner": 2336
+		},
+		"03353004": {
+			"name": "Brackel",
+			"einwohner": 1946
+		},
+		"03353005": {
+			"name": "Buchholz i.d.Nordheide, St",
+			"einwohner": 41769
+		},
+		"03353006": {
+			"name": "Dohren",
+			"einwohner": 1190
+		},
+		"03353007": {
+			"name": "Drage",
+			"einwohner": 4302
+		},
+		"03353008": {
+			"name": "Drestedt",
+			"einwohner": 840
+		},
+		"03353009": {
+			"name": "Egestorf",
+			"einwohner": 2679
+		},
+		"03353010": {
+			"name": "Eyendorf",
+			"einwohner": 1234
+		},
+		"03353011": {
+			"name": "Garlstorf",
+			"einwohner": 1117
+		},
+		"03353012": {
+			"name": "Garstedt",
+			"einwohner": 1463
+		},
+		"03353013": {
+			"name": "Gödenstorf",
+			"einwohner": 1081
+		},
+		"03353014": {
+			"name": "Halvesbostel",
+			"einwohner": 791
+		},
+		"03353015": {
+			"name": "Handeloh",
+			"einwohner": 2413
+		},
+		"03353016": {
+			"name": "Hanstedt",
+			"einwohner": 6267
+		},
+		"03353017": {
+			"name": "Harmstorf",
+			"einwohner": 822
+		},
+		"03353018": {
+			"name": "Heidenau",
+			"einwohner": 2271
+		},
+		"03353019": {
+			"name": "Hollenstedt",
+			"einwohner": 3773
+		},
+		"03353020": {
+			"name": "Jesteburg",
+			"einwohner": 7759
+		},
+		"03353021": {
+			"name": "Kakenstorf",
+			"einwohner": 1519
+		},
+		"03353022": {
+			"name": "Königsmoor",
+			"einwohner": 578
+		},
+		"03353023": {
+			"name": "Marschacht",
+			"einwohner": 3892
+		},
+		"03353024": {
+			"name": "Marxen",
+			"einwohner": 1456
+		},
+		"03353025": {
+			"name": "Moisburg",
+			"einwohner": 2072
+		},
+		"03353026": {
+			"name": "Neu Wulmstorf",
+			"einwohner": 23518
+		},
+		"03353027": {
+			"name": "Otter",
+			"einwohner": 1672
+		},
+		"03353028": {
+			"name": "Regesbostel",
+			"einwohner": 1046
+		},
+		"03353029": {
+			"name": "Rosengarten",
+			"einwohner": 13980
+		},
+		"03353030": {
+			"name": "Salzhausen",
+			"einwohner": 4870
+		},
+		"03353031": {
+			"name": "Seevetal",
+			"einwohner": 44086
+		},
+		"03353032": {
+			"name": "Stelle",
+			"einwohner": 11988
+		},
+		"03353033": {
+			"name": "Tespe",
+			"einwohner": 4848
+		},
+		"03353034": {
+			"name": "Toppenstedt",
+			"einwohner": 2208
+		},
+		"03353035": {
+			"name": "Tostedt",
+			"einwohner": 14434
+		},
+		"03353036": {
+			"name": "Undeloh",
+			"einwohner": 1008
+		},
+		"03353037": {
+			"name": "Vierhöfen",
+			"einwohner": 943
+		},
+		"03353038": {
+			"name": "Welle",
+			"einwohner": 1222
+		},
+		"03353039": {
+			"name": "Wenzendorf",
+			"einwohner": 1561
+		},
+		"03353040": {
+			"name": "Winsen (Luhe), Stadt",
+			"einwohner": 37122
+		},
+		"03353041": {
+			"name": "Wistedt",
+			"einwohner": 1804
+		},
+		"03353042": {
+			"name": "Wulfsen",
+			"einwohner": 1672
+		},
+		"03353401": {
+			"name": "Elbmarsch, SG",
+			"einwohner": 13042
+		},
+		"03353402": {
+			"name": "Hanstedt, SG",
+			"einwohner": 15565
+		},
+		"03353403": {
+			"name": "Hollenstedt, SG",
+			"einwohner": 12172
+		},
+		"03353404": {
+			"name": "Jesteburg, SG",
+			"einwohner": 10917
+		},
+		"03353405": {
+			"name": "Salzhausen, SG",
+			"einwohner": 14588
+		},
+		"03353406": {
+			"name": "Tostedt, SG",
+			"einwohner": 27103
+		},
+		"03354": {
+			"name": "Lüchow-Dannenberg",
+			"einwohner": 46425
+		},
+		"03354001": {
+			"name": "Bergen a.d.Dumme, Flecken",
+			"einwohner": 1376
+		},
+		"03354002": {
+			"name": "Clenze, Flecken",
+			"einwohner": 2138
+		},
+		"03354003": {
+			"name": "Damnatz",
+			"einwohner": 300
+		},
+		"03354004": {
+			"name": "Dannenberg (Elbe), Stadt",
+			"einwohner": 7878
+		},
+		"03354005": {
+			"name": "Gartow, Flecken",
+			"einwohner": 1354
+		},
+		"03354006": {
+			"name": "Göhrde",
+			"einwohner": 571
+		},
+		"03354007": {
+			"name": "Gorleben",
+			"einwohner": 613
+		},
+		"03354008": {
+			"name": "Gusborn",
+			"einwohner": 1199
+		},
+		"03354009": {
+			"name": "Hitzacker (Elbe), Stadt",
+			"einwohner": 4579
+		},
+		"03354010": {
+			"name": "Höhbeck",
+			"einwohner": 629
+		},
+		"03354011": {
+			"name": "Jameln",
+			"einwohner": 1063
+		},
+		"03354012": {
+			"name": "Karwitz",
+			"einwohner": 748
+		},
+		"03354013": {
+			"name": "Küsten",
+			"einwohner": 1334
+		},
+		"03354014": {
+			"name": "Langendorf",
+			"einwohner": 671
+		},
+		"03354015": {
+			"name": "Lemgow",
+			"einwohner": 1302
+		},
+		"03354016": {
+			"name": "Luckau (Wendland)",
+			"einwohner": 574
+		},
+		"03354017": {
+			"name": "Lübbow",
+			"einwohner": 822
+		},
+		"03354018": {
+			"name": "Lüchow (Wendland), Stadt",
+			"einwohner": 9143
+		},
+		"03354019": {
+			"name": "Neu Darchau",
+			"einwohner": 1323
+		},
+		"03354020": {
+			"name": "Prezelle",
+			"einwohner": 411
+		},
+		"03354021": {
+			"name": "Schnackenburg, Stadt",
+			"einwohner": 454
+		},
+		"03354022": {
+			"name": "Schnega",
+			"einwohner": 1157
+		},
+		"03354023": {
+			"name": "Trebel",
+			"einwohner": 925
+		},
+		"03354024": {
+			"name": "Waddeweitz",
+			"einwohner": 866
+		},
+		"03354025": {
+			"name": "Woltersdorf",
+			"einwohner": 876
+		},
+		"03354026": {
+			"name": "Wustrow (Wendland), Stadt",
+			"einwohner": 2543
+		},
+		"03354027": {
+			"name": "Zernien",
+			"einwohner": 1576
+		},
+		"03354403": {
+			"name": "Gartow, SG",
+			"einwohner": 3461
+		},
+		"03354406": {
+			"name": "Elbtalaue, SG",
+			"einwohner": 19908
+		},
+		"03354407": {
+			"name": "Lüchow (Wendland), SG",
+			"einwohner": 23056
+		},
+		"03355": {
+			"name": "Lüneburg",
+			"einwohner": 179015
+		},
+		"03355001": {
+			"name": "Adendorf",
+			"einwohner": 10802
+		},
+		"03355002": {
+			"name": "Amelinghausen",
+			"einwohner": 3798
+		},
+		"03355003": {
+			"name": "Artlenburg, Flecken",
+			"einwohner": 1793
+		},
+		"03355004": {
+			"name": "Bardowick, Flecken",
+			"einwohner": 6580
+		},
+		"03355005": {
+			"name": "Barendorf",
+			"einwohner": 2428
+		},
+		"03355006": {
+			"name": "Barnstedt",
+			"einwohner": 763
+		},
+		"03355007": {
+			"name": "Barum",
+			"einwohner": 2026
+		},
+		"03355008": {
+			"name": "Betzendorf",
+			"einwohner": 1104
+		},
+		"03355009": {
+			"name": "Bleckede, Stadt",
+			"einwohner": 9173
+		},
+		"03355010": {
+			"name": "Boitze",
+			"einwohner": 336
+		},
+		"03355011": {
+			"name": "Brietlingen",
+			"einwohner": 3313
+		},
+		"03355012": {
+			"name": "Dahlem",
+			"einwohner": 488
+		},
+		"03355013": {
+			"name": "Dahlenburg, Flecken",
+			"einwohner": 3059
+		},
+		"03355014": {
+			"name": "Deutsch Evern",
+			"einwohner": 3629
+		},
+		"03355015": {
+			"name": "Echem",
+			"einwohner": 1070
+		},
+		"03355016": {
+			"name": "Embsen",
+			"einwohner": 2785
+		},
+		"03355017": {
+			"name": "Handorf",
+			"einwohner": 2105
+		},
+		"03355018": {
+			"name": "Hittbergen",
+			"einwohner": 953
+		},
+		"03355019": {
+			"name": "Hohnstorf (Elbe)",
+			"einwohner": 2288
+		},
+		"03355020": {
+			"name": "Kirchgellersen",
+			"einwohner": 2338
+		},
+		"03355021": {
+			"name": "Lüdersburg",
+			"einwohner": 687
+		},
+		"03355022": {
+			"name": "Lüneburg, Hansestadt",
+			"einwohner": 74285
+		},
+		"03355023": {
+			"name": "Mechtersen",
+			"einwohner": 661
+		},
+		"03355024": {
+			"name": "Melbeck",
+			"einwohner": 3290
+		},
+		"03355025": {
+			"name": "Nahrendorf",
+			"einwohner": 1116
+		},
+		"03355026": {
+			"name": "Neetze",
+			"einwohner": 2822
+		},
+		"03355027": {
+			"name": "Oldendorf (Luhe)",
+			"einwohner": 940
+		},
+		"03355028": {
+			"name": "Radbruch",
+			"einwohner": 2261
+		},
+		"03355029": {
+			"name": "Rehlingen",
+			"einwohner": 705
+		},
+		"03355030": {
+			"name": "Reinstorf",
+			"einwohner": 1191
+		},
+		"03355031": {
+			"name": "Reppenstedt",
+			"einwohner": 7028
+		},
+		"03355032": {
+			"name": "Rullstorf",
+			"einwohner": 1932
+		},
+		"03355033": {
+			"name": "Scharnebeck",
+			"einwohner": 3375
+		},
+		"03355034": {
+			"name": "Soderstorf",
+			"einwohner": 1442
+		},
+		"03355035": {
+			"name": "Südergellersen",
+			"einwohner": 1547
+		},
+		"03355036": {
+			"name": "Thomasburg",
+			"einwohner": 1304
+		},
+		"03355037": {
+			"name": "Tosterglope",
+			"einwohner": 604
+		},
+		"03355038": {
+			"name": "Vastorf",
+			"einwohner": 835
+		},
+		"03355039": {
+			"name": "Vögelsen",
+			"einwohner": 2468
+		},
+		"03355040": {
+			"name": "Wendisch Evern",
+			"einwohner": 1727
+		},
+		"03355041": {
+			"name": "Westergellersen",
+			"einwohner": 1992
+		},
+		"03355042": {
+			"name": "Wittorf",
+			"einwohner": 1605
+		},
+		"03355049": {
+			"name": "Amt Neuhaus",
+			"einwohner": 4367
+		},
+		"03355401": {
+			"name": "Amelinghausen, SG",
+			"einwohner": 7989
+		},
+		"03355402": {
+			"name": "Bardowick, SG",
+			"einwohner": 17706
+		},
+		"03355403": {
+			"name": "Dahlenburg, SG",
+			"einwohner": 5603
+		},
+		"03355404": {
+			"name": "Gellersen, SG",
+			"einwohner": 12905
+		},
+		"03355405": {
+			"name": "Ilmenau, SG",
+			"einwohner": 10467
+		},
+		"03355406": {
+			"name": "Ostheide, SG",
+			"einwohner": 10307
+		},
+		"03355407": {
+			"name": "Scharnebeck, SG",
+			"einwohner": 15411
+		},
+		"03356": {
+			"name": "Osterholz",
+			"einwohner": 113336
+		},
+		"03356001": {
+			"name": "Axstedt",
+			"einwohner": 1198
+		},
+		"03356002": {
+			"name": "Grasberg",
+			"einwohner": 7699
+		},
+		"03356003": {
+			"name": "Hambergen",
+			"einwohner": 5600
+		},
+		"03356004": {
+			"name": "Holste",
+			"einwohner": 1375
+		},
+		"03356005": {
+			"name": "Lilienthal",
+			"einwohner": 20108
+		},
+		"03356006": {
+			"name": "Lübberstedt",
+			"einwohner": 685
+		},
+		"03356007": {
+			"name": "Osterholz-Scharmbeck, Stad",
+			"einwohner": 29737
+		},
+		"03356008": {
+			"name": "Ritterhude",
+			"einwohner": 14735
+		},
+		"03356009": {
+			"name": "Schwanewede",
+			"einwohner": 19934
+		},
+		"03356010": {
+			"name": "Vollersode",
+			"einwohner": 2976
+		},
+		"03356011": {
+			"name": "Worpswede",
+			"einwohner": 9289
+		},
+		"03356401": {
+			"name": "Hambergen, SG",
+			"einwohner": 11834
+		},
+		"03357": {
+			"name": "Rotenburg (Wümme)",
+			"einwohner": 165716
+		},
+		"03357001": {
+			"name": "Ahausen",
+			"einwohner": 1891
+		},
+		"03357002": {
+			"name": "Alfstedt",
+			"einwohner": 844
+		},
+		"03357003": {
+			"name": "Anderlingen",
+			"einwohner": 813
+		},
+		"03357004": {
+			"name": "Basdahl",
+			"einwohner": 1492
+		},
+		"03357005": {
+			"name": "Bötersen",
+			"einwohner": 994
+		},
+		"03357006": {
+			"name": "Bothel",
+			"einwohner": 2434
+		},
+		"03357007": {
+			"name": "Breddorf",
+			"einwohner": 1010
+		},
+		"03357008": {
+			"name": "Bremervörde, Stadt",
+			"einwohner": 18488
+		},
+		"03357009": {
+			"name": "Brockel",
+			"einwohner": 1353
+		},
+		"03357010": {
+			"name": "Bülstedt",
+			"einwohner": 763
+		},
+		"03357011": {
+			"name": "Deinstedt",
+			"einwohner": 623
+		},
+		"03357012": {
+			"name": "Ebersdorf",
+			"einwohner": 1060
+		},
+		"03357013": {
+			"name": "Elsdorf",
+			"einwohner": 2012
+		},
+		"03357014": {
+			"name": "Farven",
+			"einwohner": 635
+		},
+		"03357015": {
+			"name": "Fintel",
+			"einwohner": 3107
+		},
+		"03357016": {
+			"name": "Gnarrenburg",
+			"einwohner": 9186
+		},
+		"03357017": {
+			"name": "Groß Meckelsen",
+			"einwohner": 529
+		},
+		"03357018": {
+			"name": "Gyhum",
+			"einwohner": 2447
+		},
+		"03357019": {
+			"name": "Hamersen",
+			"einwohner": 552
+		},
+		"03357020": {
+			"name": "Hassendorf",
+			"einwohner": 1211
+		},
+		"03357021": {
+			"name": "Heeslingen",
+			"einwohner": 4876
+		},
+		"03357022": {
+			"name": "Hellwege",
+			"einwohner": 1103
+		},
+		"03357023": {
+			"name": "Helvesiek",
+			"einwohner": 888
+		},
+		"03357024": {
+			"name": "Hemsbünde",
+			"einwohner": 1147
+		},
+		"03357025": {
+			"name": "Hemslingen",
+			"einwohner": 1462
+		},
+		"03357026": {
+			"name": "Hepstedt",
+			"einwohner": 993
+		},
+		"03357027": {
+			"name": "Hipstedt",
+			"einwohner": 1210
+		},
+		"03357028": {
+			"name": "Horstedt",
+			"einwohner": 1245
+		},
+		"03357029": {
+			"name": "Kalbe",
+			"einwohner": 605
+		},
+		"03357030": {
+			"name": "Kirchtimke",
+			"einwohner": 925
+		},
+		"03357031": {
+			"name": "Kirchwalsede",
+			"einwohner": 1255
+		},
+		"03357032": {
+			"name": "Klein Meckelsen",
+			"einwohner": 949
+		},
+		"03357033": {
+			"name": "Lauenbrück",
+			"einwohner": 2509
+		},
+		"03357034": {
+			"name": "Lengenbostel",
+			"einwohner": 503
+		},
+		"03357035": {
+			"name": "Oerel",
+			"einwohner": 1901
+		},
+		"03357036": {
+			"name": "Ostereistedt",
+			"einwohner": 920
+		},
+		"03357037": {
+			"name": "Reeßum",
+			"einwohner": 1757
+		},
+		"03357038": {
+			"name": "Rhade",
+			"einwohner": 1036
+		},
+		"03357039": {
+			"name": "Rotenburg (Wümme), Stadt",
+			"einwohner": 23188
+		},
+		"03357040": {
+			"name": "Sandbostel",
+			"einwohner": 783
+		},
+		"03357041": {
+			"name": "Scheeßel",
+			"einwohner": 12679
+		},
+		"03357042": {
+			"name": "Seedorf",
+			"einwohner": 705
+		},
+		"03357043": {
+			"name": "Selsingen",
+			"einwohner": 3580
+		},
+		"03357044": {
+			"name": "Sittensen",
+			"einwohner": 6204
+		},
+		"03357045": {
+			"name": "Sottrum",
+			"einwohner": 6460
+		},
+		"03357046": {
+			"name": "Stemmen",
+			"einwohner": 803
+		},
+		"03357047": {
+			"name": "Tarmstedt",
+			"einwohner": 4049
+		},
+		"03357048": {
+			"name": "Tiste",
+			"einwohner": 923
+		},
+		"03357049": {
+			"name": "Vahlde",
+			"einwohner": 702
+		},
+		"03357050": {
+			"name": "Vierden",
+			"einwohner": 764
+		},
+		"03357051": {
+			"name": "Visselhövede, Stadt",
+			"einwohner": 9488
+		},
+		"03357052": {
+			"name": "Vorwerk",
+			"einwohner": 983
+		},
+		"03357053": {
+			"name": "Westertimke",
+			"einwohner": 440
+		},
+		"03357054": {
+			"name": "Westerwalsede",
+			"einwohner": 756
+		},
+		"03357055": {
+			"name": "Wilstedt",
+			"einwohner": 1752
+		},
+		"03357056": {
+			"name": "Wohnste",
+			"einwohner": 820
+		},
+		"03357057": {
+			"name": "Zeven, Stadt",
+			"einwohner": 13909
+		},
+		"03357401": {
+			"name": "Bothel, SG",
+			"einwohner": 8407
+		},
+		"03357402": {
+			"name": "Fintel, SG",
+			"einwohner": 8009
+		},
+		"03357403": {
+			"name": "Geestequelle, SG",
+			"einwohner": 6507
+		},
+		"03357404": {
+			"name": "Selsingen, SG",
+			"einwohner": 9095
+		},
+		"03357405": {
+			"name": "Sittensen, SG",
+			"einwohner": 11849
+		},
+		"03357406": {
+			"name": "Sottrum, SG",
+			"einwohner": 14661
+		},
+		"03357407": {
+			"name": "Tarmstedt, SG",
+			"einwohner": 10915
+		},
+		"03357408": {
+			"name": "Zeven, SG",
+			"einwohner": 23244
+		},
+		"03358": {
+			"name": "Heidekreis",
+			"einwohner": 141436
+		},
+		"03358001": {
+			"name": "Ahlden (Aller), Flecken",
+			"einwohner": 1611
+		},
+		"03358002": {
+			"name": "Bispingen",
+			"einwohner": 6559
+		},
+		"03358003": {
+			"name": "Böhme",
+			"einwohner": 946
+		},
+		"03358005": {
+			"name": "Buchholz (Aller)",
+			"einwohner": 2178
+		},
+		"03358006": {
+			"name": "Eickeloh",
+			"einwohner": 781
+		},
+		"03358007": {
+			"name": "Essel",
+			"einwohner": 1205
+		},
+		"03358008": {
+			"name": "Bad Fallingbostel, Stadt",
+			"einwohner": 12795
+		},
+		"03358009": {
+			"name": "Frankenfeld",
+			"einwohner": 518
+		},
+		"03358010": {
+			"name": "Gilten",
+			"einwohner": 1245
+		},
+		"03358011": {
+			"name": "Grethem",
+			"einwohner": 665
+		},
+		"03358012": {
+			"name": "Hademstorf",
+			"einwohner": 848
+		},
+		"03358013": {
+			"name": "Häuslingen",
+			"einwohner": 789
+		},
+		"03358014": {
+			"name": "Hodenhagen",
+			"einwohner": 3133
+		},
+		"03358015": {
+			"name": "Lindwedel",
+			"einwohner": 2722
+		},
+		"03358016": {
+			"name": "Munster, Stadt",
+			"einwohner": 15081
+		},
+		"03358017": {
+			"name": "Neuenkirchen",
+			"einwohner": 5346
+		},
+		"03358018": {
+			"name": "Rethem (Aller), Stadt",
+			"einwohner": 2325
+		},
+		"03358019": {
+			"name": "Schneverdingen, Stadt",
+			"einwohner": 18950
+		},
+		"03358020": {
+			"name": "Schwarmstedt",
+			"einwohner": 5771
+		},
+		"03358021": {
+			"name": "Soltau, Stadt",
+			"einwohner": 22536
+		},
+		"03358023": {
+			"name": "Wietzendorf",
+			"einwohner": 4200
+		},
+		"03358024": {
+			"name": "Walsrode, Stadt",
+			"einwohner": 31018
+		},
+		"03358401": {
+			"name": "Ahlden, SG",
+			"einwohner": 7038
+		},
+		"03358402": {
+			"name": "Rethem/Aller, SG",
+			"einwohner": 4578
+		},
+		"03358403": {
+			"name": "Schwarmstedt, SG",
+			"einwohner": 13121
+		},
+		"03358501": {
+			"name": "Osterheide, gemfr. Bezirk",
+			"einwohner": 214
+		},
+		"03359": {
+			"name": "Stade",
+			"einwohner": 207871
+		},
+		"03359001": {
+			"name": "Agathenburg",
+			"einwohner": 1352
+		},
+		"03359002": {
+			"name": "Ahlerstedt",
+			"einwohner": 5499
+		},
+		"03359003": {
+			"name": "Apensen",
+			"einwohner": 4426
+		},
+		"03359004": {
+			"name": "Balje",
+			"einwohner": 922
+		},
+		"03359005": {
+			"name": "Bargstedt",
+			"einwohner": 2175
+		},
+		"03359006": {
+			"name": "Beckdorf",
+			"einwohner": 2782
+		},
+		"03359007": {
+			"name": "Bliedersdorf",
+			"einwohner": 1887
+		},
+		"03359008": {
+			"name": "Brest",
+			"einwohner": 784
+		},
+		"03359009": {
+			"name": "Burweg",
+			"einwohner": 1007
+		},
+		"03359010": {
+			"name": "Buxtehude, Hansestadt",
+			"einwohner": 40891
+		},
+		"03359011": {
+			"name": "Deinste",
+			"einwohner": 2144
+		},
+		"03359012": {
+			"name": "Dollern",
+			"einwohner": 2341
+		},
+		"03359013": {
+			"name": "Drochtersen",
+			"einwohner": 11294
+		},
+		"03359014": {
+			"name": "Düdenbüttel",
+			"einwohner": 1017
+		},
+		"03359015": {
+			"name": "Engelschoff",
+			"einwohner": 758
+		},
+		"03359016": {
+			"name": "Estorf",
+			"einwohner": 1427
+		},
+		"03359017": {
+			"name": "Fredenbeck",
+			"einwohner": 6451
+		},
+		"03359018": {
+			"name": "Freiburg (Elbe), Flecken",
+			"einwohner": 1762
+		},
+		"03359019": {
+			"name": "Großenwörden",
+			"einwohner": 474
+		},
+		"03359020": {
+			"name": "Grünendeich",
+			"einwohner": 1786
+		},
+		"03359021": {
+			"name": "Guderhandviertel",
+			"einwohner": 1127
+		},
+		"03359022": {
+			"name": "Hammah",
+			"einwohner": 3261
+		},
+		"03359023": {
+			"name": "Harsefeld, Flecken",
+			"einwohner": 14820
+		},
+		"03359024": {
+			"name": "Heinbockel",
+			"einwohner": 1453
+		},
+		"03359025": {
+			"name": "Himmelpforten",
+			"einwohner": 5188
+		},
+		"03359026": {
+			"name": "Hollern-Twielenfleth",
+			"einwohner": 3275
+		},
+		"03359027": {
+			"name": "Horneburg, Flecken",
+			"einwohner": 6849
+		},
+		"03359028": {
+			"name": "Jork",
+			"einwohner": 11654
+		},
+		"03359029": {
+			"name": "Kranenburg",
+			"einwohner": 741
+		},
+		"03359030": {
+			"name": "Krummendeich",
+			"einwohner": 475
+		},
+		"03359031": {
+			"name": "Kutenholz",
+			"einwohner": 4552
+		},
+		"03359032": {
+			"name": "Mittelnkirchen",
+			"einwohner": 1090
+		},
+		"03359033": {
+			"name": "Neuenkirchen",
+			"einwohner": 862
+		},
+		"03359034": {
+			"name": "Nottensdorf",
+			"einwohner": 1615
+		},
+		"03359035": {
+			"name": "Oederquart",
+			"einwohner": 923
+		},
+		"03359036": {
+			"name": "Oldendorf",
+			"einwohner": 3074
+		},
+		"03359037": {
+			"name": "Sauensiek",
+			"einwohner": 2498
+		},
+		"03359038": {
+			"name": "Stade, Hansestadt",
+			"einwohner": 48632
+		},
+		"03359039": {
+			"name": "Steinkirchen",
+			"einwohner": 1747
+		},
+		"03359040": {
+			"name": "Wischhafen",
+			"einwohner": 2856
+		},
+		"03359401": {
+			"name": "Apensen, SG",
+			"einwohner": 9706
+		},
+		"03359402": {
+			"name": "Fredenbeck, SG",
+			"einwohner": 13147
+		},
+		"03359403": {
+			"name": "Harsefeld, SG",
+			"einwohner": 23278
+		},
+		"03359405": {
+			"name": "Horneburg, SG",
+			"einwohner": 14044
+		},
+		"03359406": {
+			"name": "Lühe, SG",
+			"einwohner": 9887
+		},
+		"03359407": {
+			"name": "Nordkehdingen, SG",
+			"einwohner": 6938
+		},
+		"03359409": {
+			"name": "Oldendorf-Himmelpforten, S",
+			"einwohner": 18400
+		},
+		"03360": {
+			"name": "Uelzen",
+			"einwohner": 91319
+		},
+		"03360001": {
+			"name": "Altenmedingen",
+			"einwohner": 1424
+		},
+		"03360002": {
+			"name": "Bad Bevensen, Stadt",
+			"einwohner": 9456
+		},
+		"03360003": {
+			"name": "Barum",
+			"einwohner": 750
+		},
+		"03360004": {
+			"name": "Bienenbüttel",
+			"einwohner": 6585
+		},
+		"03360005": {
+			"name": "Bad Bodenteich, Flecken",
+			"einwohner": 4428
+		},
+		"03360006": {
+			"name": "Ebstorf, Klosterflecken",
+			"einwohner": 5276
+		},
+		"03360007": {
+			"name": "Eimke",
+			"einwohner": 855
+		},
+		"03360008": {
+			"name": "Emmendorf",
+			"einwohner": 733
+		},
+		"03360009": {
+			"name": "Gerdau",
+			"einwohner": 1388
+		},
+		"03360010": {
+			"name": "Hanstedt",
+			"einwohner": 911
+		},
+		"03360011": {
+			"name": "Himbergen",
+			"einwohner": 1700
+		},
+		"03360012": {
+			"name": "Jelmstorf",
+			"einwohner": 750
+		},
+		"03360013": {
+			"name": "Lüder",
+			"einwohner": 1144
+		},
+		"03360014": {
+			"name": "Natendorf",
+			"einwohner": 675
+		},
+		"03360015": {
+			"name": "Oetzen",
+			"einwohner": 1125
+		},
+		"03360016": {
+			"name": "Rätzlingen",
+			"einwohner": 470
+		},
+		"03360017": {
+			"name": "Römstedt",
+			"einwohner": 773
+		},
+		"03360018": {
+			"name": "Rosche",
+			"einwohner": 1976
+		},
+		"03360019": {
+			"name": "Schwienau",
+			"einwohner": 658
+		},
+		"03360020": {
+			"name": "Soltendieck",
+			"einwohner": 1031
+		},
+		"03360022": {
+			"name": "Stoetze",
+			"einwohner": 622
+		},
+		"03360023": {
+			"name": "Suderburg",
+			"einwohner": 4359
+		},
+		"03360024": {
+			"name": "Suhlendorf",
+			"einwohner": 2266
+		},
+		"03360025": {
+			"name": "Uelzen, Hansestadt",
+			"einwohner": 32683
+		},
+		"03360026": {
+			"name": "Weste",
+			"einwohner": 902
+		},
+		"03360029": {
+			"name": "Wriedel",
+			"einwohner": 2219
+		},
+		"03360030": {
+			"name": "Wrestedt",
+			"einwohner": 6160
+		},
+		"03360404": {
+			"name": "Rosche, SG",
+			"einwohner": 6459
+		},
+		"03360405": {
+			"name": "Suderburg, SG",
+			"einwohner": 6602
+		},
+		"03360407": {
+			"name": "Bevensen-Ebstorf, SG",
+			"einwohner": 26227
+		},
+		"03360408": {
+			"name": "Aue, SG",
+			"einwohner": 12763
+		},
+		"03361": {
+			"name": "Verden",
+			"einwohner": 138761
+		},
+		"03361001": {
+			"name": "Achim, Stadt",
+			"einwohner": 32884
+		},
+		"03361002": {
+			"name": "Blender",
+			"einwohner": 2824
+		},
+		"03361003": {
+			"name": "Dörverden",
+			"einwohner": 8681
+		},
+		"03361004": {
+			"name": "Emtinghausen",
+			"einwohner": 1540
+		},
+		"03361005": {
+			"name": "Kirchlinteln",
+			"einwohner": 10162
+		},
+		"03361006": {
+			"name": "Langwedel, Flecken",
+			"einwohner": 14672
+		},
+		"03361008": {
+			"name": "Ottersberg, Flecken",
+			"einwohner": 13195
+		},
+		"03361009": {
+			"name": "Oyten",
+			"einwohner": 16441
+		},
+		"03361010": {
+			"name": "Riede",
+			"einwohner": 3104
+		},
+		"03361012": {
+			"name": "Verden (Aller), Stadt",
+			"einwohner": 27161
+		},
+		"03361013": {
+			"name": "Thedinghausen",
+			"einwohner": 8097
+		},
+		"03361401": {
+			"name": "Thedinghausen, SG",
+			"einwohner": 15565
+		},
+		"03401": {
+			"name": "Delmenhorst, Stadt",
+			"einwohner": 81247
+		},
+		"03402": {
+			"name": "Emden, Stadt",
+			"einwohner": 49125
+		},
+		"03403": {
+			"name": "Oldenburg(Oldb), Stadt",
+			"einwohner": 176410
+		},
+		"03404": {
+			"name": "Osnabrück, Stadt",
+			"einwohner": 165727
+		},
+		"03405": {
+			"name": "Wilhelmshaven, Stadt",
+			"einwohner": 75190
+		},
+		"03451": {
+			"name": "Ammerland",
+			"einwohner": 127896
+		},
+		"03451001": {
+			"name": "Apen",
+			"einwohner": 12138
+		},
+		"03451002": {
+			"name": "Bad Zwischenahn",
+			"einwohner": 29752
+		},
+		"03451004": {
+			"name": "Edewecht",
+			"einwohner": 22565
+		},
+		"03451005": {
+			"name": "Rastede",
+			"einwohner": 22835
+		},
+		"03451007": {
+			"name": "Westerstede, Stadt",
+			"einwohner": 24052
+		},
+		"03451008": {
+			"name": "Wiefelstede",
+			"einwohner": 16554
+		},
+		"03452": {
+			"name": "Aurich",
+			"einwohner": 188877
+		},
+		"03452001": {
+			"name": "Aurich, Stadt",
+			"einwohner": 42568
+		},
+		"03452002": {
+			"name": "Baltrum",
+			"einwohner": 537
+		},
+		"03452003": {
+			"name": "Berumbur",
+			"einwohner": 2673
+		},
+		"03452006": {
+			"name": "Großefehn",
+			"einwohner": 14045
+		},
+		"03452007": {
+			"name": "Großheide",
+			"einwohner": 8325
+		},
+		"03452008": {
+			"name": "Hage, Flecken",
+			"einwohner": 6552
+		},
+		"03452009": {
+			"name": "Hagermarsch",
+			"einwohner": 417
+		},
+		"03452010": {
+			"name": "Halbemond",
+			"einwohner": 971
+		},
+		"03452011": {
+			"name": "Hinte",
+			"einwohner": 7227
+		},
+		"03452012": {
+			"name": "Ihlow",
+			"einwohner": 12337
+		},
+		"03452013": {
+			"name": "Juist, Inselgemeinde",
+			"einwohner": 1193
+		},
+		"03452014": {
+			"name": "Krummhörn",
+			"einwohner": 11354
+		},
+		"03452015": {
+			"name": "Leezdorf",
+			"einwohner": 1813
+		},
+		"03452016": {
+			"name": "Lütetsburg",
+			"einwohner": 716
+		},
+		"03452017": {
+			"name": "Marienhafe, Flecken",
+			"einwohner": 2459
+		},
+		"03452019": {
+			"name": "Norden, Stadt",
+			"einwohner": 25015
+		},
+		"03452020": {
+			"name": "Norderney, Stadt",
+			"einwohner": 5458
+		},
+		"03452021": {
+			"name": "Osteel",
+			"einwohner": 2039
+		},
+		"03452022": {
+			"name": "Rechtsupweg",
+			"einwohner": 1986
+		},
+		"03452023": {
+			"name": "Südbrookmerland",
+			"einwohner": 18350
+		},
+		"03452024": {
+			"name": "Upgant-Schott",
+			"einwohner": 3526
+		},
+		"03452025": {
+			"name": "Wiesmoor, Stadt",
+			"einwohner": 13985
+		},
+		"03452026": {
+			"name": "Wirdum",
+			"einwohner": 997
+		},
+		"03452027": {
+			"name": "Dornum",
+			"einwohner": 4334
+		},
+		"03452401": {
+			"name": "Brookmerland, SG",
+			"einwohner": 12820
+		},
+		"03452403": {
+			"name": "Hage, SG",
+			"einwohner": 11329
+		},
+		"03453": {
+			"name": "Cloppenburg",
+			"einwohner": 178948
+		},
+		"03453001": {
+			"name": "Barßel",
+			"einwohner": 13812
+		},
+		"03453002": {
+			"name": "Bösel",
+			"einwohner": 8906
+		},
+		"03453003": {
+			"name": "Cappeln (Oldenburg)",
+			"einwohner": 9060
+		},
+		"03453004": {
+			"name": "Cloppenburg, Stadt",
+			"einwohner": 36569
+		},
+		"03453005": {
+			"name": "Emstek",
+			"einwohner": 12506
+		},
+		"03453006": {
+			"name": "Essen (Oldenburg)",
+			"einwohner": 9321
+		},
+		"03453007": {
+			"name": "Friesoythe, Stadt",
+			"einwohner": 22809
+		},
+		"03453008": {
+			"name": "Garrel",
+			"einwohner": 15304
+		},
+		"03453009": {
+			"name": "Lastrup",
+			"einwohner": 7696
+		},
+		"03453010": {
+			"name": "Lindern (Oldenburg)",
+			"einwohner": 4965
+		},
+		"03453011": {
+			"name": "Löningen, Stadt",
+			"einwohner": 14351
+		},
+		"03453012": {
+			"name": "Molbergen",
+			"einwohner": 9334
+		},
+		"03453013": {
+			"name": "Saterland",
+			"einwohner": 14315
+		},
+		"03454": {
+			"name": "Emsland",
+			"einwohner": 334721
+		},
+		"03454001": {
+			"name": "Andervenne",
+			"einwohner": 926
+		},
+		"03454002": {
+			"name": "Bawinkel",
+			"einwohner": 2632
+		},
+		"03454003": {
+			"name": "Beesten",
+			"einwohner": 1759
+		},
+		"03454004": {
+			"name": "Bockhorst",
+			"einwohner": 1010
+		},
+		"03454005": {
+			"name": "Börger",
+			"einwohner": 2913
+		},
+		"03454006": {
+			"name": "Breddenberg",
+			"einwohner": 812
+		},
+		"03454007": {
+			"name": "Dersum",
+			"einwohner": 1478
+		},
+		"03454008": {
+			"name": "Dörpen",
+			"einwohner": 5455
+		},
+		"03454009": {
+			"name": "Dohren",
+			"einwohner": 1153
+		},
+		"03454010": {
+			"name": "Emsbüren",
+			"einwohner": 10740
+		},
+		"03454011": {
+			"name": "Esterwegen",
+			"einwohner": 5360
+		},
+		"03454012": {
+			"name": "Freren, Stadt",
+			"einwohner": 4883
+		},
+		"03454013": {
+			"name": "Fresenburg",
+			"einwohner": 942
+		},
+		"03454014": {
+			"name": "Geeste",
+			"einwohner": 12159
+		},
+		"03454015": {
+			"name": "Gersten",
+			"einwohner": 1191
+		},
+		"03454016": {
+			"name": "Groß Berßen",
+			"einwohner": 714
+		},
+		"03454017": {
+			"name": "Handrup",
+			"einwohner": 832
+		},
+		"03454018": {
+			"name": "Haren (Ems), Stadt",
+			"einwohner": 24369
+		},
+		"03454019": {
+			"name": "Haselünne, Stadt",
+			"einwohner": 13532
+		},
+		"03454020": {
+			"name": "Heede",
+			"einwohner": 2535
+		},
+		"03454021": {
+			"name": "Herzlake",
+			"einwohner": 4791
+		},
+		"03454022": {
+			"name": "Hilkenbrook",
+			"einwohner": 777
+		},
+		"03454023": {
+			"name": "Hüven",
+			"einwohner": 555
+		},
+		"03454024": {
+			"name": "Klein Berßen",
+			"einwohner": 1185
+		},
+		"03454025": {
+			"name": "Kluse",
+			"einwohner": 1763
+		},
+		"03454026": {
+			"name": "Lähden",
+			"einwohner": 4598
+		},
+		"03454027": {
+			"name": "Lahn",
+			"einwohner": 893
+		},
+		"03454028": {
+			"name": "Langen",
+			"einwohner": 1401
+		},
+		"03454029": {
+			"name": "Lathen",
+			"einwohner": 6746
+		},
+		"03454030": {
+			"name": "Lehe",
+			"einwohner": 996
+		},
+		"03454031": {
+			"name": "Lengerich",
+			"einwohner": 2880
+		},
+		"03454032": {
+			"name": "Lingen (Ems), Stadt",
+			"einwohner": 56512
+		},
+		"03454033": {
+			"name": "Lorup",
+			"einwohner": 3245
+		},
+		"03454034": {
+			"name": "Lünne",
+			"einwohner": 2135
+		},
+		"03454035": {
+			"name": "Meppen, Stadt",
+			"einwohner": 36911
+		},
+		"03454036": {
+			"name": "Messingen",
+			"einwohner": 1117
+		},
+		"03454037": {
+			"name": "Neubörger",
+			"einwohner": 1612
+		},
+		"03454038": {
+			"name": "Neulehe",
+			"einwohner": 848
+		},
+		"03454039": {
+			"name": "Niederlangen",
+			"einwohner": 1318
+		},
+		"03454040": {
+			"name": "Oberlangen",
+			"einwohner": 984
+		},
+		"03454041": {
+			"name": "Papenburg, Stadt",
+			"einwohner": 37196
+		},
+		"03454042": {
+			"name": "Rastdorf",
+			"einwohner": 1087
+		},
+		"03454043": {
+			"name": "Renkenberge",
+			"einwohner": 679
+		},
+		"03454044": {
+			"name": "Rhede (Ems)",
+			"einwohner": 4515
+		},
+		"03454045": {
+			"name": "Salzbergen",
+			"einwohner": 7938
+		},
+		"03454046": {
+			"name": "Schapen",
+			"einwohner": 2451
+		},
+		"03454047": {
+			"name": "Sögel",
+			"einwohner": 7786
+		},
+		"03454048": {
+			"name": "Spahnharrenstätte",
+			"einwohner": 1509
+		},
+		"03454049": {
+			"name": "Spelle",
+			"einwohner": 9822
+		},
+		"03454050": {
+			"name": "Stavern",
+			"einwohner": 1081
+		},
+		"03454051": {
+			"name": "Surwold",
+			"einwohner": 4334
+		},
+		"03454052": {
+			"name": "Sustrum",
+			"einwohner": 1383
+		},
+		"03454053": {
+			"name": "Thuine",
+			"einwohner": 1725
+		},
+		"03454054": {
+			"name": "Twist",
+			"einwohner": 9870
+		},
+		"03454055": {
+			"name": "Vrees",
+			"einwohner": 1946
+		},
+		"03454056": {
+			"name": "Walchum",
+			"einwohner": 1708
+		},
+		"03454057": {
+			"name": "Werlte, Stadt",
+			"einwohner": 10337
+		},
+		"03454058": {
+			"name": "Werpeloh",
+			"einwohner": 1170
+		},
+		"03454059": {
+			"name": "Wettrup",
+			"einwohner": 525
+		},
+		"03454060": {
+			"name": "Wippingen",
+			"einwohner": 997
+		},
+		"03454401": {
+			"name": "Dörpen, SG",
+			"einwohner": 17392
+		},
+		"03454402": {
+			"name": "Freren, SG",
+			"einwohner": 10410
+		},
+		"03454403": {
+			"name": "Herzlake, SG",
+			"einwohner": 10542
+		},
+		"03454404": {
+			"name": "Lathen, SG",
+			"einwohner": 12052
+		},
+		"03454405": {
+			"name": "Lengerich, SG",
+			"einwohner": 9461
+		},
+		"03454406": {
+			"name": "Nordhümmling, SG",
+			"einwohner": 12293
+		},
+		"03454407": {
+			"name": "Sögel, SG",
+			"einwohner": 16913
+		},
+		"03454408": {
+			"name": "Spelle, SG",
+			"einwohner": 14408
+		},
+		"03454409": {
+			"name": "Werlte, SG",
+			"einwohner": 17508
+		},
+		"03455": {
+			"name": "Friesland",
+			"einwohner": 100428
+		},
+		"03455007": {
+			"name": "Jever, Stadt",
+			"einwohner": 14783
+		},
+		"03455014": {
+			"name": "Sande",
+			"einwohner": 8578
+		},
+		"03455015": {
+			"name": "Schortens, Stadt",
+			"einwohner": 21000
+		},
+		"03455020": {
+			"name": "Wangerland",
+			"einwohner": 9206
+		},
+		"03455021": {
+			"name": "Wangerooge, Nordseebad",
+			"einwohner": 1107
+		},
+		"03455025": {
+			"name": "Bockhorn",
+			"einwohner": 8798
+		},
+		"03455026": {
+			"name": "Varel, Stadt",
+			"einwohner": 24647
+		},
+		"03455027": {
+			"name": "Zetel",
+			"einwohner": 12309
+		},
+		"03456": {
+			"name": "Grafschaft Bentheim",
+			"einwohner": 144612
+		},
+		"03456001": {
+			"name": "Bad Bentheim, Stadt",
+			"einwohner": 16722
+		},
+		"03456002": {
+			"name": "Emlichheim",
+			"einwohner": 7724
+		},
+		"03456003": {
+			"name": "Engden",
+			"einwohner": 413
+		},
+		"03456004": {
+			"name": "Esche",
+			"einwohner": 622
+		},
+		"03456005": {
+			"name": "Georgsdorf",
+			"einwohner": 1272
+		},
+		"03456006": {
+			"name": "Getelo",
+			"einwohner": 497
+		},
+		"03456007": {
+			"name": "Gölenkamp",
+			"einwohner": 594
+		},
+		"03456008": {
+			"name": "Halle",
+			"einwohner": 654
+		},
+		"03456009": {
+			"name": "Hoogstede",
+			"einwohner": 2892
+		},
+		"03456010": {
+			"name": "Isterberg",
+			"einwohner": 625
+		},
+		"03456011": {
+			"name": "Itterbeck",
+			"einwohner": 1694
+		},
+		"03456012": {
+			"name": "Laar",
+			"einwohner": 2047
+		},
+		"03456013": {
+			"name": "Lage",
+			"einwohner": 1100
+		},
+		"03456014": {
+			"name": "Neuenhaus, Stadt",
+			"einwohner": 10886
+		},
+		"03456015": {
+			"name": "Nordhorn, Stadt",
+			"einwohner": 57134
+		},
+		"03456016": {
+			"name": "Ohne",
+			"einwohner": 648
+		},
+		"03456017": {
+			"name": "Osterwald",
+			"einwohner": 1158
+		},
+		"03456018": {
+			"name": "Quendorf",
+			"einwohner": 638
+		},
+		"03456019": {
+			"name": "Ringe",
+			"einwohner": 1954
+		},
+		"03456020": {
+			"name": "Samern",
+			"einwohner": 809
+		},
+		"03456023": {
+			"name": "Uelsen",
+			"einwohner": 5895
+		},
+		"03456024": {
+			"name": "Wielen",
+			"einwohner": 500
+		},
+		"03456025": {
+			"name": "Wietmarschen",
+			"einwohner": 12953
+		},
+		"03456026": {
+			"name": "Wilsum",
+			"einwohner": 1627
+		},
+		"03456027": {
+			"name": "Schüttorf, Stadt",
+			"einwohner": 13554
+		},
+		"03456401": {
+			"name": "Emlichheim, SG",
+			"einwohner": 14617
+		},
+		"03456402": {
+			"name": "Neuenhaus, SG",
+			"einwohner": 15038
+		},
+		"03456403": {
+			"name": "Schüttorf, SG",
+			"einwohner": 16687
+		},
+		"03456404": {
+			"name": "Uelsen, SG",
+			"einwohner": 11461
+		},
+		"03457": {
+			"name": "Leer",
+			"einwohner": 168948
+		},
+		"03457002": {
+			"name": "Borkum, Stadt",
+			"einwohner": 4466
+		},
+		"03457003": {
+			"name": "Brinkum",
+			"einwohner": 812
+		},
+		"03457006": {
+			"name": "Detern, Flecken",
+			"einwohner": 2744
+		},
+		"03457008": {
+			"name": "Filsum",
+			"einwohner": 2228
+		},
+		"03457009": {
+			"name": "Firrel",
+			"einwohner": 800
+		},
+		"03457010": {
+			"name": "Hesel",
+			"einwohner": 4681
+		},
+		"03457011": {
+			"name": "Holtland",
+			"einwohner": 2197
+		},
+		"03457012": {
+			"name": "Jemgum",
+			"einwohner": 3465
+		},
+		"03457013": {
+			"name": "Leer (Ostfr.), Stadt",
+			"einwohner": 34111
+		},
+		"03457014": {
+			"name": "Moormerland",
+			"einwohner": 23282
+		},
+		"03457015": {
+			"name": "Neukamperfehn",
+			"einwohner": 1827
+		},
+		"03457016": {
+			"name": "Nortmoor",
+			"einwohner": 1779
+		},
+		"03457017": {
+			"name": "Ostrhauderfehn",
+			"einwohner": 11931
+		},
+		"03457018": {
+			"name": "Rhauderfehn",
+			"einwohner": 18251
+		},
+		"03457019": {
+			"name": "Schwerinsdorf",
+			"einwohner": 735
+		},
+		"03457020": {
+			"name": "Uplengen",
+			"einwohner": 11934
+		},
+		"03457021": {
+			"name": "Weener, Stadt",
+			"einwohner": 15200
+		},
+		"03457022": {
+			"name": "Westoverledingen",
+			"einwohner": 21108
+		},
+		"03457024": {
+			"name": "Bunde",
+			"einwohner": 7397
+		},
+		"03457402": {
+			"name": "Hesel, SG",
+			"einwohner": 11052
+		},
+		"03457403": {
+			"name": "Jümme, SG",
+			"einwohner": 6751
+		},
+		"03458": {
+			"name": "Oldenburg",
+			"einwohner": 132810
+		},
+		"03458001": {
+			"name": "Beckeln",
+			"einwohner": 788
+		},
+		"03458002": {
+			"name": "Colnrade",
+			"einwohner": 791
+		},
+		"03458003": {
+			"name": "Dötlingen",
+			"einwohner": 6213
+		},
+		"03458004": {
+			"name": "Dünsen",
+			"einwohner": 1204
+		},
+		"03458005": {
+			"name": "Ganderkesee",
+			"einwohner": 31515
+		},
+		"03458006": {
+			"name": "Groß Ippener",
+			"einwohner": 1038
+		},
+		"03458007": {
+			"name": "Großenkneten",
+			"einwohner": 16295
+		},
+		"03458008": {
+			"name": "Harpstedt, Flecken",
+			"einwohner": 4760
+		},
+		"03458009": {
+			"name": "Hatten",
+			"einwohner": 14232
+		},
+		"03458010": {
+			"name": "Hude (Oldenburg)",
+			"einwohner": 15941
+		},
+		"03458011": {
+			"name": "Kirchseelte",
+			"einwohner": 1158
+		},
+		"03458012": {
+			"name": "Prinzhöfte",
+			"einwohner": 623
+		},
+		"03458013": {
+			"name": "Wardenburg",
+			"einwohner": 16521
+		},
+		"03458014": {
+			"name": "Wildeshausen, Stadt",
+			"einwohner": 21227
+		},
+		"03458015": {
+			"name": "Winkelsett",
+			"einwohner": 504
+		},
+		"03458401": {
+			"name": "Harpstedt, SG",
+			"einwohner": 10866
+		},
+		"03459": {
+			"name": "Osnabrück",
+			"einwohner": 354460
+		},
+		"03459001": {
+			"name": "Alfhausen",
+			"einwohner": 4198
+		},
+		"03459002": {
+			"name": "Ankum",
+			"einwohner": 8107
+		},
+		"03459003": {
+			"name": "Bad Essen",
+			"einwohner": 16258
+		},
+		"03459004": {
+			"name": "Bad Iburg, Stadt",
+			"einwohner": 10609
+		},
+		"03459005": {
+			"name": "Bad Laer",
+			"einwohner": 8841
+		},
+		"03459006": {
+			"name": "Bad Rothenfelde",
+			"einwohner": 8352
+		},
+		"03459007": {
+			"name": "Badbergen",
+			"einwohner": 4207
+		},
+		"03459008": {
+			"name": "Belm",
+			"einwohner": 13946
+		},
+		"03459009": {
+			"name": "Berge",
+			"einwohner": 3436
+		},
+		"03459010": {
+			"name": "Bersenbrück, Stadt",
+			"einwohner": 8255
+		},
+		"03459011": {
+			"name": "Bippen",
+			"einwohner": 2917
+		},
+		"03459012": {
+			"name": "Bissendorf",
+			"einwohner": 14559
+		},
+		"03459013": {
+			"name": "Bohmte",
+			"einwohner": 13092
+		},
+		"03459014": {
+			"name": "Bramsche, Stadt",
+			"einwohner": 28137
+		},
+		"03459015": {
+			"name": "Dissen a.Teutob.Wald, Stad",
+			"einwohner": 10440
+		},
+		"03459016": {
+			"name": "Eggermühlen",
+			"einwohner": 1811
+		},
+		"03459017": {
+			"name": "Fürstenau, Stadt",
+			"einwohner": 9411
+		},
+		"03459018": {
+			"name": "Gehrde",
+			"einwohner": 2533
+		},
+		"03459019": {
+			"name": "Georgsmarienhütte, Stadt",
+			"einwohner": 31101
+		},
+		"03459020": {
+			"name": "Hagen am Teutoburger Wald",
+			"einwohner": 13285
+		},
+		"03459021": {
+			"name": "Hasbergen",
+			"einwohner": 10867
+		},
+		"03459022": {
+			"name": "Hilter am Teutob. Wald",
+			"einwohner": 10090
+		},
+		"03459023": {
+			"name": "Kettenkamp",
+			"einwohner": 1754
+		},
+		"03459024": {
+			"name": "Melle, Stadt",
+			"einwohner": 46502
+		},
+		"03459025": {
+			"name": "Menslage",
+			"einwohner": 2286
+		},
+		"03459026": {
+			"name": "Merzen",
+			"einwohner": 3683
+		},
+		"03459027": {
+			"name": "Neuenkirchen",
+			"einwohner": 4679
+		},
+		"03459028": {
+			"name": "Nortrup",
+			"einwohner": 2932
+		},
+		"03459029": {
+			"name": "Ostercappeln",
+			"einwohner": 9721
+		},
+		"03459030": {
+			"name": "Quakenbrück, Stadt",
+			"einwohner": 13927
+		},
+		"03459031": {
+			"name": "Rieste",
+			"einwohner": 3628
+		},
+		"03459032": {
+			"name": "Voltlage",
+			"einwohner": 1774
+		},
+		"03459033": {
+			"name": "Wallenhorst",
+			"einwohner": 22626
+		},
+		"03459034": {
+			"name": "Glandorf",
+			"einwohner": 6496
+		},
+		"03459401": {
+			"name": "Artland, SG",
+			"einwohner": 23352
+		},
+		"03459402": {
+			"name": "Bersenbrück, SG",
+			"einwohner": 30286
+		},
+		"03459403": {
+			"name": "Fürstenau, SG",
+			"einwohner": 15764
+		},
+		"03459404": {
+			"name": "Neuenkirchen, SG",
+			"einwohner": 10136
+		},
+		"03460": {
+			"name": "Vechta",
+			"einwohner": 146793
+		},
+		"03460001": {
+			"name": "Bakum",
+			"einwohner": 6847
+		},
+		"03460002": {
+			"name": "Damme, Stadt",
+			"einwohner": 17480
+		},
+		"03460003": {
+			"name": "Dinklage, Stadt",
+			"einwohner": 13580
+		},
+		"03460004": {
+			"name": "Goldenstedt",
+			"einwohner": 10350
+		},
+		"03460005": {
+			"name": "Holdorf",
+			"einwohner": 7566
+		},
+		"03460006": {
+			"name": "Lohne (Oldenburg), Stadt",
+			"einwohner": 28147
+		},
+		"03460007": {
+			"name": "Neuenkirchen-Vörden",
+			"einwohner": 8876
+		},
+		"03460008": {
+			"name": "Steinfeld (Oldenburg)",
+			"einwohner": 10323
+		},
+		"03460009": {
+			"name": "Vechta, Stadt",
+			"einwohner": 33777
+		},
+		"03460010": {
+			"name": "Visbek",
+			"einwohner": 9847
+		},
+		"03461": {
+			"name": "Wesermarsch",
+			"einwohner": 88769
+		},
+		"03461001": {
+			"name": "Berne",
+			"einwohner": 7082
+		},
+		"03461002": {
+			"name": "Brake (Unterweser), Stadt",
+			"einwohner": 15128
+		},
+		"03461003": {
+			"name": "Butjadingen",
+			"einwohner": 6007
+		},
+		"03461004": {
+			"name": "Elsfleth, Stadt",
+			"einwohner": 8954
+		},
+		"03461005": {
+			"name": "Jade",
+			"einwohner": 5839
+		},
+		"03461006": {
+			"name": "Lemwerder",
+			"einwohner": 6985
+		},
+		"03461007": {
+			"name": "Nordenham, Stadt",
+			"einwohner": 25834
+		},
+		"03461008": {
+			"name": "Ovelgönne",
+			"einwohner": 5437
+		},
+		"03461009": {
+			"name": "Stadland",
+			"einwohner": 7503
+		},
+		"03462": {
+			"name": "Wittmund",
+			"einwohner": 55937
+		},
+		"03462001": {
+			"name": "Blomberg",
+			"einwohner": 1864
+		},
+		"03462002": {
+			"name": "Dunum",
+			"einwohner": 1046
+		},
+		"03462003": {
+			"name": "Esens, Stadt",
+			"einwohner": 7003
+		},
+		"03462004": {
+			"name": "Eversmeer",
+			"einwohner": 845
+		},
+		"03462005": {
+			"name": "Friedeburg",
+			"einwohner": 10220
+		},
+		"03462006": {
+			"name": "Holtgast",
+			"einwohner": 1787
+		},
+		"03462007": {
+			"name": "Langeoog",
+			"einwohner": 1381
+		},
+		"03462008": {
+			"name": "Moorweg",
+			"einwohner": 888
+		},
+		"03462009": {
+			"name": "Nenndorf",
+			"einwohner": 756
+		},
+		"03462010": {
+			"name": "Neuharlingersiel",
+			"einwohner": 954
+		},
+		"03462011": {
+			"name": "Neuschoo",
+			"einwohner": 1213
+		},
+		"03462012": {
+			"name": "Ochtersum",
+			"einwohner": 927
+		},
+		"03462013": {
+			"name": "Schweindorf",
+			"einwohner": 745
+		},
+		"03462014": {
+			"name": "Spiekeroog",
+			"einwohner": 676
+		},
+		"03462015": {
+			"name": "Stedesdorf",
+			"einwohner": 1629
+		},
+		"03462016": {
+			"name": "Utarp",
+			"einwohner": 655
+		},
+		"03462017": {
+			"name": "Werdum",
+			"einwohner": 719
+		},
+		"03462018": {
+			"name": "Westerholt",
+			"einwohner": 2614
+		},
+		"03462019": {
+			"name": "Wittmund, Stadt",
+			"einwohner": 20015
+		},
+		"03462401": {
+			"name": "Esens, SG",
+			"einwohner": 14026
+		},
+		"03462402": {
+			"name": "Holtriem, SG",
+			"einwohner": 9619
+		}
+	}
+}

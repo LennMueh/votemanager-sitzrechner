@@ -30,7 +30,8 @@
 
 	const HERKUNFT = {
 		amtlich: 'amtlich veröffentlicht',
-		hinterlegt: 'hinterlegt',
+		hinterlegt: 'aus der Bekanntmachung',
+		berechnet: 'nach § 46 NKomVG gerechnet',
 		vorwahl: 'aus der Vorwahl'
 	} as const;
 	const tag = (t?: string) => (t ? `${t.slice(6, 8)}.${t.slice(4, 6)}.${t.slice(0, 4)}` : '');
@@ -270,6 +271,11 @@
 			{#if ergebnis.sitzzahl && ergebnis.sitzzahlHerkunft}
 				{ergebnis.sitzzahl} Sitze, {HERKUNFT[ergebnis.sitzzahlHerkunft]}{#if ergebnis.sitzzahlHerkunft === 'vorwahl'}
 					vom {tag(ergebnis.sitzzahlQuellen?.find((q) => q.herkunft === 'vorwahl')?.stand)}{/if}.
+				<!-- Bei der Rechnung gehört die Grundlage daneben: eine Zahl aus einer
+				     Staffel ist nur so gut wie die Einwohnerzahl, auf der sie beruht. -->
+				{#if ergebnis.sitzzahlHerkunft === 'berechnet'}
+					<span class="grundlage">{ergebnis.sitzzahlQuellen?.find((q) => q.herkunft === 'berechnet')?.hinweis}.</span>
+				{/if}
 			{/if}
 			<!-- Weicht eine Quelle ab, ist das kein Detail: die Sitzzahl folgt der
 			     Einwohnerzahl zu einem gesetzlichen Stichtag, eine Abweichung heißt
@@ -311,6 +317,7 @@
 	.legende { margin: .5rem 0 0; font-size: .85rem; color: var(--text-3); }
 
 	.streit { color: var(--warn); }
+	.grundlage { color: var(--gedaempft, #666); }
 
 	.grundlage {
 		margin: 1.5rem 0 0;

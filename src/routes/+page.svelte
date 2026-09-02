@@ -208,7 +208,9 @@
 									{#if e.direktwahl}
 										<span class="marke">Direktwahl</span>
 									{:else if e.sitze}
-										<span class="marke" title={e.sitzeHerkunft === 'amtlich' ? 'Sitzzahl aus dem laufenden Ergebnis' : 'Sitzzahl aus der Bekanntmachung der Wahlleitung'}>{e.sitze} Sitze{e.sitzeHerkunft === 'hinterlegt' ? ' (hinterlegt)' : ''}</span>
+										{@const HERKUNFT = { amtlich: 'aus dem laufenden Ergebnis', hinterlegt: 'aus der Bekanntmachung der Wahlleitung', berechnet: 'nach § 46 NKomVG aus der Einwohnerzahl gerechnet, nicht amtlich bestätigt', vorwahl: 'Sitzzahl der Vorwahl, nicht amtlich bestätigt' }}
+										<span class="marke" class:geschaetzt={e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich'}
+											title="Sitzzahl {HERKUNFT[e.sitzeHerkunft ?? 'amtlich']}{e.sitzeStand ? ` (Stand ${e.sitzeStand.slice(6, 8)}.${e.sitzeStand.slice(4, 6)}.${e.sitzeStand.slice(0, 4)})` : ''}">{e.sitze} Sitze{e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich' ? '*' : ''}</span>
 									{:else}
 										<span class="marke fehlt">Sitzzahl unbekannt</span>
 									{/if}
@@ -398,6 +400,12 @@
 		border-radius: 99px;
 		padding: 0 0.5rem;
 		white-space: nowrap;
+	}
+
+	/* Der Stern trennt eine amtliche Zahl von einer erwarteten. Nie Farbe allein:
+	   das Zeichen steht im Text, die Herkunft im title. */
+	.marke.geschaetzt {
+		border-style: dashed;
 	}
 
 	.marke.fehlt {

@@ -1,11 +1,22 @@
 {
-	"_hinweis": "Von Hand gepflegt. npm run harvest schreibt sitzzahlen.json vollständig neu und würde Einträge hier überschreiben — deshalb eine eigene Datei. Beide werden in src/lib/server/daten.ts zusammengeführt.",
-	"_schluessel": "<ags>|<Titel der Wahl aus termin.json>",
-	"vertretungen": {
+	"_hinweis": "Was keine Formel kennt. Von Hand gepflegt, im Git nachvollziehbar. Die Sitzzahl kommt sonst aus dem Archiv (amtlich, Vorwahl) oder aus § 46 NKomVG (berechnet) — hier stehen nur die Fälle, die beides nicht abdeckt.",
+	"_bloecke": {
+		"gesetzlich": "Feste Zahlen ohne Wahltag, gültig bis das Gesetz sich ändert. Schlüssel <ags>|<Titel>.",
+		"bekanntmachungen": "Bekanntmachungen der Wahlleitungen, je Wahltag. Sie schlagen die Berechnung, weil nur sie eine Verringerungssatzung nach § 46 Abs. 4 NKomVG kennen. Schlüssel <wahltag>|<ags>|<Titel>."
+	},
+	"gesetzlich": {
 		"10041000|Wahl zur Regionalversammlung - Regionalverband Saarbrücken": {
 			"sitze": 45,
 			"behoerde": "Regionalverband Saarbrücken",
 			"quelle": "§ 205 Abs. 2 KSVG — \"Die Regionalversammlung hat 45 Mitglieder.\" Feste Zahl, keine Einwohnerformel wie § 46 NKomVG. Die acht verbandsangehörigen Städte und Gemeinden bekommen bewusst keinen Eintrag: sie zeigen dieselbe Wahl aus Sicht einer Teilfläche und sind keine eigene Vertretung."
+		}
+	},
+	"bekanntmachungen": {
+		"20260913|033555402|Gemeindewahl - Flecken Bardowick": {
+			"sitze": 19,
+			"stand": "20260901",
+			"behoerde": "Samtgemeinde Bardowick",
+			"quelle": "Änderungsbekanntmachung der Samtgemeinde Bardowick vom 01.09.2026 zur Wahlbekanntmachung vom 17.02.2026 — § 177 Abs. 2 Satz 1 NKomVG, maßgebliche Einwohnerzahl zum Stichtag 30.06.2025. Vorher 21. Deckungsgleich mit der Rechnung nach § 46 (6.580 Einwohner, Staffel 6.001 bis 7.000, plus eins für Mitgliedsgemeinden)."
 		}
 	}
 }

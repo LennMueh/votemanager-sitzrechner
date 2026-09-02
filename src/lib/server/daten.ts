@@ -17,29 +17,36 @@ import {
 import type { Mandatsart, Sitz } from '$lib/nkwg';
 import { db } from './db';
 import { vertretungsSchluessel, waehleGegenwahl } from './vergleich';
-import sitzzahlen from '$lib/sitzzahlen.json';
-import sitzzahlenManuell from '$lib/sitzzahlen-manuell.json';
+import register from '$lib/sitzzahlen-manuell.json';
 import { kreise } from '$lib/kreise.json';
+import { sitzzahlNachEinwohnern, staffelText } from '$lib/wahlrecht/ni-sitzzahl';
+import { einwohnerFuer } from '$lib/wahlrecht/ni-einwohner';
+import einwohnerNI from '$lib/wahlrecht/einwohner-ni.json';
 
-// Zwei Quellen: sitzzahlen.json schreibt `npm run harvest` vollständig neu,
-// sitzzahlen-manuell.json ist handgepflegt und überlebt das.
+// Das Register: was keine Formel und kein Archiv hergibt.
 //
-// Die Dateien sind mit `<ags>|<Titel>` geschlüsselt, gesucht wird aber über den
-// stabilen Schlüssel: votemanager benennt dieselbe Wahl in jedem Zyklus anders
-// („Gemeindewahl" 2021 gegen „Wahl des Gemeinderates" 2026, „Landkreises
-// Lüneburg" gegen „Landkreis Lüneburg"). Über den Titel passten von 56
-// hinterlegten Sitzzahlen noch fünf auf die 1.945 Vertretungen der Wahl 2026.
-const TABELLE = new Map(
-	Object.entries({ ...sitzzahlen.vertretungen, ...sitzzahlenManuell.vertretungen }).map(
-		([schluessel, wert]) => {
-			const trenner = schluessel.indexOf('|');
-			return [
-				vertretungsSchluessel(schluessel.slice(0, trenner), schluessel.slice(trenner + 1)),
-				wert as { sitze: number }
-			] as const;
-		}
-	)
-);
+// Früher lag hier zusätzlich die geerntete sitzzahlen.json — 53 Einträge, die
+// zeichengleich zu dem waren, was das Archiv über die Vorwahl ohnehin liefert,
+// aber als „hinterlegt" über ihr standen. Das Etikett versprach eine Autorität,
+// die der Inhalt nicht hatte, und verdeckte die Alterung: für den Flecken
+// Bardowick standen dort 21 Sitze, während die Änderungsbekanntmachung vom
+// 01.09.2026 auf 19 geht. Die Datei ist deshalb weg; geblieben ist das Register.
+//
+// Geschlüsselt wird mit `<ags>|<Titel>` bzw. `<wahltag>|<ags>|<Titel>`, gesucht
+// über den stabilen Schlüssel: votemanager benennt dieselbe Wahl in jedem Zyklus
+// anders („Gemeindewahl" 2021 gegen „Wahl des Gemeinderates" 2026).
+interface Registereintrag { sitze: number; stand?: string; quelle?: string }
+
+function tabelle(quelle: Record<string, unknown>, mitWahltag: boolean) {
+	return new Map(Object.entries(quelle).map(([roh, wert]) => {
+		const teile = roh.split('|');
+		const wahltag = mitWahltag ? teile.shift()! : '';
+		const [ags, ...rest] = teile;
+		return [`${wahltag}|${vertretungsSchluessel(ags, rest.join('|'))}`, wert as Registereintrag] as const;
+	}));
+}
+const GESETZLICH = tabelle(register.gesetzlich, false);
+const BEKANNTMACHUNGEN = tabelle(register.bekanntmachungen, true);
 
 /**
  * Die letzten beiden Segmente eines Ergebnispfades, also
@@ -61,41 +68,64 @@ export function wahlpfad(sql: ReturnType<typeof db>) {
 }
 
 /**
- * Amtliche Sitzzahl aus einem `Komponente.sitze`-Teilbaum — dieselbe Regel wie
- * `parseErgebnis()` in `votemanager.ts` (Summe des Tortendiagramms, sonst die
- * Zahl aus `hinweis`), nur in SQL. Wer sie dort ändert, ändert hier mit.
+ * Bekanntmachung der Wahlleitung oder gesetzliche Festzahl — das Register.
  *
- * Bewusst in SQL und nicht in JavaScript: die Übersicht bräuchte sonst den
- * Teilbaum `tortenDiagramm.entries` je Zeile. Der wiegt am 12.09.2021 890 kB
- * und am 13.09.2026 rund 3 MB, und die Übersicht baut sich alle drei Sekunden
- * neu (siehe FRISCH_MS). Als fertige Summe sind es zwei Byte je Zeile;
- * gemessen kostet der Ausdruck 315 ms für 2.847 Zeilen.
- *
- * Der `replace` entfernt deutsche Tausenderpunkte — dasselbe tut `parseZahl()`.
- *
- * Der Alias `d` ist fest verdrahtet wie der Alias `p` in `wahlpfad()`: der
- * Ausdruck gehört in die LATERAL-Unterabfrage der Übersicht und nirgends sonst.
+ * Der Wahltag zählt: eine Bekanntmachung gilt für genau eine Wahl. Ohne diese
+ * Eingrenzung schlüge der Bardowicker Eintrag von 2026 auch auf die Wahl 2021
+ * durch, wo 21 richtig war, und meldete dort einen Konflikt, den es nicht gibt.
  */
-export function amtlicheSitzeSQL(sql: ReturnType<typeof db>) {
-	return sql`coalesce(
-		(SELECT sum((coalesce(e->'sitze', e->'value', e->'zahl'))::text::numeric)::int
-			FROM jsonb_array_elements(d.inhalt->'Komponente'->'sitze'->'tortenDiagramm'->'entries') e),
-		nullif(replace(substring(d.inhalt->'Komponente'->'sitze'->>'hinweis' from '([0-9.]+)\s*Sitze'), '.', ''), '')::int)`;
+export function sitzzahl(ref: VertretungRef, wahltag?: string): Registereintrag | undefined {
+	const schluessel = vertretungsSchluessel(ref.ags, ref.titel, ref.gebietName);
+	return (wahltag ? BEKANNTMACHUNGEN.get(`${wahltag}|${schluessel}`) : undefined)
+		?? GESETZLICH.get(`|${schluessel}`);
 }
 
-/** Sitzzahl einer Vertretung — Vorbelegung, siehe sitzzahlen*.json. */
-export function sitzzahl(ref: VertretungRef): number | undefined {
-	return TABELLE.get(vertretungsSchluessel(ref.ags, ref.titel, ref.gebietName))?.sitze;
+/**
+ * Sitzzahl aus § 46 NKomVG und der maßgebenden Einwohnerzahl.
+ *
+ * Nur Niedersachsen: das Landesrecht der übrigen acht Länder ist nicht
+ * hinterlegt, und ohne hinterlegten Rechtsstand wird nicht gerechnet.
+ *
+ * Gegen den Korpus geprüft (`ni-sitzzahl.test.ts`): 93,8 % der 904 amtlichen
+ * Sitzzahlen von 2021 werden getroffen, und **jede** Abweichung liegt bei genau
+ * 2, 4 oder 6 — den Stufen, um die § 46 Abs. 4 eine Satzung senken darf. Deshalb
+ * steht diese Quelle unter der Bekanntmachung: die Satzung sieht sie nicht.
+ */
+function sitzzahlBerechnet(ref: VertretungRef, land: string, wahltag: string): { sitze: number; hinweis: string } | undefined {
+	if (land !== 'NI') return undefined;
+	// § 177 Abs. 2 Satz 1 NKomVG: maßgebend ist die Einwohnerzahl zu einem
+	// Stichtag, der mindestens 12 und höchstens 18 Monate vor dem Wahltag liegt.
+	// Die eingefrorene Tabelle gilt deshalb für genau ein Wahlfenster — ohne diese
+	// Schranke hinge die Einwohnerzahl vom 30.06.2025 auch an der Wahl 2021 und
+	// meldete dort einen Konflikt, den es nicht gibt.
+	if (!imFenster(String(einwohnerNI._stichtag), wahltag)) return undefined;
+	const treffer = einwohnerFuer(einwohnerNI as never, ref.ags, ref.titel, ref.gebietName);
+	if (!treffer) return undefined;
+	const sitze = sitzzahlNachEinwohnern(treffer.einwohner, treffer.art);
+	if (!sitze) return undefined;
+	const stichtag = String(einwohnerNI._stichtag);
+	const tag = `${stichtag.slice(6, 8)}.${stichtag.slice(4, 6)}.${stichtag.slice(0, 4)}`;
+	return { sitze, hinweis: `${staffelText(treffer.einwohner, treffer.art)}; ${treffer.einwohner.toLocaleString('de-DE')} Einwohner zum ${tag}` };
+}
+
+/**
+ * Liegt der Stichtag 12 bis 18 Monate vor dem Wahltag? § 177 Abs. 2 Satz 1 NKomVG.
+ * Gerechnet in ganzen Monaten, wie das Gesetz sie zählt.
+ */
+function imFenster(stichtag: string, wahltag: string): boolean {
+	const monate = (t: string) => Number(t.slice(0, 4)) * 12 + Number(t.slice(4, 6));
+	const abstand = monate(wahltag) - monate(stichtag);
+	return abstand >= 12 && abstand <= 18;
 }
 
 /** Woher die verwendete Sitzzahl stammt — gehört sichtbar an das Ergebnis. */
-export type Sitzzahlherkunft = 'amtlich' | 'hinterlegt' | 'vorwahl';
+export type Sitzzahlherkunft = 'amtlich' | 'hinterlegt' | 'berechnet' | 'vorwahl';
 
 export interface Sitzzahlbefund {
 	sitze?: number;
 	herkunft?: Sitzzahlherkunft;
 	/** Alle gefundenen Werte, auch die überstimmten — Grundlage der Konfliktanzeige. */
-	quellen: Array<{ herkunft: Sitzzahlherkunft; sitze: number; stand?: string }>;
+	quellen: Array<{ herkunft: Sitzzahlherkunft; sitze: number; stand?: string; hinweis?: string }>;
 }
 
 /**
@@ -116,30 +146,23 @@ async function sitzzahlVorwahl(
 	ref: VertretungRef,
 	wahltag: string
 ): Promise<{ sitze: number; stand: string } | undefined> {
-	// Zwei Schritte statt einem: der Abgleich läuft über `name` und `gebiet_name`,
-	// das Dokument wird erst danach gebraucht. In einem Zug geholt kämen sämtliche
-	// Altwahlen der Behörde als vollständige Ergebnis-JSONs mit, obwohl die
-	// Schleife nach dem ersten Treffer abbricht — und das bei jedem Aufruf von
-	// /api/vertretung.
-	const zeilen = await sql<Array<{ wahltag: string; name: string; gebiet_name: string; pfad_stand_id: number }>>`
-		SELECT to_char(t.datum,'YYYYMMDD') wahltag, w.name, w.gebiet_name, p.id::int pfad_stand_id
+	// Seit `wahl.sitze_amtlich` existiert, ist das eine einzige Abfrage. Vorher
+	// waren es zwei je Vertretung plus ein parseErgebnis über das vollständige
+	// Ergebnisdokument — der Grund, warum die Übersicht die Vorwahl gar nicht
+	// erst kannte.
+	const zeilen = await sql<Array<{ wahltag: string; name: string; gebiet_name: string; sitze: number }>>`
+		SELECT to_char(t.datum,'YYYYMMDD') wahltag, w.name, w.gebiet_name, w.sitze_amtlich::int sitze
 		FROM wahl w
 		JOIN termin t ON t.id=w.termin_id
 		JOIN instanz i ON i.id=t.instanz_id
 		JOIN behoerde b ON b.id=i.behoerde_id
-		JOIN pfad_stand p ON p.instanz_id=i.id
-			AND ${wahlpfad(sql)} = '/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 		WHERE b.kennung=${ref.ags} AND to_char(t.datum,'YYYYMMDD') < ${wahltag}
+			AND w.sitze_amtlich IS NOT NULL
 		ORDER BY t.datum DESC`;
 
 	const gesucht = vertretungsSchluessel(ref.ags, ref.titel, ref.gebietName);
 	for (const z of zeilen) {
-		if (vertretungsSchluessel(ref.ags, z.name, z.gebiet_name) !== gesucht) continue;
-		const [dokument] = await sql<Array<{ inhalt: unknown }>>`
-			SELECT inhalt FROM dokument WHERE pfad_stand_id=${z.pfad_stand_id} ORDER BY id DESC LIMIT 1`;
-		if (!dokument) continue;
-		const anzahl = parseErgebnis(dokument.inhalt as never).amtlicheSitze?.anzahl;
-		if (anzahl) return { sitze: anzahl, stand: z.wahltag };
+		if (vertretungsSchluessel(ref.ags, z.name, z.gebiet_name) === gesucht) return { sitze: z.sitze, stand: z.wahltag };
 	}
 	return undefined;
 }
@@ -158,7 +181,12 @@ async function sitzzahlVorwahl(
  * (§ 46 Abs. 4 NKomVG und Entsprechungen). Beides will man sehen.
  */
 export function waehleSitzzahl(quellen: Sitzzahlbefund['quellen']): Sitzzahlbefund {
-	const rang: Record<Sitzzahlherkunft, number> = { amtlich: 0, hinterlegt: 1, vorwahl: 2 };
+	// Die Bekanntmachung steht vor der Rechnung, weil nur sie eine
+	// Verringerungssatzung nach § 46 Abs. 4 NKomVG kennt — gemessen betrifft das
+	// 53 der 904 nieders. Vertretungen von 2021. Die Rechnung steht vor der
+	// Vorwahl, weil eine frische Einwohnerzahl eine fünf Jahre alte Sitzzahl
+	// schlägt.
+	const rang: Record<Sitzzahlherkunft, number> = { amtlich: 0, hinterlegt: 1, berechnet: 2, vorwahl: 3 };
 	const sortiert = [...quellen].sort((a, b) => rang[a.herkunft] - rang[b.herkunft]);
 	const [beste] = sortiert;
 	return { sitze: beste?.sitze, herkunft: beste?.herkunft, quellen: sortiert };
@@ -168,12 +196,15 @@ async function bestimmeSitzzahl(
 	sql: ReturnType<typeof db>,
 	ref: VertretungRef,
 	wahltag: string,
+	land: string,
 	amtlich?: number
 ): Promise<Sitzzahlbefund> {
 	const quellen: Sitzzahlbefund['quellen'] = [];
 	if (amtlich) quellen.push({ herkunft: 'amtlich', sitze: amtlich });
-	const hinterlegt = sitzzahl(ref);
-	if (hinterlegt) quellen.push({ herkunft: 'hinterlegt', sitze: hinterlegt });
+	const hinterlegt = sitzzahl(ref, wahltag);
+	if (hinterlegt) quellen.push({ herkunft: 'hinterlegt', sitze: hinterlegt.sitze, stand: hinterlegt.stand, hinweis: hinterlegt.quelle });
+	const berechnet = sitzzahlBerechnet(ref, land, wahltag);
+	if (berechnet) quellen.push({ herkunft: 'berechnet', sitze: berechnet.sitze, stand: einwohnerNI._stichtag, hinweis: berechnet.hinweis });
 	// Die Vorwahl nur befragen, wenn sie etwas ändern kann oder als Gegenprobe
 	// dient — die Abfrage kostet einen Datenbankzugriff je Vertretung.
 	const vorwahl = wahltag ? await sitzzahlVorwahl(sql, ref, wahltag) : undefined;
@@ -241,8 +272,10 @@ export interface UebersichtEintrag extends VertretungRef {
 	vergleichbar: boolean;
 	sitze?: number;
 	/** Woher `sitze` stammt — am Wahlabend der Unterschied zwischen laufendem
-	 *  Ergebnis und einer Bekanntmachung der Vorwahl. */
-	sitzeHerkunft?: 'amtlich' | 'hinterlegt';
+	 *  Ergebnis, Bekanntmachung, Rechnung nach § 46 und der Vorwahl. */
+	sitzeHerkunft?: Sitzzahlherkunft;
+	/** Stichtag bzw. Wahltag der verwendeten Quelle, wo einer bekannt ist. */
+	sitzeStand?: string;
 	stand?: Auszaehlstand;
 	fehler?: string;
 }
@@ -336,19 +369,22 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 			WITH regionsname AS (${regionsname(sql)})
 			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, b.regionalschluessel region,
 				r.name "regionName",
-				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.hinweis, d.amtliche_sitze, d.da
+				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.hinweis, w.sitze_amtlich::int amtliche_sitze, d.da
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
 			LEFT JOIN LATERAL (SELECT d.inhalt->'Komponente'->'info'->'hinweis' AS hinweis,
-					${amtlicheSitzeSQL(sql)} AS amtliche_sitze,
 					true AS da
 				FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
 				WHERE p.instanz_id=i.id AND ${wahlpfad(sql)} = '/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 				ORDER BY d.id DESC LIMIT 1) d ON true
 			WHERE t.datum=${`${ausgewaehlt.slice(0, 4)}-${ausgewaehlt.slice(4, 6)}-${ausgewaehlt.slice(6, 8)}`}::date ORDER BY b.name, w.name`;
 		const ags = [...new Set(zeilen.map((z) => z.ags))];
-		const kandidaten = ags.length ? await sql<Array<{ ags: string; wahltag: string; name: string; gebietName: string }>>`
-			SELECT b.kennung ags, to_char(t.datum, 'YYYYMMDD') wahltag, w.name, w.gebiet_name "gebietName"
+		// `sitze_amtlich` reist auf dieser Abfrage mit: die Übersicht braucht die
+		// Sitzzahl der Vorwahl, und die steckt in denselben Zeilen, die ohnehin für
+		// `vergleichbar` geholt werden. Als eigener Nachschlag je Vertretung kostete
+		// sie 1,25 s je Neuaufbau, als Spalte nichts.
+		const kandidaten = ags.length ? await sql<Array<{ ags: string; wahltag: string; name: string; gebietName: string; sitze: number | null }>>`
+			SELECT b.kennung ags, to_char(t.datum, 'YYYYMMDD') wahltag, w.name, w.gebiet_name "gebietName", w.sitze_amtlich::int sitze
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			WHERE b.kennung IN ${sql(ags)} AND EXISTS (
 				SELECT 1 FROM pfad_stand p JOIN dokument d ON d.pfad_stand_id=p.id
@@ -357,7 +393,7 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 		// Filterung kostete bei 8.095 Zeilen gegen 28.538 Kandidaten 231 Millionen
 		// Vergleiche und damit 10,8 der 16 Sekunden des Abrufs; gruppiert sind es
 		// 0,19 s bei gleichem Ergebnis.
-		const jeAgs = new Map<string, Array<{ ags: string; wahltag: string; name: string; gebietName: string }>>();
+		const jeAgs = new Map<string, Array<{ ags: string; wahltag: string; name: string; gebietName: string; sitze: number | null }>>();
 		for (const k of kandidaten) {
 			const liste = jeAgs.get(k.ags);
 			if (liste) liste.push(k);
@@ -366,15 +402,24 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 		const eintraege = zeilen.map((z): UebersichtEintrag => {
 			const ref: VertretungRef = { instanzId: z.instanz_id, ags: z.ags, behoerde: z.behoerde, wahlId: Number(z.wahl_id), gebietId: z.gebiet_id, gebietName: z.gebiet_name, titel: z.titel, direktwahl: /(bürger?meister|landrat|stichwahl)/i.test(z.titel) };
 			const vergleichbar = Boolean(z.da && waehleGegenwahl(
-				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name },
+				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name, sitze: null },
 				jeAgs.get(z.ags) ?? []
 			));
-			// Dieselbe Rangfolge wie waehleSitzzahl(), nur ohne die Vorwahl: die
-			// kostet einen Datenbankzugriff je Vertretung (siehe sitzzahlVorwahl)
-			// und wäre am 13.09.2026 neuntausend Abfragen je Neuaufbau wert.
-			const sitze = z.amtliche_sitze ?? sitzzahl(ref);
-			const sitzeHerkunft = z.amtliche_sitze ? 'amtlich' as const : sitze ? 'hinterlegt' as const : undefined;
-			const gemein = { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze, sitzeHerkunft };
+			// Dieselbe Rangfolge wie waehleSitzzahl(), nur ohne Datenbankzugriff:
+			// die Vorwahl liegt in `jeAgs` bereit, weil sie auf der ohnehin
+			// gestellten Kandidatenabfrage mitreist.
+			const vorwahl = waehleGegenwahl(
+				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name, sitze: null },
+				(jeAgs.get(z.ags) ?? []).filter((k) => k.sitze && k.wahltag < ausgewaehlt)
+			);
+			const befund = waehleSitzzahl([
+				...(z.amtliche_sitze ? [{ herkunft: 'amtlich' as const, sitze: z.amtliche_sitze }] : []),
+				...(sitzzahl(ref, ausgewaehlt) ? [{ herkunft: 'hinterlegt' as const, sitze: sitzzahl(ref, ausgewaehlt)!.sitze }] : []),
+				...(sitzzahlBerechnet(ref, z.land, ausgewaehlt) ? [{ herkunft: 'berechnet' as const, sitze: sitzzahlBerechnet(ref, z.land, ausgewaehlt)!.sitze }] : []),
+				...(vorwahl?.sitze ? [{ herkunft: 'vorwahl' as const, sitze: vorwahl.sitze, stand: vorwahl.wahltag }] : [])
+			]);
+			const gemein = { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar,
+				sitze: befund.sitze, sitzeHerkunft: befund.herkunft, sitzeStand: befund.quellen[0]?.stand };
 			return z.da ? { ...gemein, stand: parseStand(z.hinweis ?? undefined) } : { ...gemein, fehler: 'Noch kein Ergebnis archiviert' };
 		});
 		return { wahltag: ausgewaehlt, wahltermine: termine.wahltermine, termine: termine.termine, zeitpunkt: new Date().toISOString(), eintraege };
@@ -691,8 +736,8 @@ export async function berechneVertretung(
 		}
 
 		// Amtliche Sitzzahl schlägt alles, sobald votemanager sie liefert; darunter
-		// die hinterlegte Tabelle, zuletzt die Sitzzahl der Vorwahl aus dem Archiv.
-		const befund = await bestimmeSitzzahl(sql, ref, gesamtZeile.wahltag, gesamt.amtlicheSitze?.anzahl);
+		// die Bekanntmachung, dann § 46 NKomVG, zuletzt die Vorwahl aus dem Archiv.
+		const befund = await bestimmeSitzzahl(sql, ref, gesamtZeile.wahltag, gesamtZeile.land, gesamt.amtlicheSitze?.anzahl);
 		const n = befund.sitze;
 		erg.sitzzahl = n;
 		erg.sitzzahlHerkunft = befund.herkunft;
