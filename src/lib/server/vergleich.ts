@@ -6,18 +6,20 @@ export interface VergleichKandidat {
 
 const normal = (text: string) => text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
 
+// `burger?meister`: votemanager schrieb 2026 „Samtgemeindebürgemeisterin" ohne
+// das zweite r. Über den Tippfehler stolperten Wahlart *und* Direktwahl-Erkennung.
 const amt = (text: string) => /landrat/.test(text) ? 'landrat'
-	: /samtgemeinde.*burgermeister/.test(text) ? 'samtgemeindeburgermeister'
-	: /oberburgermeister/.test(text) ? 'oberburgermeister'
-	: /burgermeister/.test(text) ? 'burgermeister' : '';
+	: /samtgemeinde.*burger?meister/.test(text) ? 'samtgemeindeburgermeister'
+	: /oberburger?meister/.test(text) ? 'oberburgermeister'
+	: /burger?meister/.test(text) ? 'burgermeister' : '';
 
 export function normalisiereWahlart(name: string): string {
 	const text = normal(name);
 	if (/stichwahl/.test(text)) return `stichwahl:${amt(text)}`;
 	for (const [art, muster] of [
-		['landrat', /landrat/], ['burgermeister', /burgermeister/],
+		['landrat', /landrat/], ['burgermeister', /burger?meister/],
 		['ortsrat', /ortsrat/], ['samtgemeinderat', /samtgemeinde(?:rat|wahl)/],
-		['gemeinderat', /gemeinde(?:rat|wahl)/], ['stadtrat', /stadtrat/],
+		['gemeinderat', /(?:gemeinde|flecken)(?:rat|wahl)/], ['stadtrat', /stadtrat/],
 		['kreistag', /kreis(?:tag|wahl)/], ['regionsversammlung', /regionsversammlung/],
 		['bezirksrat', /bezirksrat/]
 	] as const) if (muster.test(text)) return art;

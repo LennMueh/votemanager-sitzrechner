@@ -98,6 +98,20 @@ Rangfolge in `bestimmeSitzzahl()`, sichtbar am Ergebnis:
 3. **vorwahl** — amtliche Sitzzahl der letzten Wahl derselben Körperschaft aus
    dem Archiv, mit Wahltag.
 
+Die **Übersicht** kennt nur die ersten beiden Stufen, aber sie kennt sie wirklich:
+`amtlicheSitzeSQL()` rechnet die amtliche Zahl in derselben LATERAL-Unterabfrage
+aus, die ohnehin den Auszählstand holt — kein zusätzlicher Zugriff. Vorher las sie
+allein `sitzzahlen*.json` und meldete deshalb für 2.794 der 2.847 Wahlen des
+12.09.2021 „Sitzzahl unbekannt", obwohl die Zahl im Archiv lag; jetzt sind es 1.008,
+und das sind die Direkt- und Stichwahlen, die keine haben. Die Vorwahl bleibt
+draußen, weil sie einen Datenbankzugriff **je Vertretung** kostet — am 13.09.2026
+neuntausend je Neuaufbau.
+
+Der Ausdruck lebt bewusst in SQL statt in JavaScript: als Teilbaum wöge
+`tortenDiagramm.entries` je Übersicht 890 kB (2021) bis 3 MB (2026), als Summe
+zwei Byte je Zeile. Wer `parseErgebnis()` in `votemanager.ts` ändert, ändert
+`amtlicheSitzeSQL()` mit.
+
 Die Vorwahl steht hinten, weil die Sitzzahl der **Einwohnerzahl zu einem
 gesetzlichen Stichtag** folgt und sich zwischen zwei Wahlen ändert: der Kreistag
 Freudenstadt wuchs 2019→2024 von 41 auf 44, der Gemeinderat Hochdorf schrumpfte

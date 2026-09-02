@@ -208,7 +208,7 @@
 									{#if e.direktwahl}
 										<span class="marke">Direktwahl</span>
 									{:else if e.sitze}
-										<span class="marke">{e.sitze} Sitze</span>
+										<span class="marke" title={e.sitzeHerkunft === 'amtlich' ? 'Sitzzahl aus dem laufenden Ergebnis' : 'Sitzzahl aus der Bekanntmachung der Wahlleitung'}>{e.sitze} Sitze{e.sitzeHerkunft === 'hinterlegt' ? ' (hinterlegt)' : ''}</span>
 									{:else}
 										<span class="marke fehlt">Sitzzahl unbekannt</span>
 									{/if}

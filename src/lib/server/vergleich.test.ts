@@ -45,6 +45,22 @@ describe('stabiler Vertretungsschlüssel', () => {
 			['03355022', 'Wahl des Ortsrates - Oedeme'],
 			['03355022', 'Wahl des Ortsrates Oedeme - Oedeme', 'Oedeme']
 		);
+		// Ein Flecken wählt einen Gemeinderat. 2021 „Gemeindewahl", 2026
+		// „Fleckenratswahl" — sonst findet die Sitzzahl von 2021 ihre Wahl nicht.
+		gleich(
+			['033555407', 'Gemeindewahl - Flecken Artlenburg'],
+			['033555407', 'Fleckenratswahl Flecken Artlenburg - Flecken Artlenburg', 'Flecken Artlenburg']
+		);
+	});
+
+	it('übersteht votemanagers „Bürgemeister" ohne das zweite r', () => {
+		// Wirklich so im Feed: „Wahl der Samtgemeindebürgemeisterin -
+		// Samtgemeinde Dahlenburg" (13.09.2026). Ohne diesen Fall galt die
+		// Direktwahl als Vertretung und bekam eine Sitzzahl-Marke.
+		expect(normalisiereWahlart('Wahl der Samtgemeindebürgemeisterin'))
+			.toBe(normalisiereWahlart('Wahl der Samtgemeindebürgermeisterin'));
+		expect(normalisiereWahlart('Bürgemeisterwahl')).toBe('burgermeister');
+		expect(normalisiereWahlart('Stichwahl des/der Bürgemeisters/in')).toBe('stichwahl:burgermeister');
 	});
 
 	it('hält verschiedene Vertretungen derselben Behörde auseinander', () => {

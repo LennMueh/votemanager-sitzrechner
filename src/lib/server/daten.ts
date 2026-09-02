@@ -60,6 +60,29 @@ export function wahlpfad(sql: ReturnType<typeof db>) {
 	return sql`substring(p.pfad from '/wahl_[^/]+/[^/]+$')`;
 }
 
+/**
+ * Amtliche Sitzzahl aus einem `Komponente.sitze`-Teilbaum — dieselbe Regel wie
+ * `parseErgebnis()` in `votemanager.ts` (Summe des Tortendiagramms, sonst die
+ * Zahl aus `hinweis`), nur in SQL. Wer sie dort ändert, ändert hier mit.
+ *
+ * Bewusst in SQL und nicht in JavaScript: die Übersicht bräuchte sonst den
+ * Teilbaum `tortenDiagramm.entries` je Zeile. Der wiegt am 12.09.2021 890 kB
+ * und am 13.09.2026 rund 3 MB, und die Übersicht baut sich alle drei Sekunden
+ * neu (siehe FRISCH_MS). Als fertige Summe sind es zwei Byte je Zeile;
+ * gemessen kostet der Ausdruck 315 ms für 2.847 Zeilen.
+ *
+ * Der `replace` entfernt deutsche Tausenderpunkte — dasselbe tut `parseZahl()`.
+ *
+ * Der Alias `d` ist fest verdrahtet wie der Alias `p` in `wahlpfad()`: der
+ * Ausdruck gehört in die LATERAL-Unterabfrage der Übersicht und nirgends sonst.
+ */
+export function amtlicheSitzeSQL(sql: ReturnType<typeof db>) {
+	return sql`coalesce(
+		(SELECT sum((coalesce(e->'sitze', e->'value', e->'zahl'))::text::numeric)::int
+			FROM jsonb_array_elements(d.inhalt->'Komponente'->'sitze'->'tortenDiagramm'->'entries') e),
+		nullif(replace(substring(d.inhalt->'Komponente'->'sitze'->>'hinweis' from '([0-9.]+)\s*Sitze'), '.', ''), '')::int)`;
+}
+
 /** Sitzzahl einer Vertretung — Vorbelegung, siehe sitzzahlen*.json. */
 export function sitzzahl(ref: VertretungRef): number | undefined {
 	return TABELLE.get(vertretungsSchluessel(ref.ags, ref.titel, ref.gebietName))?.sitze;
@@ -217,6 +240,9 @@ export interface UebersichtEintrag extends VertretungRef {
 	regionName: string;
 	vergleichbar: boolean;
 	sitze?: number;
+	/** Woher `sitze` stammt — am Wahlabend der Unterschied zwischen laufendem
+	 *  Ergebnis und einer Bekanntmachung der Vorwahl. */
+	sitzeHerkunft?: 'amtlich' | 'hinterlegt';
 	stand?: Auszaehlstand;
 	fehler?: string;
 }
@@ -306,14 +332,16 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 		// `da` unterscheidet „kein Dokument archiviert" von „Dokument ohne Hinweis";
 		// über `hinweis IS NULL` allein ginge das nicht, den Fall gibt es wirklich
 		// (Wahlbezirks-Ergebnisse tragen keinen Auszählstand).
-		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string | null; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; hinweis: string[] | null; da: boolean | null }>>`
+		const zeilen = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; land: string; region: string; regionName: string | null; wahl_id: string; gebiet_id: string; gebiet_name: string; titel: string; hinweis: string[] | null; amtliche_sitze: number | null; da: boolean | null }>>`
 			WITH regionsname AS (${regionsname(sql)})
 			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, b.land, b.regionalschluessel region,
 				r.name "regionName",
-				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.hinweis, d.da
+				w.wahl_id, w.gebiet_id, w.gebiet_name, w.name titel, d.hinweis, d.amtliche_sitze, d.da
 			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
 			LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
-			LEFT JOIN LATERAL (SELECT d.inhalt->'Komponente'->'info'->'hinweis' AS hinweis, true AS da
+			LEFT JOIN LATERAL (SELECT d.inhalt->'Komponente'->'info'->'hinweis' AS hinweis,
+					${amtlicheSitzeSQL(sql)} AS amtliche_sitze,
+					true AS da
 				FROM dokument d JOIN pfad_stand p ON p.id=d.pfad_stand_id
 				WHERE p.instanz_id=i.id AND ${wahlpfad(sql)} = '/wahl_' || w.wahl_id || '/ergebnis_' || w.gebiet_id || '_0.json'
 				ORDER BY d.id DESC LIMIT 1) d ON true
@@ -336,12 +364,18 @@ export async function holeUebersicht(wahltag?: string): Promise<Uebersicht> {
 			else jeAgs.set(k.ags, [k]);
 		}
 		const eintraege = zeilen.map((z): UebersichtEintrag => {
-			const ref: VertretungRef = { instanzId: z.instanz_id, ags: z.ags, behoerde: z.behoerde, wahlId: Number(z.wahl_id), gebietId: z.gebiet_id, gebietName: z.gebiet_name, titel: z.titel, direktwahl: /(bürgermeister|landrat|stichwahl)/i.test(z.titel) };
+			const ref: VertretungRef = { instanzId: z.instanz_id, ags: z.ags, behoerde: z.behoerde, wahlId: Number(z.wahl_id), gebietId: z.gebiet_id, gebietName: z.gebiet_name, titel: z.titel, direktwahl: /(bürger?meister|landrat|stichwahl)/i.test(z.titel) };
 			const vergleichbar = Boolean(z.da && waehleGegenwahl(
 				{ ags: z.ags, wahltag: ausgewaehlt, name: z.titel, gebietName: z.gebiet_name },
 				jeAgs.get(z.ags) ?? []
 			));
-			return z.da ? { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze: sitzzahl(ref), stand: parseStand(z.hinweis ?? undefined) } : { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze: sitzzahl(ref), fehler: 'Noch kein Ergebnis archiviert' };
+			// Dieselbe Rangfolge wie waehleSitzzahl(), nur ohne die Vorwahl: die
+			// kostet einen Datenbankzugriff je Vertretung (siehe sitzzahlVorwahl)
+			// und wäre am 13.09.2026 neuntausend Abfragen je Neuaufbau wert.
+			const sitze = z.amtliche_sitze ?? sitzzahl(ref);
+			const sitzeHerkunft = z.amtliche_sitze ? 'amtlich' as const : sitze ? 'hinterlegt' as const : undefined;
+			const gemein = { ...ref, land: z.land, region: z.region, regionName: regionName(z.region, z.regionName), vergleichbar, sitze, sitzeHerkunft };
+			return z.da ? { ...gemein, stand: parseStand(z.hinweis ?? undefined) } : { ...gemein, fehler: 'Noch kein Ergebnis archiviert' };
 		});
 		return { wahltag: ausgewaehlt, wahltermine: termine.wahltermine, termine: termine.termine, zeitpunkt: new Date().toISOString(), eintraege };
 	});
@@ -586,7 +620,7 @@ export async function berechneVertretung(
 		if (!zeilen.length) throw new Error(`Kein archiviertes Ergebnis für ${ags}/${wahlId}/${gebietId}`);
 		const gesamtZeile = zeilen.find((z) => z.pfad.endsWith(`ergebnis_${gebietId}_0.json`));
 		if (!gesamtZeile) throw new Error('Wahlgebietsergebnis fehlt noch');
-		const ref: VertretungRef = { instanzId: gesamtZeile.instanz_id, ags: gesamtZeile.ags, behoerde: gesamtZeile.behoerde, wahlId, gebietId, gebietName: gesamtZeile.gebiet_name, titel: gesamtZeile.titel, direktwahl: /(bürgermeister|landrat|stichwahl)/i.test(gesamtZeile.titel) };
+		const ref: VertretungRef = { instanzId: gesamtZeile.instanz_id, ags: gesamtZeile.ags, behoerde: gesamtZeile.behoerde, wahlId, gebietId, gebietName: gesamtZeile.gebiet_name, titel: gesamtZeile.titel, direktwahl: /(bürger?meister|landrat|stichwahl)/i.test(gesamtZeile.titel) };
 		const gesamt = parseErgebnis(gesamtZeile.inhalt as never);
 		const teile = zeilen.filter((z) => z !== gesamtZeile).map((z) => ({ id: z.pfad.match(/ergebnis_(.+)_0\.json$/)?.[1] ?? z.pfad, name: z.wahlbereich, ergebnis: parseErgebnis(z.inhalt as never) }));
 		const summe = (v: typeof gesamt.vorschlaege) => v.reduce((s, x) => s + x.listenstimmen + x.kandidaten.reduce((a, k) => a + k.stimmen, 0), 0);
