@@ -2,13 +2,18 @@ apiVersion: v2
 name: votemanager
 description: VoteManager result viewer and poller
 type: application
-# Die HelmRelease bezieht diesen Chart mit reconcileStrategy: ChartVersion. Flux
-# baut das Chart-Artefakt deshalb NUR neu, wenn diese Zahl steigt — eine reine
-# Inhaltsänderung wird nie ausgerollt. Genau daran sind die angehobenen
-# CPU-Grenzen hängengeblieben: im Repo standen 1500m für PostgreSQL, im Cluster
-# lief weiter 1000m. Wer hier etwas ändert, erhöht die Version mit.
+# Diese Zahl ist Auskunft, kein Auslöser: die HelmRelease bezieht den Chart mit
+# reconcileStrategy: Revision und packt ihn bei jedem Commit neu. Ein Rollout
+# hängt also nicht mehr daran, dass jemand hier hochzählt.
+#
+# Vorher tat er das (ChartVersion), und zweimal blieb dadurch eine
+# Chart-Änderung im Repo stehen, ohne im Cluster anzukommen: die angehobenen
+# PostgreSQL-Grenzen (1500m im Repo, 1000m im Cluster) und der Mount der
+# Rechtstexte-ConfigMap, weshalb /impressum und /datenschutz leer blieben.
+# Trotzdem weiter mitzählen — die Version sagt, welcher Stand läuft.
 #
 # 0.2.0: PostgreSQL-Ressourcen über database.resources konfigurierbar und
 # angehoben, web-Limit von 500m auf 1, database.poolSize durchgereicht.
-version: 0.2.0
+# 0.3.0: Rechtstexte-ConfigMap als Volume und RECHTSTEXTE_PFAD im web-Pod.
+version: 0.3.0
 appVersion: "0.1.0"
