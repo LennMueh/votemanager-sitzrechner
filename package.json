@@ -30,6 +30,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "marked": "^18.0.11",
     "postgres": "^3.4.9"
   }
 }

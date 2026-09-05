@@ -168,6 +168,7 @@
 		Eigene Berechnung nach dem Kommunalwahlrecht des jeweiligen Landes auf Grundlage der von
 		votemanager veröffentlichten Zwischenstände. <strong>Ohne Gewähr</strong> — amtlich ist
 		allein die Feststellung des Wahlausschusses.
+		<a href="/impressum">Was das bedeutet</a>
 	</p>
 
 	{#if ansicht && daten}

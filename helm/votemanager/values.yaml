@@ -65,3 +65,13 @@ ingress:
   annotations: {}
   host: votemanager.local
   tls: []
+
+# Impressum und Datenschutzerklärung als Markdown (impressum.md,
+# datenschutz.md) aus einer ConfigMap, die das Chart NICHT erzeugt: die Texte
+# enthalten die ladungsfähige Anschrift nach § 5 DDG und gehören deshalb nicht
+# in dieses öffentliche Repo. Der Betreiber legt die ConfigMap selbst an und
+# trägt ihren Namen hier ein; ohne sie zeigen /impressum und /datenschutz einen
+# sichtbaren Hinweis, dass der Text fehlt.
+rechtstexte:
+  enabled: false
+  configMap: ""

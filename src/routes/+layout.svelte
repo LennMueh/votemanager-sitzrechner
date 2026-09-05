@@ -1,5 +1,12 @@
 <script lang="ts">
+	import { page } from '$app/state';
+
 	let { children } = $props();
+
+	// Der Präsentationsmodus bleibt ohne Fußzeile: Buehne.svelte misst den Inhalt
+	// und stellt --skala danach ein. Ein Footer ginge in diese Messung ein und
+	// verkleinerte die Bühne auf jedem Beamer.
+	let fusszeile = $derived(!page.url.pathname.startsWith('/praesentation'));
 </script>
 
 <svelte:head>
@@ -7,6 +14,16 @@
 </svelte:head>
 
 {@render children()}
+
+{#if fusszeile}
+	<footer>
+		<span>Berechnete Sitzverteilung, keine amtliche Verlautbarung.</span>
+		<nav>
+			<a href="/impressum">Impressum</a>
+			<a href="/datenschutz">Datenschutz</a>
+		</nav>
+	</footer>
+{/if}
 
 <style>
 	/*
@@ -95,6 +112,91 @@
 		border-radius: var(--radius);
 		padding: 0.6rem 0.9rem;
 		font-size: 0.9rem;
+	}
+
+	footer {
+		max-width: var(--inhalt);
+		margin: 0 auto;
+		padding: 1.25rem clamp(1rem, 3vw, 1.5rem) 2rem;
+		border-top: 1px solid var(--rand);
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.25rem;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.85rem;
+		color: var(--text-2);
+	}
+
+	footer nav {
+		display: flex;
+		gap: 1.25rem;
+	}
+
+	footer a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+	}
+
+	/* Impressum und Datenschutzerklärung kommen als gerendertes Markdown und
+	   damit über {@html}. Sveltes Bereichsbindung erfasst solchen Inhalt nicht,
+	   deshalb müssen die Regeln global stehen — und weil hier ohnehin alle
+	   globalen Stile liegen, stehen sie hier statt doppelt in beiden Seiten.
+	   Die globale Regel setzt h1..h3 auf margin: 0; ein Fließtext braucht die
+	   Abstände zurück. */
+	/* Deutsche Komposita sprengen schmale Anzeigen: „Datenschutzerklärung" ist
+	   als h1 breiter als 320 px. Der Umbruch macht aus dem Überlauf eine
+	   Trennung; hyphens greift, weil <html lang="de"> gesetzt ist. */
+	:global(.rechtstext h1),
+	:global(.rechtstext h2),
+	:global(.rechtstext h3) {
+		overflow-wrap: break-word;
+		hyphens: auto;
+	}
+
+	:global(.rechtstext h1) {
+		font-size: clamp(1.7rem, 4vw, 2.3rem);
+		margin-bottom: 1.5rem;
+	}
+
+	:global(.rechtstext h2) {
+		font-size: 1.15rem;
+		margin: 2.25rem 0 0.6rem;
+	}
+
+	:global(.rechtstext h3) {
+		font-size: 1rem;
+		margin: 1.5rem 0 0.4rem;
+	}
+
+	:global(.rechtstext p),
+	:global(.rechtstext ul),
+	:global(.rechtstext ol) {
+		margin: 0 0 1rem;
+	}
+
+	:global(.rechtstext li) {
+		margin-bottom: 0.35rem;
+	}
+
+	:global(.rechtstext blockquote) {
+		margin: 1rem 0;
+		padding-left: 0.8rem;
+		border-left: 3px solid var(--rand);
+		color: var(--text-2);
+	}
+
+	:global(.rechtstext code) {
+		background: var(--flaeche-2);
+		border-radius: var(--radius-klein);
+		padding: 0.1em 0.35em;
+		font-size: 0.9em;
+	}
+
+	/* Lange Adressen und URLs dürfen die Textspalte nicht sprengen. */
+	:global(.rechtstext a) {
+		overflow-wrap: anywhere;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

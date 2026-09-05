@@ -35,13 +35,32 @@ spec:
             # Je Pod, nicht insgesamt: replicas mal poolSize muss unter
             # max_connections von PostgreSQL bleiben.
             - { name: DATABASE_POOL_SIZE, value: {{ .Values.database.poolSize | quote }} }
+{{- if .Values.rechtstexte.enabled }}
+            # Impressum und Datenschutzerklärung liegen als Markdown in einer
+            # ConfigMap, die NICHT dieses Chart erzeugt (siehe values.yaml).
+            - { name: RECHTSTEXTE_PFAD, value: /rechtstexte }
+{{- end }}
           readinessProbe: { httpGet: { path: /api/ready, port: http }, periodSeconds: 5 }
           livenessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
           startupProbe: { httpGet: { path: /api/health, port: http }, failureThreshold: 30, periodSeconds: 2 }
           securityContext: {{- include "votemanager.securityContext" . | nindent 12 }}
           resources: {{- toYaml .Values.web.resources | nindent 12 }}
-          volumeMounts: [{ name: tmp, mountPath: /tmp }]
-      volumes: [{ name: tmp, emptyDir: {} }]
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+{{- if .Values.rechtstexte.enabled }}
+            - { name: rechtstexte, mountPath: /rechtstexte, readOnly: true }
+{{- end }}
+      volumes:
+        - { name: tmp, emptyDir: {} }
+{{- if .Values.rechtstexte.enabled }}
+        # Bewusst OHNE checksum/config-Annotation am Pod-Template: der übliche
+        # Helm-Reflex löste bei jeder Textänderung einen Rollout aus. So bleibt
+        # das Deployment unverändert, das Kubelet tauscht den Inhalt im
+        # laufenden Pod, und die App liest ihn bei der nächsten Anfrage.
+        - name: rechtstexte
+          configMap:
+            name: {{ required "rechtstexte.configMap ist nötig, wenn rechtstexte.enabled gilt" .Values.rechtstexte.configMap }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -41,6 +41,28 @@ helm upgrade --install votemanager helm/votemanager \
   --set-string crawler.contact='mailto:betrieb@example.org'
 ```
 
+## Impressum und Datenschutzerklärung
+
+`/impressum` und `/datenschutz` rendern Markdown, das die Anwendung zur Laufzeit aus dem Verzeichnis `RECHTSTEXTE_PFAD` liest (Dateien `impressum.md` und `datenschutz.md`, Vorgabe `rechtstexte`). Fehlt eine Datei, zeigt die Seite einen sichtbaren Hinweis, dass der Text nicht hinterlegt ist — sie bleibt bewusst nicht still leer.
+
+Die Texte liegen **nicht in diesem Repo**: sie enthalten die ladungsfähige Anschrift nach § 5 DDG, und dieses Repo ist öffentlich. Im Cluster kommen sie aus einer ConfigMap, die das Chart **nicht erzeugt**, sondern nur einhängt:
+
+```sh
+kubectl create configmap votemanager-rechtstexte \
+  --from-file=impressum.md --from-file=datenschutz.md
+helm upgrade --install votemanager helm/votemanager \
+  --set rechtstexte.enabled=true \
+  --set rechtstexte.configMap=votemanager-rechtstexte
+```
+
+Der ConfigMap-Name muss stabil sein, also ohne Inhalts-Hash. Nur dann bleibt das Deployment bei einer Textänderung unverändert, das Kubelet tauscht den Inhalt im laufenden Pod aus, und die nächste Anfrage liest ihn — kein Rollout, kein Image-Bau. Aus demselben Grund trägt das Pod-Template bewusst **keine** `checksum/config`-Annotation.
+
+Für die Entwicklung zeigt man den Pfad auf die Arbeitskopie, in der die Texte gepflegt werden:
+
+```sh
+RECHTSTEXTE_PFAD=../optiplex01_infra/rechtstexte npm run dev
+```
+
 Ingress ist optional und controller-neutral (`ingress.enabled`, `ingress.className`, `ingress.host`, `ingress.tls`). Für Produktion sollten externes PostgreSQL oder mindestens 50 GiB Speicher, ein unveränderliches Image-Tag und ein vorhandener Ingress-Controller verwendet werden. Web-Metriken liegen unter `/metrics`, Poller-Metriken auf Port 9090.
 
 Mit einem bereits clusterweit installierten Caddy-Ingress-Controller genügt zum Beispiel
