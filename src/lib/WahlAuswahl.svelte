@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { vorwahl, type KatalogEintrag } from './katalog';
+	import { trifft, vorwahl, type KatalogEintrag } from './katalog';
 	import Wahlkalender from './Wahlkalender.svelte';
 	import type { Wahltermin } from './server/daten';
 	let { titel = 'Bundesweite Wahlauswahl' }: { titel?: string } = $props();
@@ -61,7 +61,9 @@
 	const sichtbar = $derived(amTermin.filter((e) =>
 		(!land || e.land === land) && (!region || e.region === region) && (!behoerde || e.ags === behoerde) &&
 		(!wahlart || e.wahlart === wahlart) &&
-		(!suche || `${e.behoerde} ${e.wahl} ${e.gebietId}`.toLowerCase().includes(suche.toLowerCase()))));
+		// Auch über `gebiet`: der Gebietsname steht in der Trefferzeile, war aber
+		// nicht durchsuchbar — nur die technische `gebietId`.
+		trifft([e.behoerde, e.wahl, e.gebiet, e.gebietId, e.regionName], suche)));
 	const name = (art: 'region' | 'behoerde', wert: string) => eintraege.find((e) => e[art === 'region' ? 'region' : 'ags'] === wert)?.[art === 'region' ? 'regionName' : 'behoerde'] ?? wert;
 	const key = (e: KatalogEintrag) => `i${e.instanzId}:${e.wahlId}:${e.gebietId}`;
 	const alleSichtbar = $derived(sichtbar.length > 0 && sichtbar.every((e) => gewaehlt.includes(key(e))));
@@ -86,7 +88,7 @@
 <section class="katalog">
 	<h2>{titel}</h2>
 	<div class="filter">
-		<input type="search" bind:value={suche} placeholder="Behörde oder Wahl suchen …" aria-label="Wahlen suchen" />
+		<input type="search" bind:value={suche} placeholder="In diesem Wahltermin suchen …" aria-label="Wahlen in diesem Wahltermin suchen" />
 		<select value={land} aria-label="Bundesland" onchange={(e) => { land = e.currentTarget.value; region = ''; behoerde = ''; }}>
 			<option value="">Bundesland</option>{#each laender as x}<option>{x}</option>{/each}
 		</select>

@@ -4,6 +4,7 @@
 	import Thema from '$lib/Thema.svelte';
 	import WahlAuswahl from '$lib/WahlAuswahl.svelte';
 	import Wahlkalender from '$lib/Wahlkalender.svelte';
+	import { trifft } from '$lib/katalog';
 	import { strom } from '$lib/strom';
 	import type { Uebersicht, UebersichtEintrag } from '$lib/server/daten';
 
@@ -47,11 +48,15 @@
 		return strom(['uebersicht'], () => void laden(tag, true));
 	});
 
+	// Gesucht wird über alles, was in der Trefferzeile steht — der Gebietsname
+	// („Ortsrat Oedeme → Oedeme") war vorher sichtbar, aber nicht auffindbar.
 	const gefiltert = $derived(
 		(daten?.eintraege ?? []).filter((e) =>
-			(!land || e.land === land) && (!region || e.region === region) && (!behoerde || e.ags === behoerde) && `${e.behoerde} ${e.titel}`.toLowerCase().includes(suche.toLowerCase())
+			(!land || e.land === land) && (!region || e.region === region) && (!behoerde || e.ags === behoerde) &&
+			trifft([e.behoerde, e.titel, e.gebietName, e.regionName], suche)
 		)
 	);
+	const gesucht = $derived(suche.trim() !== '');
 	const eindeutig = (x: string[]) => [...new Set(x)].sort((a, b) => a.localeCompare(b, 'de'));
 	const laender = $derived(eindeutig((daten?.eintraege ?? []).map((e) => e.land)));
 	// Alle sechzehn, nicht nur die beiden ersten: der Poller entdeckt Behörden
@@ -133,6 +138,39 @@
 	});
 </script>
 
+<!--
+	Eine Trefferzeile. Als Snippet, weil sie an zwei Stellen steht: unter einer
+	Behörde in der Hierarchie und in der Trefferliste der Suche. `herkunft` blendet
+	Behörde und Region ein — ohne die Behörden-Überschrift wäre „Rat der Gemeinde"
+	sonst nicht zuzuordnen.
+-->
+{#snippet zeile(e: UebersichtEintrag, herkunft = false)}
+	{@const p =
+		e.stand && e.stand.erwartet > 0
+			? Math.round((e.stand.eingegangen / e.stand.erwartet) * 100)
+			: 0}
+	<li>
+		<a href={link(e)}>
+			<span class="titel">{e.titel}</span>
+			<span class="meta">
+				{#if e.direktwahl}
+					<span class="marke">Direktwahl</span>
+				{:else if e.sitze}
+					{@const HERKUNFT = { amtlich: 'aus dem laufenden Ergebnis', hinterlegt: 'aus der Bekanntmachung der Wahlleitung', berechnet: 'nach § 46 NKomVG aus der Einwohnerzahl gerechnet, nicht amtlich bestätigt', vorwahl: 'Sitzzahl der Vorwahl, nicht amtlich bestätigt' }}
+					<span class="marke" class:geschaetzt={e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich'}
+						title="Sitzzahl {HERKUNFT[e.sitzeHerkunft ?? 'amtlich']}{e.sitzeStand ? ` (Stand ${e.sitzeStand.slice(6, 8)}.${e.sitzeStand.slice(4, 6)}.${e.sitzeStand.slice(0, 4)})` : ''}">{e.sitze} Sitze{e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich' ? '*' : ''}</span>
+				{:else}
+					<span class="marke fehlt">Sitzzahl unbekannt</span>
+				{/if}
+				<span class="zahl stand">{e.stand?.text ?? '—'}</span>
+			</span>
+			{#if herkunft}<span class="woher">{e.behoerde} · {regionName(e.region)} · {landName(e.land)}</span>{/if}
+			<span class="balken"><span style:width="{p}%" class:fertig={p >= 100}></span></span>
+		</a>
+		{#if e.vergleichbar}<a class="vergleich" href={`/vergleich?instanz=${e.instanzId}&wahl=${e.wahlId}&gebiet=${e.gebietId}${aktiverWahltag ? `&wahltag=${aktiverWahltag}` : ''}`}>Vergleichen</a>{/if}
+	</li>
+{/snippet}
+
 <main aria-busy={laedt}>
 	<header>
 		<div>
@@ -189,6 +227,25 @@
 		{#if !daten.wahltermine.length}<p class="leer" role="status">Noch keine Wahltermine bekannt.</p>{/if}
 		<input class="suche" type="search" bind:value={suche} placeholder="Vertretung suchen …" aria-label="Vertretung suchen" />
 
+		<!--
+			Steht etwas im Feld, ersetzt die Trefferliste die Ebenen-Navigation. Vorher
+			wirkte die Suche nur in der innersten Ebene: wer sie brauchte, musste sich
+			erst dorthin durchklicken — und hatte dann nichts mehr zu suchen.
+		-->
+		{#if gesucht}
+			<section aria-label="Suchergebnisse">
+				<h2 role="status">{gefiltert.length} Treffer</h2>
+				{#if gefiltert.length === 0}
+					<p class="leer">Keine Vertretung passt zur Suche.</p>
+				{:else}
+					<ul>
+						{#each gefiltert as e (e.ags + e.wahlId + e.gebietId)}
+							{@render zeile(e, true)}
+						{/each}
+					</ul>
+				{/if}
+			</section>
+		{:else}
 		<nav class="hierarchie" aria-label="Wahlebene">
 			{#if !land}<div class="karten">{#each karten as k (k.wert)}<button onclick={() => (land = k.wert)}><strong>{k.titel}</strong><span>{k.ein} von {k.erw} Schnellmeldungen</span></button>{/each}</div>
 			{:else if !region}<button class="zurueck" onclick={() => (land = '')}>← Bundesländer</button><div class="karten">{#each karten as k (k.wert)}<button onclick={() => (region = k.wert)}><strong>{k.titel}</strong><span>{k.ein} von {k.erw} Schnellmeldungen</span></button>{/each}</div>
@@ -198,37 +255,12 @@
 				<h2>{name(behoerde)}</h2>
 				<ul>
 					{#each gefiltert as e (e.ags + e.wahlId + e.gebietId)}
-						{@const p =
-							e.stand && e.stand.erwartet > 0
-								? Math.round((e.stand.eingegangen / e.stand.erwartet) * 100)
-								: 0}
-						<li>
-							<a href={link(e)}>
-								<span class="titel">{e.titel}</span>
-								<span class="meta">
-									{#if e.direktwahl}
-										<span class="marke">Direktwahl</span>
-									{:else if e.sitze}
-										{@const HERKUNFT = { amtlich: 'aus dem laufenden Ergebnis', hinterlegt: 'aus der Bekanntmachung der Wahlleitung', berechnet: 'nach § 46 NKomVG aus der Einwohnerzahl gerechnet, nicht amtlich bestätigt', vorwahl: 'Sitzzahl der Vorwahl, nicht amtlich bestätigt' }}
-										<span class="marke" class:geschaetzt={e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich'}
-											title="Sitzzahl {HERKUNFT[e.sitzeHerkunft ?? 'amtlich']}{e.sitzeStand ? ` (Stand ${e.sitzeStand.slice(6, 8)}.${e.sitzeStand.slice(4, 6)}.${e.sitzeStand.slice(0, 4)})` : ''}">{e.sitze} Sitze{e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich' ? '*' : ''}</span>
-									{:else}
-										<span class="marke fehlt">Sitzzahl unbekannt</span>
-									{/if}
-									<span class="zahl stand">{e.stand?.text ?? '—'}</span>
-								</span>
-								<span class="balken"><span style:width="{p}%" class:fertig={p >= 100}></span></span>
-							</a>
-							{#if e.vergleichbar}<a class="vergleich" href={`/vergleich?instanz=${e.instanzId}&wahl=${e.wahlId}&gebiet=${e.gebietId}${aktiverWahltag ? `&wahltag=${aktiverWahltag}` : ''}`}>Vergleichen</a>{/if}
-						</li>
+						{@render zeile(e)}
 					{/each}
 				</ul>
 			</section>
 			{/if}
 		</nav>
-
-		{#if gefiltert.length === 0}
-			<p class="leer" role="status">Keine Vertretung passt zur Suche.</p>
 		{/if}
 	{/if}
 
@@ -386,6 +418,14 @@
 
 	.titel {
 		font-weight: 500;
+	}
+
+	/* Woher der Treffer stammt — in der Hierarchie sagt das die Überschrift, in
+	   der Trefferliste gibt es keine. */
+	.woher {
+		grid-column: 1 / -1;
+		font-size: 0.82rem;
+		color: var(--text-2);
 	}
 
 	.meta {

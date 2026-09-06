@@ -19,7 +19,6 @@ import type { RequestHandler } from './$types';
  * der Nutzer den Termin wechselt, wird neu geholt.
  */
 export const GET: RequestHandler = async ({ url }) => {
-	const suche = url.searchParams.get('q')?.trim() ?? '';
 	const termine = await holeWahltermine();
 	const roh = url.searchParams.get('termin') ?? '';
 	if (roh && !/^\d{4}-\d{2}-\d{2}$/.test(roh)) {
@@ -43,7 +42,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		JOIN behoerde b ON b.id=i.behoerde_id
 		LEFT JOIN regionsname r ON r.regionalschluessel=b.regionalschluessel
 		WHERE b.aktiv AND (${termin} = '' OR t.datum = ${termin || null}::date)
-			AND (${suche} = '' OR concat_ws(' ', b.name, t.name, w.name, w.gebiet_id) ILIKE ${`%${suche}%`})
 		ORDER BY b.land, "regionName", b.name, t.datum DESC, w.name
 	`;
 	for (const e of eintraege) e.regionName = regionName(e.region, e.regionName || null);
