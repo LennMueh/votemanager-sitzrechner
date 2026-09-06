@@ -474,7 +474,7 @@
 	}
 
 	.balken span.fertig {
-		background: #2e7d32;
+		background: var(--gut);
 	}
 
 	.laedt {

@@ -294,7 +294,7 @@
 		transition: width 0.4s ease;
 	}
 	.balken div.fertig {
-		background: #2e7d32;
+		background: var(--gut);
 	}
 	.beteiligung {
 		margin: 0.6rem 0 0;

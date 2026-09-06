@@ -349,7 +349,7 @@
 	.legende { margin: .5rem 0 0; font-size: .85rem; color: var(--text-3); }
 
 	.streit { color: var(--warn); }
-	.grundlage { color: var(--gedaempft, #666); }
+	.grundlage { color: var(--text-3); }
 
 	.grundlage {
 		margin: 1.5rem 0 0;
@@ -394,7 +394,7 @@
 	}
 
 	.balken div.fertig {
-		background: #2e7d32;
+		background: var(--gut);
 	}
 
 	.bezirke {

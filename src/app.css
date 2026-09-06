@@ -11,7 +11,7 @@
 	--text: light-dark(#14161a, #f2f4f7);
 	--text-2: light-dark(#4a5058, #b6bdc7);
 	--text-3: light-dark(#767d87, #868e9a);
-	/* Kein --gedaempft: sein einziger Aufrufer ist gedämpfter Beitext — das ist --text-3. */
+	/* Kein --gedaempft: sein einziger Aufrufer war gedämpfter Beitext und nimmt jetzt --text-3. */
 	--akzent: light-dark(#1a56c4, #7ea8ff);
 	--warn: light-dark(#8a5a00, #ffc963);
 	--warn-flaeche: light-dark(#fff6e0, #3a2d0c);
