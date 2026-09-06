@@ -182,7 +182,9 @@ for (const [breite, hoehe] of [
 			},
 			{
 				name: 'bezirke-aufgeklappt',
-				pfad: `/bezirke?${abfrage(KREISTAG)}`,
+				// Oedeme, nicht der Kreistag: für die Kreiswahl liegt keine
+				// Bezirksübersicht im Archiv, die Seite bliebe leer.
+				pfad: `/bezirke?${abfrage(OEDEME)}`,
 				ziel: '.tabelle table .aufklappen',
 				// Entweder das Einzelergebnis oder der Hinweis, dass es fehlt — beides
 				// sind Endzustände, „Lade …" ist keiner.
@@ -193,7 +195,6 @@ for (const [breite, hoehe] of [
 				...gleich
 			},
 			{ name: 'vergleich', pfad: `/vergleich?${abfrage(KREISTAG)}`, ziel: '.vergleich section, .hinweis', ...gleich },
-			{ name: 'oedeme-detail', pfad: `/v?${abfrage(OEDEME)}`, ziel: 'article', ...gleich },
 			{ name: 'direktwahl-detail', pfad: `/v?${abfrage(OB_WAHL)}`, ziel: 'article', ...gleich }
 		);
 	}
@@ -208,13 +209,22 @@ for (const f of seitenfaelle) {
 	});
 	await seite.evaluateOnNewDocument((t: string) => localStorage.setItem('thema', t), f.thema);
 	await seite.goto(`${BASIS}${f.pfad}`, { waitUntil: 'domcontentloaded' });
-	await seite.waitForSelector(f.ziel);
-	if (f.oeffnen) await f.oeffnen(seite);
-	const ueberlauf = await seite.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+
+	// Ein ausbleibender Selektor ist eine Beanstandung, kein Abbruch: sonst
+	// nimmt eine Seite ohne Daten den übrigen dreißig die Prüfung weg.
+	let ueberlauf: number | null = null;
+	try {
+		await seite.waitForSelector(f.ziel);
+		if (f.oeffnen) await f.oeffnen(seite);
+		ueberlauf = await seite.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+	} catch (e) {
+		console.log(`  ! ${f.name}: ${(e as Error).message}`);
+	}
 	await seite.screenshot({ path: `${ZIEL}/${f.breite}x${f.hoehe}-${f.name}-${f.thema}.png` });
-	if (ueberlauf > 1) fehler++;
+	const schlecht = ueberlauf === null || ueberlauf > 1;
+	if (schlecht) fehler++;
 	console.log(
-		`${ueberlauf > 1 ? 'FEHLT' : ' ok  '} ${f.breite}x${f.hoehe} ${f.name.padEnd(20)} ${f.thema.padEnd(7)} breit=${ueberlauf}`
+		`${schlecht ? 'FEHLT' : ' ok  '} ${f.breite}x${f.hoehe} ${f.name.padEnd(20)} ${f.thema.padEnd(7)} breit=${ueberlauf ?? '?'}`
 	);
 	await seite.close();
 }
@@ -240,8 +250,14 @@ await auswahl.close();
 
 const terminseite = await browser.newPage();
 await terminseite.goto(`${BASIS}/?wahltag=20260913`, { waitUntil: 'domcontentloaded' });
-await terminseite.waitForSelector('select[aria-label="Wahltermin"]');
-await terminseite.select('select[aria-label="Wahltermin"]', WAHLTAG);
+// Der Wahltermin kam früher aus einem <select>; seit dem Wahlkalender ist es ein
+// Popover mit Monatsraster. Ein Jahr zurück, bis der gesuchte Tag im Raster steht.
+await terminseite.waitForSelector('.ausloeser');
+await terminseite.click('.ausloeser');
+for (let i = 0; i < 10 && !(await terminseite.$(`button.wahltag[data-tag="${WAHLTAG}"]`)); i++) {
+	await terminseite.click('.kalender .kopf button[aria-label="Ein Jahr zurück"]');
+}
+await terminseite.click(`button.wahltag[data-tag="${WAHLTAG}"]`);
 await terminseite.waitForFunction(() => location.search.includes('wahltag=20210912'));
 const terminInLinks = await terminseite.$$eval('a[href^="/wahlen"], a[href^="/praesentation"]', (links) =>
 	links.length >= 2 && links.every((link) => (link as HTMLAnchorElement).href.includes('wahltag=20210912'))
