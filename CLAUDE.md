@@ -365,6 +365,28 @@ Sommerzeitwechsel), die still kaputtgehen könnten.
   übersteuert, ein Inline-Skript in `src/app.html` setzt es vor dem ersten
   Zeichnen.
 
+## Stil
+
+Die Anwendung hat keinen Stil-Layer außer dem Token-Block `:global(:root)` in
+`src/routes/+layout.svelte`. Damit das trägt, gelten vier Regeln:
+
+- **Farben, Abstände, Radien und Schriftgrößen kommen ausschließlich aus den
+  Tokens.** Keine Hex-Werte, kein `rgb()`, keine px-Radien in Komponenten.
+  Fehlt ein Token, wird eines angelegt — nicht der Wert eingesetzt.
+- **Dunkelmodus nie über einen zweiten Farbsatz**, sondern über `light-dark()`
+  im Token selbst. Ein zweiter Satz driftet: er wird beim nächsten Wert
+  vergessen, und der Fehler zeigt sich nur in einem der beiden Modi. Jeder
+  hart eingesetzte Farbwert ist genau dieser Fehler in klein — er nimmt den
+  Dunkelmodus-Anteil nicht mit.
+- **Wiederkehrende Bausteine liegen in `src/lib/stil/`** und werden importiert,
+  nicht je Seite nachgebaut. Eine kopierte Regel weicht ab, sobald sich eine
+  der Kopien ändert, und die übrigen bleiben stumm zurück.
+- **Nach jeder Frontend-Änderung `npm run schuss`.** Der Überlauf muss 0
+  bleiben; die Fallen des Präsentationsmodus lassen Inhalt verschwinden, ohne
+  dass etwas kaputt aussieht.
+
+Der Bestand steht in `docs/stil-inventar.md`.
+
 ## Rücksicht auf fremde Infrastruktur
 
 votemanager gehört uns nicht und hat keine zugesicherte API. Genau ein Poller
