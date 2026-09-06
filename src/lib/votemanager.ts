@@ -115,11 +115,21 @@ interface RohErgebnis {
 		tabelle?: { zeilen: RohZeile[] };
 		info?: { titel?: string; hinweis?: string[]; tabelle?: { zeilen: RohZeile[] } };
 		sitze?: { hinweis?: string; tortenDiagramm?: { entries?: Array<{ sitze?: number | string; value?: number | string; zahl?: number | string }> }; tabelle?: { ueberschriften: string[]; zeilen: string[][] } };
+		gebietsverlinkung?: { titel?: string; gebietslinks?: { id: string; type?: string; title?: string }[] }[];
 	};
 }
 interface RohUebersicht {
 	tabelle: {
-		zeilen: { label: string; statusString?: string; link?: { id: string; type: string } }[];
+		header?: RohLabel[];
+		zeilen: {
+			label: string;
+			statusString?: string;
+			statusProzent?: number;
+			/** Falsch bei Aggregatzeilen („Samtgemeinde Bardowick, 26 von 26"). */
+			stimmbezirk?: boolean;
+			felder?: { absolut?: string; prozent?: string; tip?: string }[];
+			link?: { id: string; type: string };
+		}[];
 	};
 }
 interface RohTermin {
@@ -432,6 +442,102 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 		kennzahlen,
 		beteiligung: wahlbeteiligung(kennzahlen)
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Wahlbezirke (Wahllokale)
+// ---------------------------------------------------------------------------
+
+/** Auszählstand eines Wahllokals in *einer* Wahl. */
+export interface Bezirksstand {
+	/** Gebiets-ID im Feed, etwa „ebene_6_id_69554". */
+	id: string;
+	/** Wortlaut des Hosts, etwa „542 Handorf II". */
+	name: string;
+	ausgezaehlt: boolean;
+	/** `statusString` unverändert, etwa „eingegangen". */
+	standText: string;
+	beteiligung?: Wahlbeteiligung;
+}
+
+const B_BERECHTIGTE = /^(wahl|stimm|abstimmungs)berechtigte/i;
+const B_BETEILIGUNG = /beteiligung$/i;
+/** Wortgleich zur Einstufung der Übersichtsebenen in `db.ts`. */
+const B_WAHLBEZIRK = /wahlbezirk|stimmbezirk/i;
+
+/**
+ * Liest Stand und Beteiligung je Wahllokal aus einer Wahlbezirks-Übersicht
+ * (`uebersicht_<ebene>_0.json`).
+ *
+ * Genau dafür und für nichts sonst: die Stimmspalten dieses Dokuments sind auf
+ * die vier stärksten Wahlvorschläge **der ganzen Wahl** plus „Sonstige"
+ * gekürzt. Beim Samtgemeinderat Bardowick verdeckt diese eine Spalte drei
+ * Wahlvorschläge, und in der Gemeinde Handorf steht eine Spalte für eine
+ * Wählergemeinschaft, die dort gar nicht auf dem Stimmzettel stand. Die Zahlen
+ * kommen deshalb aus den Einzeldokumenten der Wahllokale
+ * (`baueBezirksmatrix()` in `bezirke.ts`).
+ *
+ * Für den Stand gibt es dagegen keine andere Quelle: das Wahlbezirks-Ergebnis
+ * trägt ihn nicht, sein `hinweis` ist `[null]`, und `parseStand()` findet dort
+ * nie ein „n von m".
+ *
+ * Zwei Eigenheiten, an denen sonst still die falsche Spalte gelesen wird:
+ *
+ *  - `tabelle.header` zählt zwei Spalten mehr als `felder`. Die erste kommt aus
+ *    `label`, die zweite aus `statusString`; die Werte fluchten deshalb mit
+ *    `header[i + 2]`. Nachgerechnet an fünf Dokumenten, darunter die
+ *    elfspaltige Direktwahl mit ihrer zusätzlichen Spalte „gültig".
+ *  - Zeilen mit `stimmbezirk: false` sind Aggregate („Samtgemeinde Bardowick,
+ *    26 von 26") und kein Wahllokal.
+ *
+ * Ausgezählt hängt an `statusProzent`, nicht am Wortlaut von `statusString`:
+ * „eingegangen" ist belegt, die Formulierung für einen offenen Bezirk nicht.
+ */
+export function parseBezirksuebersicht(roh: RohUebersicht): Bezirksstand[] {
+	const kopf = (roh.tabelle?.header ?? []).map(kurz).slice(2);
+	const iBerechtigte = kopf.findIndex((s) => B_BERECHTIGTE.test(s));
+	const iBeteiligung = kopf.findIndex((s) => B_BETEILIGUNG.test(s));
+
+	return (roh.tabelle?.zeilen ?? [])
+		.filter((z) => z.stimmbezirk && z.link?.id)
+		.map((z): Bezirksstand => {
+			const felder = z.felder ?? [];
+			// Die Beteiligungsspalte führt in `absolut` die Wähler und in
+			// `prozent` den Anteil; die Berechtigtenspalte wiederholt in
+			// `prozent` nur ihre eigene Zahl. Briefwahlbezirke führen keine
+			// Berechtigten — die zählen in ihrem Urnenbezirk mit.
+			const berechtigte = iBerechtigte < 0 ? 0 : parseZahl(felder[iBerechtigte]?.absolut);
+			const waehler = iBeteiligung < 0 ? 0 : parseZahl(felder[iBeteiligung]?.absolut);
+			return {
+				id: z.link!.id,
+				name: z.label,
+				ausgezaehlt: (z.statusProzent ?? 0) >= 100,
+				standText: z.statusString ?? '',
+				beteiligung: berechtigte
+					? { berechtigte, waehler, anteil: parseZahl(felder[iBeteiligung]?.prozent) / 100 }
+					: undefined
+			};
+		});
+}
+
+/**
+ * Die Wahlbezirke, die laut Host zu genau **diesem** Gebiet gehören.
+ *
+ * Die Wahl-ID reicht dafür nicht: bei einer Samtgemeinde teilen sich alle
+ * Mitgliedsgemeinden eine Gemeindewahl, deren Bezirksübersicht deshalb sämtliche
+ * Wahlbezirke der Samtgemeinde führt — für die Gemeinde Handorf 26 statt 3. Der
+ * Name taugt ebenso wenig („531 Bardowick I" gehört zum Flecken Bardowick).
+ *
+ * Der Host sagt es selbst: `Komponente.gebietsverlinkung` des Gebietsergebnisses
+ * führt eine Gruppe „Wahlbezirke" mit genau den zugehörigen Links. Dasselbe
+ * Dokument liest `berechneVertretung()` ohnehin, der Schnitt kostet also keinen
+ * zusätzlichen Abruf.
+ */
+export function bezirkeDesGebiets(roh: RohErgebnis): { ebeneId: string; ids: string[] } {
+	const gruppe = (roh.Komponente?.gebietsverlinkung ?? []).find((g) => B_WAHLBEZIRK.test(g.titel ?? ''));
+	const ids = (gruppe?.gebietslinks ?? []).map((l) => l.id).filter(Boolean);
+	// „ebene_6_id_69554" → „ebene_6". Negative Ebenennummern kommen vor.
+	return { ebeneId: ids[0]?.match(/^(.*)_id_[^_]*$/)?.[1] ?? '', ids };
 }
 
 /** Eine Zeile der amtlichen Liste der Gewählten. */

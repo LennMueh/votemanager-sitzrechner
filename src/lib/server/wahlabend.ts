@@ -64,5 +64,7 @@ export function schluessel(instanzId: number, pfad: string): string[] {
 	const keys = [`${instanzId}:${pfad}`, 'uebersicht'];
 	const treffer = pfad.match(/wahl_(\d+)\/ergebnis_(.+)_0\.json$/);
 	if (treffer) keys.push(`v:i${instanzId}:${treffer[1]}:${treffer[2]}`);
+	const uebersicht = pfad.match(/wahl_(\d+)\/uebersicht_(.+)_0\.json$/);
+	if (uebersicht) keys.push(`b:i${instanzId}:${uebersicht[1]}:${uebersicht[2]}`);
 	return keys;
 }

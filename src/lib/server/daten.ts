@@ -9,13 +9,19 @@ import { direktwahl, stimmenverhaeltnis, type Sitzverteilung, type Direktergebni
 import { rechtsstand } from '$lib/wahlrecht';
 import {
 	amtlicheGewaehlte,
+	bezirkeDesGebiets,
+	parseBezirksuebersicht,
 	parseErgebnis,
 	parseStand,
 	type Auszaehlstand,
+	type Bezirksstand,
+	type GebietsErgebnis,
+
 	type VertretungRef,
 	type Wahlbeteiligung
 } from '$lib/votemanager';
 import type { Mandatsart, Sitz } from '$lib/nkwg';
+import { baueBezirksmatrix, type Bezirksspalte, type Bezirkszelle } from '$lib/bezirke';
 import { db } from './db';
 import { vertretungsSchluessel, waehleGegenwahl } from './vergleich';
 import register from '$lib/sitzzahlen-manuell.json';
@@ -769,5 +775,163 @@ export async function berechneVertretung(
 		}
 		erg.verteilung = recht.verteile(bereiche, n);
 		return fertig();
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Wahlbezirke (Wahllokale) eines Gebiets
+// ---------------------------------------------------------------------------
+
+/** Ein Wahllokal: Stand aus der Übersicht, Zahlen aus seinem eigenen Dokument. */
+export interface Wahllokal extends Bezirksstand {
+	/** Eine Zahl je Spalte; leer, solange das Einzelergebnis nicht archiviert ist. */
+	stimmen: Bezirkszelle[];
+}
+
+export interface Wahlbezirke {
+	ref: VertretungRef;
+	/** Übersichtsebene der Wahlbezirke, etwa „ebene_6" — trägt den SSE-Schlüssel. */
+	ebeneId: string;
+	/** Wortlaut des Hosts, „Wahlbezirke" oder „Stimmbezirke". */
+	ebeneName: string;
+	ausgezaehlt: number;
+	gesamt: number;
+	/** Beteiligung des ganzen Gebiets, nicht die Summe der Zeilen: Briefwahlbezirke
+	 *  führen keine Wahlberechtigten, ihre Wähler zählen im Urnenbezirk mit. */
+	beteiligung?: Wahlbeteiligung;
+	spalten: Bezirksspalte[];
+	bezirke: Wahllokal[];
+	/** Wahllokale, deren Einzelergebnis noch fehlt — für die Fußnote. */
+	ohneErgebnis: number;
+	/** Warum die Liste leer ist: Übersicht fehlt noch, oder das Gebiet hat keine Wahlbezirke. */
+	hinweis?: string;
+	zeitpunkt: string;
+	stale?: boolean;
+}
+
+/**
+ * Die Wahllokale einer Wahl, beschränkt auf das angezeigte Gebiet.
+ *
+ * Drei Gruppen archivierter Dokumente, alle über den indizierten
+ * Suffixvergleich aus `005_pfadsuffix.sql`:
+ *
+ *  1. das Gesamtergebnis des Gebiets — daraus die Zugehörigkeit
+ *     (`bezirkeDesGebiets`, siehe dort, warum weder Name noch Wahl-ID reichen)
+ *     und der Spaltensatz,
+ *  2. die Bezirksübersicht der Wahl — daraus Stand und Beteiligung, und nur
+ *     das: ihre Stimmspalten sind gekürzt (siehe `parseBezirksuebersicht`),
+ *  3. die Einzelergebnisse der Wahllokale — daraus die Zahlen.
+ *
+ * Fehlt die Übersicht, ist das kein Fehler, sondern ein Befund: leere Liste mit
+ * Hinweis, wie bei fehlender Sitzzahl. Fehlt ein Einzelergebnis, behält die
+ * Zeile Stand und Beteiligung und lässt die Stimmspalten leer.
+ */
+export async function holeWahlbezirke(
+	ags: string | undefined,
+	wahlId: number,
+	gebietId: string,
+	wahltag?: string,
+	instanzId?: number
+): Promise<Wahlbezirke> {
+	const ausgewaehlt = wahltag ?? (instanzId ? '' : (await holeWahltermine()).standard);
+	if (!instanzId && !ausgewaehlt) throw new Error('Noch kein Wahltermin bekannt');
+	const datum = ausgewaehlt ? `${ausgewaehlt.slice(0, 4)}-${ausgewaehlt.slice(4, 6)}-${ausgewaehlt.slice(6, 8)}` : '1970-01-01';
+
+	return zwischengespeichert(`b:${instanzId ? `i${instanzId}` : `${ausgewaehlt}:${ags}`}:${wahlId}:${gebietId}`, async () => {
+		const sql = db();
+		const [wahlzeile] = await sql<Array<{ instanz_id: number; ags: string; behoerde: string; titel: string; gebiet_name: string; inhalt: unknown; erfasst_am: Date }>>`
+			SELECT i.id::int instanz_id, b.kennung ags, b.name behoerde, w.name titel, w.gebiet_name, d.inhalt, d.erfasst_am
+			FROM wahl w JOIN termin t ON t.id=w.termin_id JOIN instanz i ON i.id=t.instanz_id JOIN behoerde b ON b.id=i.behoerde_id
+			JOIN pfad_stand p ON p.instanz_id=i.id AND ${wahlpfad(sql)} = ${`/wahl_${wahlId}/ergebnis_${gebietId}_0.json`}
+			JOIN LATERAL (SELECT d.inhalt, d.erfasst_am FROM dokument d WHERE d.pfad_stand_id=p.id ORDER BY d.id DESC LIMIT 1) d ON true
+			WHERE w.wahl_id=${String(wahlId)} AND w.gebiet_id=${gebietId}
+				AND (${instanzId ?? null}::bigint IS NOT NULL AND i.id=${instanzId ?? null}
+					OR ${instanzId ?? null}::bigint IS NULL AND b.kennung=${ags ?? ''} AND t.datum=${datum}::date)
+			LIMIT 1`;
+		if (!wahlzeile) throw new Error(`Kein archiviertes Ergebnis für ${ags}/${wahlId}/${gebietId}`);
+
+		const ref: VertretungRef = {
+			instanzId: wahlzeile.instanz_id, ags: wahlzeile.ags, behoerde: wahlzeile.behoerde,
+			wahlId, gebietId, gebietName: wahlzeile.gebiet_name, titel: wahlzeile.titel,
+			direktwahl: /(bürger?meister|landrat|stichwahl)/i.test(wahlzeile.titel)
+		};
+		const { ebeneId, ids } = bezirkeDesGebiets(wahlzeile.inhalt as never);
+		const gesamt = parseErgebnis(wahlzeile.inhalt as never);
+		const leer = (hinweis: string): Wahlbezirke => ({
+			ref, ebeneId, ebeneName: 'Wahlbezirke', ausgezaehlt: 0, gesamt: 0,
+			beteiligung: gesamt.beteiligung, spalten: [], bezirke: [],
+			ohneErgebnis: 0, hinweis, zeitpunkt: wahlzeile.erfasst_am.toISOString()
+		});
+		if (!ids.length) return leer('Für dieses Gebiet führt votemanager keine Wahlbezirke.');
+
+		const [uebersicht] = await sql<Array<{ name: string; inhalt: unknown; erfasst_am: Date }>>`
+			SELECT e.name, d.inhalt, d.erfasst_am
+			FROM uebersicht_ebene e
+			JOIN pfad_stand p ON p.instanz_id=e.instanz_id
+				AND ${wahlpfad(sql)} = '/wahl_' || e.wahl_id || '/uebersicht_' || e.ebene_id || '_0.json'
+			JOIN LATERAL (SELECT d.inhalt, d.erfasst_am FROM dokument d WHERE d.pfad_stand_id=p.id ORDER BY d.id DESC LIMIT 1) d ON true
+			WHERE e.instanz_id=${wahlzeile.instanz_id} AND e.wahl_id=${String(wahlId)} AND e.ebene_id=${ebeneId}`;
+		if (!uebersicht) return leer('Die Wahlbezirks-Übersicht dieser Wahl ist noch nicht archiviert.');
+
+		// Der Schnitt ist die eigentliche Arbeit: die Übersicht führt alle
+		// Wahlbezirke der Wahl, bei einer Samtgemeinde also die der ganzen
+		// Samtgemeinde und nicht die der Mitgliedsgemeinde.
+		const gehoert = new Set(ids);
+		const staende = parseBezirksuebersicht(uebersicht.inhalt as never).filter((b) => gehoert.has(b.id));
+
+		// Die Einzelergebnisse in einer Abfrage. `= ANY(array)` statt einer
+		// IN-Liste, damit der Suffix-Index greift.
+		const pfade = ids.map((id) => `/wahl_${wahlId}/ergebnis_${id}_0.json`);
+		const einzeln = await sql<Array<{ pfad: string; inhalt: unknown }>>`
+			SELECT p.pfad, d.inhalt
+			FROM pfad_stand p
+			JOIN LATERAL (SELECT dd.inhalt FROM dokument dd WHERE dd.pfad_stand_id=p.id ORDER BY dd.id DESC LIMIT 1) d ON true
+			WHERE p.instanz_id=${wahlzeile.instanz_id} AND ${wahlpfad(sql)} = ANY(${pfade})`;
+		const nachId = new Map(
+			einzeln.map((z) => [z.pfad.match(/ergebnis_(.+)_0\.json$/)?.[1] ?? z.pfad, parseErgebnis(z.inhalt as never)])
+		);
+
+		const { spalten, zeilen } = baueBezirksmatrix(
+			gesamt,
+			staende.map((b) => ({ id: b.id, ergebnis: nachId.get(b.id) }))
+		);
+		const bezirke: Wahllokal[] = staende.map((b) => ({ ...b, stimmen: zeilen[b.id] ?? [] }));
+
+		return {
+			ref,
+			ebeneId,
+			ebeneName: uebersicht.name,
+			ausgezaehlt: bezirke.filter((b) => b.ausgezaehlt).length,
+			gesamt: bezirke.length,
+			beteiligung: gesamt.beteiligung,
+			spalten,
+			bezirke,
+			ohneErgebnis: bezirke.filter((b) => !b.stimmen.length).length,
+			zeitpunkt: uebersicht.erfasst_am.toISOString()
+		};
+	});
+}
+
+/**
+ * Das vollständige Ergebnis eines einzelnen Wahllokals, auf Abruf.
+ *
+ * Diese Dokumente holt der Poller mit Priorität 45 — hunderte je Wahl, die am
+ * Wahlabend hinter allem anderen anstehen. Deshalb nur beim Aufklappen gelesen
+ * und mit `zeitpunkt` daneben, statt sie in die Liste zu ziehen.
+ */
+export async function holeBezirksergebnis(
+	instanzId: number,
+	wahlId: number,
+	bezirkId: string
+): Promise<GebietsErgebnis & { zeitpunkt: string }> {
+	return zwischengespeichert(`bz:i${instanzId}:${wahlId}:${bezirkId}`, async () => {
+		const sql = db();
+		const [zeile] = await sql<Array<{ inhalt: unknown; erfasst_am: Date }>>`
+			SELECT d.inhalt, d.erfasst_am
+			FROM pfad_stand p
+			JOIN LATERAL (SELECT d.inhalt, d.erfasst_am FROM dokument d WHERE d.pfad_stand_id=p.id ORDER BY d.id DESC LIMIT 1) d ON true
+			WHERE p.instanz_id=${instanzId} AND ${wahlpfad(sql)} = ${`/wahl_${wahlId}/ergebnis_${bezirkId}_0.json`}`;
+		if (!zeile) throw new Error('Für diesen Wahlbezirk ist noch kein Ergebnis archiviert');
+		return { ...parseErgebnis(zeile.inhalt as never), zeitpunkt: zeile.erfasst_am.toISOString() };
 	});
 }
