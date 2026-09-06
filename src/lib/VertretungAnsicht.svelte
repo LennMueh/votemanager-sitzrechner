@@ -4,6 +4,7 @@
 	import Stimmverhaeltnis from './Stimmverhaeltnis.svelte';
 	import Direktbalken from './Direktbalken.svelte';
 	import type { VertretungErgebnis } from '$lib/server/daten';
+	import Auszaehlbalken from '$lib/stil/Auszaehlbalken.svelte';
 
 	// Detailansicht am Schreibtisch: Diagramm plus vollständige Tabelle.
 	// Die Beamer-Darstellung liegt in src/lib/praesentation/.
@@ -73,9 +74,7 @@
 		<div class="stand">
 			<strong class="zahl">{stand.eingegangen} von {stand.erwartet}</strong>
 			<span>Schnellmeldungen</span>
-			<div class="balken" role="img" aria-label="{prozent} Prozent ausgezählt">
-				<div style:width="{prozent}%" class:fertig={stand.vollstaendig}></div>
-			</div>
+			<Auszaehlbalken {prozent} fertig={stand.vollstaendig} />
 			<span class="zahl">{prozent} % ausgezählt</span>
 			<!-- Die Beteiligung nennt votemanager nie selbst; sie wird aus den
 			     Kennzahlen-Zeilen gerechnet und fehlt, wo der Feed keine
@@ -376,25 +375,6 @@
 		display: block;
 		font-size: 1.1rem;
 		color: var(--text);
-	}
-
-	.balken {
-		height: 7px;
-		background: var(--flaeche-2);
-		border: 1px solid var(--rand);
-		border-radius: 99px;
-		overflow: hidden;
-		margin: 0.4rem 0 0.25rem;
-	}
-
-	.balken div {
-		height: 100%;
-		background: var(--akzent);
-		transition: width 0.4s ease;
-	}
-
-	.balken div.fertig {
-		background: var(--gut);
 	}
 
 	.bezirke {

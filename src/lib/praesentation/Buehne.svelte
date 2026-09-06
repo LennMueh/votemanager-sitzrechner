@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { VertretungErgebnis } from '$lib/server/daten';
+	import Auszaehlbalken from '$lib/stil/Auszaehlbalken.svelte';
 
 	let {
 		ergebnis,
@@ -97,9 +98,7 @@
 			{#if ergebnis.beteiligung}
 				<span> · <span class="zahl">{pct.format(ergebnis.beteiligung.anteil * 100)} %</span> Beteiligung</span>
 			{/if}
-			<div class="balken" role="img" aria-label="{prozent} Prozent ausgezählt">
-				<div style:width="{prozent}%" class:fertig={stand.vollstaendig}></div>
-			</div>
+			<Auszaehlbalken {prozent} fertig={stand.vollstaendig} />
 		</div>
 	</header>
 
@@ -162,6 +161,9 @@
 	}
 
 	.stand {
+		/* Der Balken schließt den Kopf ab; ein Abstand nach unten schöbe die
+		   gemessene Bühne nach unten, ohne dass --skala das ausgleicht. */
+		--balken-abstand: 0.35rem 0 0;
 		text-align: right;
 		color: var(--text-2);
 		font-size: clamp(0.8rem, 1vw, 1.05rem);
@@ -174,25 +176,6 @@
 		color: var(--text);
 		font-size: clamp(1.2rem, 1.9vw, 1.9rem);
 		line-height: 1.15;
-	}
-
-	.balken {
-		height: 8px;
-		background: var(--flaeche-2);
-		border: 1px solid var(--rand);
-		border-radius: 99px;
-		overflow: hidden;
-		margin-top: 0.35rem;
-	}
-
-	.balken div {
-		height: 100%;
-		background: var(--akzent);
-		transition: width 0.4s ease;
-	}
-
-	.balken div.fertig {
-		background: var(--gut);
 	}
 
 	.zwischenstand {
@@ -234,7 +217,7 @@
 	@media (max-width: 680px) {
 		header { display: block; }
 		.stand { min-width: 0; margin-top: .65rem; text-align: left; }
-		.balken { max-width: 22rem; }
+		.stand { --balken-breite: 22rem; }
 		.zwischenstand, .warnung { font-size: .82rem; }
 	}
 

@@ -11,6 +11,7 @@
 	import { stimmenverhaeltnis } from '$lib/nkwg';
 	import type { Wahlbezirke } from '$lib/server/daten';
 	import type { GebietsErgebnis } from '$lib/votemanager';
+	import Auszaehlbalken from '$lib/stil/Auszaehlbalken.svelte';
 
 	const abfrage = $derived(page.url.searchParams.toString());
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
@@ -119,9 +120,11 @@
 			<div class="stand">
 				<strong class="zahl">{daten.ausgezaehlt} von {daten.gesamt}</strong>
 				<span>Wahllokalen ausgezählt</span>
-				<div class="balken" role="img" aria-label="{prozent} Prozent der Wahllokale ausgezählt">
-					<div style:width="{prozent}%" class:fertig={daten.gesamt > 0 && daten.ausgezaehlt === daten.gesamt}></div>
-				</div>
+				<Auszaehlbalken
+					{prozent}
+					fertig={daten.gesamt > 0 && daten.ausgezaehlt === daten.gesamt}
+					beschriftung="{prozent} Prozent der Wahllokale ausgezählt"
+				/>
 				<span class="zahl">{prozent} %</span>
 				<!-- Die Beteiligung des ganzen Gebiets, wie in der Detailansicht der
 				     Wahl. Nicht die Summe der Zeilen: Briefwahlbezirke führen keine
@@ -271,22 +274,6 @@
 		display: block;
 		font-size: 1.1rem;
 		color: var(--text);
-	}
-	.balken {
-		height: 7px;
-		background: var(--flaeche-2);
-		border: 1px solid var(--rand);
-		border-radius: 99px;
-		overflow: hidden;
-		margin: 0.4rem 0 0.25rem;
-	}
-	.balken div {
-		height: 100%;
-		background: var(--akzent);
-		transition: width 0.4s ease;
-	}
-	.balken div.fertig {
-		background: var(--gut);
 	}
 	.beteiligung {
 		margin: 0.6rem 0 0;

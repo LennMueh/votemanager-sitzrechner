@@ -7,6 +7,7 @@
 	import { trifft } from '$lib/katalog';
 	import { strom } from '$lib/strom';
 	import type { Uebersicht, UebersichtEintrag } from '$lib/server/daten';
+	import Auszaehlbalken from '$lib/stil/Auszaehlbalken.svelte';
 
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
 	const ansicht = $derived(page.url.searchParams.get('ansicht') === 'wahlen');
@@ -165,7 +166,7 @@
 				<span class="zahl stand">{e.stand?.text ?? '—'}</span>
 			</span>
 			{#if herkunft}<span class="woher">{e.behoerde} · {regionName(e.region)} · {landName(e.land)}</span>{/if}
-			<span class="balken"><span style:width="{p}%" class:fertig={p >= 100}></span></span>
+			<Auszaehlbalken prozent={p} fertig={p >= 100} dichte="kompakt" />
 		</a>
 		{#if e.vergleichbar}<a class="vergleich" href={`/vergleich?instanz=${e.instanzId}&wahl=${e.wahlId}&gebiet=${e.gebietId}${aktiverWahltag ? `&wahltag=${aktiverWahltag}` : ''}`}>Vergleichen</a>{/if}
 	</li>
@@ -397,6 +398,7 @@
 	}
 
 	li a {
+		--balken-spalte: 1 / -1;
 		display: grid;
 		grid-template-columns: 1fr auto;
 		gap: 0.3rem 1rem;
@@ -457,24 +459,6 @@
 
 	.stand {
 		white-space: nowrap;
-	}
-
-	.balken {
-		grid-column: 1 / -1;
-		height: 4px;
-		background: var(--flaeche-2);
-		border-radius: 99px;
-		overflow: hidden;
-	}
-
-	.balken span {
-		display: block;
-		height: 100%;
-		background: var(--akzent);
-	}
-
-	.balken span.fertig {
-		background: var(--gut);
 	}
 
 	.laedt {
