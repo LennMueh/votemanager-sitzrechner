@@ -8,7 +8,7 @@
  * Aufruf:  node --experimental-strip-types scripts/schuss.ts [basisUrl] [zielordner]
  */
 
-import puppeteer from 'puppeteer-core';
+import puppeteer, { type Page } from 'puppeteer-core';
 import { mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 
@@ -119,21 +119,103 @@ for (const f of faelle) {
 	await seite.close();
 }
 
-for (const f of [
+/**
+ * Die Adresse einer Wahl aus denselben Konstanten, die der Präsentationsmodus
+ * als `v=` bekommt — `/v`, `/bezirke` und `/vergleich` nehmen sie zerlegt.
+ */
+function abfrage(v: string) {
+	const [ags, wahl, gebiet] = v.split(':');
+	return `ags=${ags}&wahl=${wahl}&gebiet=${gebiet}&wahltag=${WAHLTAG}`;
+}
+
+interface Seitenfall {
+	name: string;
+	pfad: string;
+	/** Worauf gewartet wird, bevor `oeffnen` läuft. */
+	ziel: string;
+	/**
+	 * Klickt die Seite in den Zustand, der geprüft werden soll, und wartet
+	 * selbst auf dessen Endzustand. Ohne das zeigte die Aufnahme nur die
+	 * zugeklappte Ausgangslage, in der nichts überlaufen kann.
+	 */
+	oeffnen?: (s: Page) => Promise<void>;
+	thema: 'hell' | 'dunkel';
+	breite: number;
+	hoehe: number;
+}
+
+const seitenfaelle: Seitenfall[] = [
 	{ name: 'uebersicht-mobil', pfad: `/wahlen?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'hell', breite: 390, hoehe: 844 },
 	{ name: 'uebersicht-leinwand', pfad: `/wahlen?wahltag=${WAHLTAG}`, ziel: '.gesamt', thema: 'dunkel', breite: 1920, hoehe: 1080 },
-	{ name: 'detail-mobil', pfad: `/v?ags=03355000&wahl=219&gebiet=ebene_1_id_435&wahltag=${WAHLTAG}`, ziel: 'article', thema: 'dunkel', breite: 390, hoehe: 844 },
-	{ name: 'detail-desktop', pfad: `/v?ags=03355000&wahl=219&gebiet=ebene_1_id_435&wahltag=${WAHLTAG}`, ziel: 'article', thema: 'hell', breite: 1280, hoehe: 720 }
+	{ name: 'detail-mobil', pfad: `/v?${abfrage(KREISTAG)}`, ziel: 'article', thema: 'dunkel', breite: 390, hoehe: 844 },
+	{ name: 'detail-desktop', pfad: `/v?${abfrage(KREISTAG)}`, ziel: 'article', thema: 'hell', breite: 1280, hoehe: 720 }
+];
+
+// Die Seiten, die bisher gar nicht aufgenommen wurden. Jede in beiden Themen
+// und in beiden Größen: das Handy ist der enge Fall, 1280x720 der Beamer.
+for (const [breite, hoehe] of [
+	[390, 844],
+	[1280, 720]
 ] as const) {
+	for (const thema of ['hell', 'dunkel'] as const) {
+		const gleich = { thema, breite, hoehe };
+		seitenfaelle.push(
+			{ name: 'wahlen-laender', pfad: `/wahlen?wahltag=${WAHLTAG}`, ziel: '.hierarchie .karten button', ...gleich },
+			{
+				name: 'wahlen-ebene',
+				pfad: `/wahlen?wahltag=${WAHLTAG}`,
+				ziel: '.hierarchie .karten button',
+				// Land → Region → Behörde. Die Beschriftung des Zurück-Knopfes sagt,
+				// welche Ebene erreicht ist; ein fester Wartewert täte das nicht.
+				oeffnen: async (s) => {
+					for (const beschriftung of ['← Bundesländer', '← Regionen', '← Behörden']) {
+						await s.click('.hierarchie .karten button');
+						await s.waitForFunction(
+							(t: string) => document.querySelector('.hierarchie .zurueck')?.textContent?.trim() === t,
+							{},
+							beschriftung
+						);
+					}
+					await s.waitForSelector('.hierarchie section ul li a');
+				},
+				...gleich
+			},
+			{
+				name: 'bezirke-aufgeklappt',
+				pfad: `/bezirke?${abfrage(KREISTAG)}`,
+				ziel: '.tabelle table .aufklappen',
+				// Entweder das Einzelergebnis oder der Hinweis, dass es fehlt — beides
+				// sind Endzustände, „Lade …" ist keiner.
+				oeffnen: async (s) => {
+					await s.click('.tabelle table .aufklappen');
+					await s.waitForSelector('.detailzeile table.innen, .detailzeile .hinweis');
+				},
+				...gleich
+			},
+			{ name: 'vergleich', pfad: `/vergleich?${abfrage(KREISTAG)}`, ziel: '.vergleich section, .hinweis', ...gleich },
+			{ name: 'oedeme-detail', pfad: `/v?${abfrage(OEDEME)}`, ziel: 'article', ...gleich },
+			{ name: 'direktwahl-detail', pfad: `/v?${abfrage(OB_WAHL)}`, ziel: 'article', ...gleich }
+		);
+	}
+}
+
+for (const f of seitenfaelle) {
 	const seite = await browser.newPage();
 	await seite.setViewport({ width: f.breite, height: f.hoehe });
+	seite.on('pageerror', (e) => {
+		console.log(`  ! JS-Fehler in ${f.name}: ${e.message}`);
+		fehler++;
+	});
 	await seite.evaluateOnNewDocument((t: string) => localStorage.setItem('thema', t), f.thema);
 	await seite.goto(`${BASIS}${f.pfad}`, { waitUntil: 'domcontentloaded' });
 	await seite.waitForSelector(f.ziel);
+	if (f.oeffnen) await f.oeffnen(seite);
 	const ueberlauf = await seite.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 	await seite.screenshot({ path: `${ZIEL}/${f.breite}x${f.hoehe}-${f.name}-${f.thema}.png` });
 	if (ueberlauf > 1) fehler++;
-	console.log(`${ueberlauf > 1 ? 'FEHLT' : ' ok  '} ${f.breite}x${f.hoehe} ${f.name} breit=${ueberlauf}`);
+	console.log(
+		`${ueberlauf > 1 ? 'FEHLT' : ' ok  '} ${f.breite}x${f.hoehe} ${f.name.padEnd(20)} ${f.thema.padEnd(7)} breit=${ueberlauf}`
+	);
 	await seite.close();
 }
 
