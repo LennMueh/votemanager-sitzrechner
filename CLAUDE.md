@@ -78,6 +78,38 @@ Basis: `https://votemanager.kdo.de/<YYYYMMDD>/<AGS>/api/praesentation/`
   („Wählerinnen/Wähler", „Abstimmende", „Stimmberechtigte" …), deshalb Familien
   statt Gleichheit. Fehlt eine der beiden Zeilen, wird nichts angezeigt.
 
+**Wahlbezirke** (`parseBezirksuebersicht`, `bezirkeDesGebiets`): jede Wahl führt in
+`wahl.json` eine Übersichtsebene „Wahlbezirke". Ihr Dokument
+`uebersicht_<ebene>_0.json` ist das einzige, das den Auszählstand je Wahllokal
+trägt — das Wahlbezirks-*Ergebnis* hat keinen (`hinweis` ist `[null]`). Drei
+Eigenheiten:
+
+- **Die Stimmspalten der Übersicht sind unbrauchbar.** Sie führt nur die vier
+  stärksten Wahlvorschläge **der ganzen Wahl** plus „Sonstige". Für die Gemeinde
+  Handorf heißt das eine Spalte „WfB" für eine dort nicht wählbare
+  Wählergemeinschaft und eine Spalte „Sonstige", hinter der die NPD steckt; beim
+  Samtgemeinderat Bardowick verdeckt dieselbe eine Spalte drei Wahlvorschläge.
+  Aus der Übersicht kommen deshalb nur **Stand und Beteiligung**, die Zahlen aus
+  den Einzeldokumenten (`baueBezirksmatrix()` in `src/lib/bezirke.ts`).
+- **`Komponente.gebietsverlinkung` ist die einzige belastbare Zuordnung.** Die
+  Wahl-ID reicht nicht: bei einer Samtgemeinde teilen sich alle
+  Mitgliedsgemeinden eine Gemeindewahl, deren Bezirksübersicht deshalb alle 26
+  Wahlbezirke der Samtgemeinde führt statt der 3 von Handorf. Der Name reicht
+  ebenso wenig („531 Bardowick I" gehört zum Flecken, nicht zur Samtgemeinde).
+  Dasselbe Wahllokal trägt in Kreis-, Samtgemeinde- und Gemeindewahl
+  **verschiedene Zahlen** (SPD 429 gegen 499, Wahlberechtigte 997 gegen 990) —
+  niemals über den Namen zusammenführen.
+- **Zeilen mit `stimmbezirk: false` sind Aggregate** („Samtgemeinde Bardowick,
+  26 von 26") und kein Wahllokal.
+- **`tabelle.header` zählt zwei Spalten mehr als `felder`**: die erste kommt aus
+  `label`, die zweite aus `statusString`. Die Werte fluchten mit `header[i + 2]`.
+  `felder[i].tip` wiederholt den Spaltennamen und dient als Gegenprobe; genau die
+  prüft `src/lib/bezirke.test.ts`, weil eine Verschiebung sonst still CDU-Zahlen
+  unter „GRÜNE" schriebe.
+
+Ausgezählt hängt an `statusProzent`, nicht am Wortlaut von `statusString`:
+„eingegangen" ist belegt, die Formulierung für einen offenen Bezirk noch nicht.
+
 **Wahlbereiche** (`holeWahlbereiche`): es gibt keine verlässliche Angabe, ob eine
 Übersichts-Ebene zu *unserem* Wahlgebiet gehört — bei Gemeindewahlen teilen sich
 mehrere Gemeinden eine Wahl-ID. Deshalb wird gegengerechnet: nur wenn die Summe
@@ -339,6 +371,15 @@ votemanager gehört uns nicht und hat keine zugesicherte API. Genau ein Poller
 nutzt ETag/Last-Modified, höchstens 20 Starts/s und zwei parallele Abrufe je Host.
 Live-Wahlen laufen im 30-s-Takt; Fehler führen zu Backoff. Web-Pods lesen nur den
 letzten archivierten Stand und verteilen Änderungen über PostgreSQL und SSE.
+
+Die Wahlbezirks-Ebene wiegt dabei schwer: sie erzeugt hunderte Pfade je Wahl.
+Deshalb liegt die **Bezirks-Übersicht** bei Priorität 70 (`db.ts`, Migration
+`007`) und die **einzelnen Bezirks-Ergebnisse** bei 60 (Migration `008`). Die
+Übersicht ist ein einziges Dokument je Wahl und trägt den Auszählstand aller
+Wahllokale; die Einzeldokumente sind hunderte je Wahl, tragen aber als einzige
+den vollständigen Spaltensatz. Dass 60 vertretbar ist, liegt daran, dass ein
+Wahllokal-Ergebnis nach seiner Schnellmeldung nicht mehr wechselt: es wird
+einmal mit Nutzlast geholt, danach kostet es über ETag nur noch 304er.
 
 Aus demselben Grund gibt es **bewusst keine CI, die bei jedem Push die
 Golden Tests fährt**.

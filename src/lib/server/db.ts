@@ -231,6 +231,15 @@ export async function erstellePollerSpeicher(
 						await tx`INSERT INTO ereignis (schluessel, dokument_id)
 							VALUES (${`v:i${instanzId}:${treffer[1]}:${treffer[2]}`}, ${dokument.id})`;
 					}
+					// Die Bezirksübersicht trägt Stand und Ergebnis aller Wahllokale einer
+					// Wahl; /bezirke hängt an diesem einen Schlüssel statt an hunderten
+					// Bezirksergebnissen — die 50 Schlüssel je EventSource wären sonst
+					// nach einer mittleren Stadt voll.
+					const uebersicht = aufgabe.pfad.match(/wahl_(\d+)\/uebersicht_(.+)_0\.json$/);
+					if (uebersicht) {
+						await tx`INSERT INTO ereignis (schluessel, dokument_id)
+							VALUES (${`b:i${instanzId}:${uebersicht[1]}:${uebersicht[2]}`}, ${dokument.id})`;
+					}
 				}
 				// Auch ein bereits bekannter Hash muss seine Struktur erneut anwenden
 				// dürfen: Filter können zwischen zwei Probe-Läufen geändert worden sein.
@@ -283,17 +292,17 @@ export async function erstellePollerSpeicher(
 							VALUES (${instanzId}, ${wahlId}, ${m.id}, ${m.title}, ${art})
 							ON CONFLICT (instanz_id, wahl_id, ebene_id) DO UPDATE SET name=excluded.name, art=excluded.art`;
 						const url = new URL(`uebersicht_${m.id}_0.json`, aufgabe.url.replace(/wahl\.json$/, ''));
-						// Die Stimmbezirks-Ebene erzeugt hunderte Pfade im 30-s-Takt, die
-						// die Rechenschicht nie liest. Niedrige Priorität begrenzt sich
-						// selbst: wird die Übersicht am Wahlabend nicht geholt, entstehen
-						// ihre Ergebnispfade gar nicht erst.
+						// Die Übersicht selbst ist ein einziges Dokument je Wahl und trägt
+						// Stand und Ergebnis aller Wahllokale — /bezirke liest genau sie.
+						// Deshalb 70: unter der Wahlbereichs-Übersicht, aber weit über den
+						// hunderten Bezirks-Ergebnissen, die unten bei 60 liegen.
 						//
 						// Bewusst nur 'wahlbezirk' herunterstufen, nicht alles außer
 						// 'wahlbereich': von 254 Ebenen sind nur 2 als 'wahlbereich'
 						// erkannt, 35 heißen „Mitgliedsgemeinden". Ob das bei Samtgemeinden
 						// die Wahlbereiche nach § 36 sind, ist offen — bis dahin bleiben
 						// sie heiß, statt die Gegenprobe zu riskieren.
-						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${art === 'wahlbezirk' ? 45 : 75}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${art === 'wahlbezirk' ? 70 : 75}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				} else if (/wahl_\d+\/ergebnis_.+_0\.json$/.test(aufgabe.pfad)) {
 					// Die amtliche Sitzzahl beim Archivieren festhalten, statt sie in
@@ -319,7 +328,12 @@ export async function erstellePollerSpeicher(
 							VALUES (${ebene.id}, ${z.link.id}, ${z.link.title ?? z.title ?? z.name ?? z.link.id})
 							ON CONFLICT (uebersicht_ebene_id, gebiet_id) DO UPDATE SET name=excluded.name`;
 						const url = new URL(`ergebnis_${z.link.id}_0.json`, aufgabe.url.replace(/uebersicht_.+_0\.json$/, ''));
-						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${ebene?.art === 'wahlbezirk' ? 45 : 85}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						// 60 für die einzelnen Wahllokale: /bezirke baut seine Spalten aus ihnen,
+						// weil die Bezirksübersicht auf die vier stärksten Wahlvorschläge der
+						// ganzen Wahl plus „Sonstige“ kürzt. Vertretbar trotz hunderter Pfade je
+						// Wahl, weil ein Wahllokal-Ergebnis nach seiner Schnellmeldung nicht mehr
+						// wechselt: einmal mit Nutzlast, danach nur noch 304er über ETag.
+						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${ebene?.art === 'wahlbezirk' ? 60 : 85}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				}
 			});

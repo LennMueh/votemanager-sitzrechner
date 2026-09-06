@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Sitzdiagramm from './Sitzdiagramm.svelte';
 	import Stimmverhaeltnis from './Stimmverhaeltnis.svelte';
 	import Direktbalken from './Direktbalken.svelte';
@@ -44,6 +45,21 @@
 	const und = (x: string[]) =>
 		x.length > 1 ? `${x.slice(0, -1).join(', ')} und ${x.at(-1)}` : (x[0] ?? '');
 
+	/**
+	 * Dieselben Parameter wie die eigene Seite, nur eine Ebene tiefer. Der
+	 * Wahltag reist mit: die Auswahl soll beim Navigieren erhalten bleiben.
+	 */
+	const bezirkeLink = $derived.by(() => {
+		const p = new URLSearchParams({
+			instanz: String(ergebnis.ref.instanzId),
+			wahl: String(ergebnis.ref.wahlId),
+			gebiet: ergebnis.ref.gebietId
+		});
+		const wahltag = page.url.searchParams.get('wahltag');
+		if (wahltag) p.set('wahltag', wahltag);
+		return `/bezirke?${p}`;
+	});
+
 	const fmt = new Intl.NumberFormat('de-DE');
 	const pct = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 </script>
@@ -71,6 +87,11 @@
 						({fmt.format(ergebnis.beteiligung.waehler)} von {fmt.format(ergebnis.beteiligung.berechtigte)})
 					</span>
 				</p>
+			{/if}
+			<!-- Der Weg zu den einzelnen Wahllokalen. Nur mit Instanz: ohne sie
+			     ließe sich das Bezirksergebnis nicht eindeutig auflösen. -->
+			{#if ergebnis.ref.instanzId}
+				<a class="bezirke" href={bezirkeLink}>Wahllokale ansehen →</a>
 			{/if}
 		</div>
 	</header>
@@ -376,6 +397,12 @@
 		background: #2e7d32;
 	}
 
+	.bezirke {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-size: 0.85rem;
+	}
 	.beteiligung {
 		margin: 0.5rem 0 0;
 		border-top: 1px solid var(--rand);

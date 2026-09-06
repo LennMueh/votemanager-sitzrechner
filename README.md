@@ -34,7 +34,7 @@ Vergleichslinks über `wahltag=YYYYMMDD` erhalten.
 | `npm run dev` | Entwicklungsserver |
 | `npm test` | Testlauf (holt echte Daten von votemanager) |
 | `npm run build` | Produktionsbau |
-| `npm run harvest` | `src/lib/sitzzahlen.json` aus den 2021-Daten neu erzeugen |
+| `npm run migrieren` | PostgreSQL-Migrationen idempotent einspielen |
 | `npm run schuss` | Präsentationsmodus aufnehmen und auf Überlauf prüfen (Dev-Server muss laufen) |
 
 ## Aufbau
@@ -47,8 +47,8 @@ Vergleichslinks über `wahltag=YYYYMMDD` erhalten.
 | `src/lib/server/db.ts` | PostgreSQL-Zugriff und Übernahme der vom Poller entdeckten Termine und Wahlen. |
 | `src/lib/server/vergleich.ts` | Suche passender Gegenwahlen über AGS, Gebiet und normalisierte Wahlart. |
 | `src/lib/sitzarc.ts` | Geometrie des Halbkreis-Sitzdiagramms. |
-| `src/lib/sitzzahlen.json` | Sitzzahlen je Vertretung (aus 2021 geerntet, siehe unten). |
-| `src/routes/` | Übersicht, Detailansicht, Präsentationsmodus, JSON-API. |
+| `src/lib/sitzzahlen-manuell.json` | Hinterlegte Sitzzahlen: gesetzliche Festzahlen und Bekanntmachungen der Wahlleitungen. |
+| `src/routes/` | Übersicht, Detailansicht, Wahllokale, Präsentationsmodus, JSON-API. |
 
 ## Was gerechnet wird
 
@@ -128,6 +128,41 @@ Ohne konkrete Auswahl öffnet `/praesentation` einen durchsuchbaren Wahlkatalog.
 Der gewählte Termin begrenzt zuerst die verfügbaren Länder, Regionen, Behörden
 und Wahlarten; eindeutige Ebenen werden automatisch vorausgewählt. So zeigt der
 Termin 14.09.2025 beispielsweise ausschließlich die vorhandenen NRW-Wahlen.
+
+## Wahllokale
+
+Jede Wahl verlinkt auf `/bezirke`: eine Tabelle ihrer Wahllokale mit dem
+Auszählstand und den dort abgegebenen Stimmen. Eine Zeile lässt sich aufklappen,
+dann kommt das vollständige Ergebnis dieses Wahllokals dazu — alle
+Wahlvorschläge, Wahlberechtigte, ungültige und gültige Stimmzettel.
+
+**Ein Wahllokal gehört nicht zu einer Wahl.** „542 Handorf II" zählt am selben
+Abend für die Gemeinderatswahl Handorf, die Samtgemeinderatswahl Bardowick, die
+Kreiswahl und jede Direktwahl aus. Das sind vier Stimmzettel und vier
+verschiedene Ergebnisse: in der Gemeindewahl 499 Stimmen für die SPD, in der
+Kreiswahl 429, und selbst die Zahl der Wahlberechtigten unterscheidet sich (990
+gegenüber 997). Die Seite zeigt deshalb immer nur die Zahlen *einer* Wahl und
+sagt das über der Tabelle.
+
+Die zweite Falle sind die Samtgemeinden. Alle Mitgliedsgemeinden teilen sich eine
+Gemeindewahl, deren Wahlbezirksliste im Feed folglich sämtliche Wahlbezirke der
+ganzen Samtgemeinde führt: für die Gemeinde Handorf 26 statt 3. Welche zu welchem
+Gebiet gehören, sagt votemanager selbst — im Ergebnisdokument des Gebiets unter
+`Komponente.gebietsverlinkung`. Danach wird geschnitten, nicht nach dem Namen
+(„531 Bardowick I" gehört zum Flecken Bardowick, nicht zur Samtgemeinde).
+
+**Die Spalten sind alle Wahlvorschläge, die dort antraten, und nur die.** Die
+Bezirksübersicht des Hosts taugt dafür nicht: sie kürzt auf die vier stärksten
+Wahlvorschläge der ganzen Wahl plus „Sonstige". In Handorf stünde damit eine
+Spalte für eine Wählergemeinschaft, die dort nicht auf dem Stimmzettel stand,
+während sich die NPD hinter „Sonstige" verbirgt; beim Samtgemeinderat verdeckt
+dieselbe eine Spalte drei Wahlvorschläge. Die Zahlen kommen deshalb aus den
+Einzeldokumenten der Wahllokale, die Übersicht liefert nur Auszählstand und
+Wahlbeteiligung.
+
+Angezeigt wird nur, was im Archiv liegt. Fehlt das Einzelergebnis eines
+Wahllokals noch, behält die Zeile ihren Auszählstand und lässt die Stimmspalten
+leer, statt eine Lücke als Null darzustellen; eine Fußnote nennt die Zahl.
 
 ## Vergleiche
 
