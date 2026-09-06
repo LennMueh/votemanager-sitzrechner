@@ -195,8 +195,8 @@
 		<section class="startseite" aria-label="Schnellzugriff">
 			<h2>Was möchtest du ansehen?</h2>
 			<div class="startkarten">
-				<a href={`/wahlen${zusatz}`}><strong>Wahlen durchsuchen</strong><span>Land → Region → Behörde → Wahl</span></a>
-				<a href={`/praesentation${zusatz}`}><strong>Präsentation starten</strong><span>Für Bildschirm und Beamer</span></a>
+				<a class="karte" href={`/wahlen${zusatz}`}><strong>Wahlen durchsuchen</strong><span>Land → Region → Behörde → Wahl</span></a>
+				<a class="karte" href={`/praesentation${zusatz}`}><strong>Präsentation starten</strong><span>Für Bildschirm und Beamer</span></a>
 			</div>
 		</section>
 	{:else}
@@ -281,7 +281,7 @@
 	.startseite { margin: 2rem 0; }
 	.startseite h2 { font-size: clamp(1.3rem, 3vw, 2rem); text-transform: none; letter-spacing: normal; color: var(--text); }
 	.startkarten { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
-	.startkarten a { display: grid; gap: .45rem; min-height: 8rem; padding: 1.25rem; border: 1px solid var(--rand); border-radius: var(--radius); background: var(--flaeche); color: var(--text); text-decoration: none; box-shadow: var(--schatten); }
+	.startkarten a { display: grid; gap: .45rem; min-height: 8rem; padding: 1.25rem; text-decoration: none; }
 	.startkarten a:hover { border-color: var(--akzent); transform: translateY(-2px); }
 	.startkarten span { color: var(--text-2); font-size: .9rem; }
 	.zurueck-start { display: inline-flex; min-height: 44px; align-items: center; margin: 1rem 0; }

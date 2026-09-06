@@ -100,6 +100,25 @@ button, a, input, select {
 	font-variant-numeric: tabular-nums;
 }
 
+/* Rand, Radius, Fläche, Schatten — das, was eine Karte zur Karte macht.
+   Polster, Breite und Abstand bleiben beim Aufrufer: die vier Karten im
+   Bestand haben vier verschiedene Polster, und der Wahlkalender ist zusätzlich
+   ein Popover mit Ankerpositionierung.
+
+   Als Klasse statt als Komponente, weil Svelte seinen Geltungsbereich nicht an
+   eine ins Kind gereichte Klasse hängt: drei der vier Karten sind die Wurzel
+   ihrer Komponente, ihre eigenen Regeln müssten sonst global werden.
+
+   Die Fläche ist offen, weil body einen Farbverlauf trägt: manche Karten
+   sollen ihn durchscheinen lassen, andere nicht. */
+.karte {
+	border: 1px solid var(--rand);
+	border-radius: var(--radius);
+	background: var(--karte-flaeche, var(--flaeche));
+	color: var(--text);
+	box-shadow: var(--schatten);
+}
+
 .hinweis {
 	background: var(--warn-flaeche);
 	color: var(--warn);

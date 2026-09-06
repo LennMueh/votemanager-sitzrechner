@@ -85,7 +85,7 @@
 	<span aria-hidden="true">▾</span>
 </button>
 
-<div {id} popover class="kalender">
+<div {id} popover class="karte kalender">
 	<div class="kopf">
 		<button type="button" onclick={() => blaettern(-12)} aria-label="Ein Jahr zurück">«</button>
 		<button type="button" onclick={() => blaettern(-1)} aria-label="Ein Monat zurück">‹</button>
@@ -162,11 +162,6 @@
 	.datum { font-variant-numeric: tabular-nums; }
 
 	.kalender {
-		border: 1px solid var(--rand);
-		border-radius: var(--radius);
-		background: var(--flaeche);
-		color: var(--text);
-		box-shadow: var(--schatten);
 		padding: .75rem;
 		width: min(22rem, 94vw);
 		/* Rückfall für Browser ohne Ankerpositionierung: mittig statt gar nicht. */

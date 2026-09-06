@@ -65,7 +65,7 @@
 	const pct = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 </script>
 
-<article>
+<article class="karte">
 	<header>
 		<div>
 			<h2>{ergebnis.ref.titel}</h2>
@@ -322,12 +322,7 @@
 
 <style>
 	article {
-		background: var(--flaeche);
-		color: var(--text);
-		border: 1px solid var(--rand);
-		border-radius: var(--radius);
 		padding: clamp(1rem, 3vw, 1.75rem);
-		box-shadow: var(--schatten);
 	}
 
 	header {

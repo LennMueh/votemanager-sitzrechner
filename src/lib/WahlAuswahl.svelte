@@ -85,7 +85,7 @@
 	}
 </script>
 
-<section class="katalog">
+<section class="karte katalog">
 	<h2>{titel}</h2>
 	<div class="filter">
 		<input type="search" bind:value={suche} placeholder="In diesem Wahltermin suchen …" aria-label="Wahlen in diesem Wahltermin suchen" />
@@ -131,7 +131,8 @@
 </section>
 
 <style>
-	.katalog { margin: 1.5rem 0; padding: clamp(1rem, 2vw, 1.5rem); border: 1px solid var(--rand); border-radius: var(--radius); background: color-mix(in srgb, var(--flaeche) 88%, transparent); box-shadow: var(--schatten); }
+	/* Durchscheinend, damit der Farbverlauf des body sichtbar bleibt. */
+	.katalog { --karte-flaeche: color-mix(in srgb, var(--flaeche) 88%, transparent); margin: 1.5rem 0; padding: clamp(1rem, 2vw, 1.5rem); }
 	h2 { margin-bottom: 1rem; font-size: clamp(1.1rem, 2vw, 1.35rem); }
 	.filter { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: .65rem; }
 	input:not([type='checkbox']), select { min-width: 0; min-height: 44px; padding: .65rem .75rem; border: 1px solid var(--rand); border-radius: var(--radius-klein); background: var(--flaeche); color: var(--text); }
