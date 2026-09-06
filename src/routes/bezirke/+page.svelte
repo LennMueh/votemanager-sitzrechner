@@ -170,7 +170,7 @@
 								</button>
 							</td>
 							<td class="klein">
-								<span class="marke" class:fertig={b.ausgezaehlt}>
+								<span class="standmarke" class:fertig={b.ausgezaehlt}>
 									{b.standText || (b.ausgezaehlt ? 'ausgezählt' : 'ausstehend')}
 								</span>
 							</td>
@@ -345,14 +345,14 @@
 	}
 
 	/* Nie Farbe allein: der Wortlaut des Hosts steht in der Marke selbst. */
-	.marke {
+	.standmarke {
 		display: inline-block;
 		padding: 0.1rem 0.45rem;
 		border: 1px solid var(--rand);
 		border-radius: var(--radius-klein);
 		background: var(--flaeche-2);
 	}
-	.marke.fertig {
+	.standmarke.fertig {
 		border-color: var(--gut);
 		color: var(--gut);
 	}

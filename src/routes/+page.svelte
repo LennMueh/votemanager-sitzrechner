@@ -8,6 +8,7 @@
 	import { strom } from '$lib/strom';
 	import type { Uebersicht, UebersichtEintrag } from '$lib/server/daten';
 	import Auszaehlbalken from '$lib/stil/Auszaehlbalken.svelte';
+	import Pille from '$lib/stil/Pille.svelte';
 
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
 	const ansicht = $derived(page.url.searchParams.get('ansicht') === 'wahlen');
@@ -155,13 +156,15 @@
 			<span class="titel">{e.titel}</span>
 			<span class="meta">
 				{#if e.direktwahl}
-					<span class="marke">Direktwahl</span>
+					<Pille>Direktwahl</Pille>
 				{:else if e.sitze}
 					{@const HERKUNFT = { amtlich: 'aus dem laufenden Ergebnis', hinterlegt: 'aus der Bekanntmachung der Wahlleitung', berechnet: 'nach § 46 NKomVG aus der Einwohnerzahl gerechnet, nicht amtlich bestätigt', vorwahl: 'Sitzzahl der Vorwahl, nicht amtlich bestätigt' }}
-					<span class="marke" class:geschaetzt={e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich'}
-						title="Sitzzahl {HERKUNFT[e.sitzeHerkunft ?? 'amtlich']}{e.sitzeStand ? ` (Stand ${e.sitzeStand.slice(6, 8)}.${e.sitzeStand.slice(4, 6)}.${e.sitzeStand.slice(0, 4)})` : ''}">{e.sitze} Sitze{e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich' ? '*' : ''}</span>
+					<!-- Der Stern trennt eine amtliche Zahl von einer erwarteten. Nie Farbe
+					     allein: das Zeichen steht im Text, die Herkunft im title. -->
+					<Pille geschaetzt={e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich'}
+						title="Sitzzahl {HERKUNFT[e.sitzeHerkunft ?? 'amtlich']}{e.sitzeStand ? ` (Stand ${e.sitzeStand.slice(6, 8)}.${e.sitzeStand.slice(4, 6)}.${e.sitzeStand.slice(0, 4)})` : ''}">{e.sitze} Sitze{e.sitzeHerkunft && e.sitzeHerkunft !== 'amtlich' ? '*' : ''}</Pille>
 				{:else}
-					<span class="marke fehlt">Sitzzahl unbekannt</span>
+					<Pille fehlt>Sitzzahl unbekannt</Pille>
 				{/if}
 				<span class="zahl stand">{e.stand?.text ?? '—'}</span>
 			</span>
@@ -436,25 +439,6 @@
 		gap: 0.6rem;
 		font-size: 0.82rem;
 		color: var(--text-2);
-	}
-
-	.marke {
-		border: 1px solid var(--rand);
-		border-radius: 99px;
-		padding: 0 0.5rem;
-		white-space: nowrap;
-	}
-
-	/* Der Stern trennt eine amtliche Zahl von einer erwarteten. Nie Farbe allein:
-	   das Zeichen steht im Text, die Herkunft im title. */
-	.marke.geschaetzt {
-		border-style: dashed;
-	}
-
-	.marke.fehlt {
-		color: var(--warn);
-		background: var(--warn-flaeche);
-		border-color: transparent;
 	}
 
 	.stand {

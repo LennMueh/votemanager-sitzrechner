@@ -62,7 +62,7 @@
 					>
 						<span class="person">{m.unbesetzt ? 'Sitz unbesetzt' : m.name}</span>
 						<span class="art" class:liste={m.art === 'liste'}>
-							<span class="marke" class:hohl={m.art !== 'personenwahl'}></span>
+							<span class="mandatspunkt" class:hohl={m.art !== 'personenwahl'}></span>
 							{kennzeichen(m)}
 						</span>
 					</li>
@@ -176,7 +176,7 @@
 
 	/* Gefüllt = über Personenstimmen, hohl = über die Liste. Das Wort steht
 	   immer daneben, die Form ist nur die Zugabe. */
-	.marke {
+	.mandatspunkt {
 		width: calc(0.5rem * var(--skala));
 		height: calc(0.5rem * var(--skala));
 		border-radius: 50%;
@@ -184,7 +184,7 @@
 		flex: none;
 	}
 
-	.marke.hohl {
+	.mandatspunkt.hohl {
 		background: transparent;
 		border: 1px solid var(--text-3);
 	}
