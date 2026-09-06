@@ -206,7 +206,7 @@
 		grid-template-columns: repeat(7, 1fr);
 		gap: .15rem;
 	}
-	.wochentage { color: var(--text-3); font-size: .75rem; text-align: center; margin-bottom: .2rem; }
+	.wochentage { color: var(--text-3); font-size: var(--schrift-xs); text-align: center; margin-bottom: .2rem; }
 
 	.raster > * {
 		display: grid;
@@ -229,12 +229,12 @@
 		line-height: 1.05;
 	}
 	.wahltag:hover { background: color-mix(in srgb, var(--akzent) 26%, var(--flaeche-2)); }
-	.wahltag .wahlen { font-size: .62rem; color: var(--text-2); }
+	.wahltag .wahlen { font-size: var(--schrift-xs); color: var(--text-2); }
 	.wahltag.gewaehlt { outline: 2px solid var(--akzent); outline-offset: 1px; font-weight: 700; }
 	/* Heute zusätzlich über die Form, nicht nur über Farbe. */
 	.heute { text-decoration: underline; text-underline-offset: 2px; }
 
-	.fuss { margin: .55rem 0 .4rem; font-size: .8rem; color: var(--text-3); text-align: center; }
+	.fuss { margin: .55rem 0 .4rem; font-size: var(--schrift-s); color: var(--text-3); text-align: center; }
 	.sprung { display: flex; gap: .3rem; }
-	.sprung button { flex: 1; font-size: .8rem; padding: .35rem; }
+	.sprung button { flex: 1; font-size: var(--schrift-s); padding: .35rem; }
 </style>

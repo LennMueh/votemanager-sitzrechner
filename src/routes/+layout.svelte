@@ -37,7 +37,7 @@
 		gap: 0.5rem 1.25rem;
 		justify-content: space-between;
 		align-items: center;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 		color: var(--text-2);
 	}
 

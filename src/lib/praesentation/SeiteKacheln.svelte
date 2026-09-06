@@ -113,7 +113,7 @@
 		align-self: stretch;
 		min-height: calc(1.2rem * var(--skala));
 		background: var(--farbe);
-		border-radius: 99px;
+		border-radius: var(--radius-pille);
 		box-shadow: 0 0 0 1px var(--rand);
 		flex: none;
 	}
@@ -127,7 +127,7 @@
 	.anzahl {
 		background: var(--flaeche-2);
 		border: 1px solid var(--rand);
-		border-radius: 99px;
+		border-radius: var(--radius-pille);
 		padding: 0 calc(0.5rem * var(--skala));
 		font-size: calc(0.95rem * var(--skala));
 		flex: none;

@@ -28,10 +28,15 @@ const dateien = readdirSync('src', { recursive: true, encoding: 'utf8' })
  * - src/lib/praesentation/ rechnet seine Größen über --skala, die Buehne.svelte
  *   zur Laufzeit zwischen 0,5 und 2,2 stellt. Die Staffel aus app.css ist eine
  *   Staffel für die Seite; auf einem unbekannten Beamer gilt die Messung.
+ * - Stimmverhaeltnis.svelte aus demselben Grund, aber nur für zwei Regeln:
+ *   `.stimmen` und `.sitze` stehen in em und wachsen damit über die Vererbung
+ *   von `.gross li { font-size: calc(1rem * var(--skala)) }` mit. Ein festes
+ *   Token hielte sie auf dem Beamer als einzige an, während alles daneben
+ *   skaliert. Die übrigen Größen der Datei kommen aus der Staffel.
  */
 const AUSNAHMEN = {
 	farben: ['src/lib/Stimmverhaeltnis.svelte'],
-	groessen: ['src/lib/praesentation/']
+	groessen: ['src/lib/praesentation/', 'src/lib/Stimmverhaeltnis.svelte']
 };
 
 const gilt = (datei: string, liste: string[]) => liste.some((a) => datei.startsWith(a));

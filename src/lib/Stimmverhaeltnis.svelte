@@ -59,7 +59,7 @@
 	.punkt { width: .8rem; height: .8rem; border-radius: 50%; box-shadow: 0 0 0 1px var(--rand); }
 	.name { overflow-wrap: anywhere; }
 	.stimmen { color: var(--text-3); font-size: .85em; white-space: nowrap; }
-	.sitze { border: 1px solid var(--rand); border-radius: 99px; padding: 0 .45rem; white-space: nowrap; font-size: .85em; }
+	.sitze { border: 1px solid var(--rand); border-radius: var(--radius-pille); padding: 0 .45rem; white-space: nowrap; font-size: .85em; }
 	.gross { height: 100%; grid-template-columns: minmax(14rem, 1fr) minmax(22rem, 1.6fr); gap: calc(2rem * var(--skala)); }
 	.gross .torte { width: min(100%, calc(27rem * var(--skala))); }
 	.gross ul { gap: calc(.4rem * var(--skala)); }
@@ -67,7 +67,7 @@
 	@media (max-width: 650px) {
 		.verhaeltnis, .gross { height: auto; grid-template-columns: 1fr; }
 		.torte, .gross .torte { width: min(68vw, 16rem); }
-		li, .gross li { grid-template-columns: auto minmax(0, 1fr) auto; font-size: .95rem; }
+		li, .gross li { grid-template-columns: auto minmax(0, 1fr) auto; font-size: var(--schrift-m); }
 		.stimmen { grid-column: 2; white-space: normal; }
 		.sitze { grid-column: 3; grid-row: 2; }
 	}

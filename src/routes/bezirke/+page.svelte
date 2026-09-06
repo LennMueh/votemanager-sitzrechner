@@ -261,18 +261,18 @@
 	.behoerde {
 		margin: 0;
 		color: var(--text-2);
-		font-size: 0.9rem;
+		font-size: var(--schrift-m);
 	}
 
 	.stand {
 		text-align: right;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 		color: var(--text-2);
 		min-width: 190px;
 	}
 	.stand strong {
 		display: block;
-		font-size: 1.1rem;
+		font-size: var(--schrift-l);
 		color: var(--text);
 	}
 	.beteiligung {
@@ -287,7 +287,7 @@
 	table {
 		width: 100%;
 		border-collapse: collapse;
-		font-size: 0.9rem;
+		font-size: var(--schrift-m);
 	}
 	th,
 	td {
@@ -299,7 +299,7 @@
 	th {
 		color: var(--text-2);
 		font-weight: 600;
-		font-size: 0.8rem;
+		font-size: var(--schrift-s);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -308,14 +308,18 @@
 	}
 	.klein {
 		color: var(--text-2);
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 	}
 	/* Zahl über Anteil statt nebeneinander: Svelte schneidet ein führendes
-	   Leerzeichen im Span weg, und bei sieben Parteispalten fehlt die Breite. */
+	   Leerzeichen im Span weg, und bei sieben Parteispalten fehlt die Breite.
+	   nowrap, weil sonst „36,6 %" zwischen Zahl und Zeichen umbricht — die
+	   Spalte ist knapp, und ein halbes Prozentzeichen in eigener Zeile ist
+	   keine Zahl mehr. */
 	td .wert,
 	td .klein {
 		display: block;
 		line-height: 1.25;
+		white-space: nowrap;
 	}
 	.fehlt {
 		color: var(--text-3);
@@ -362,7 +366,7 @@
 	}
 	table.innen {
 		max-width: 32rem;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 	}
 	table.innen th,
 	table.innen td {
@@ -383,7 +387,7 @@
 		flex-wrap: wrap;
 		gap: 0.25rem 1.5rem;
 		margin: 0.75rem 0 0.25rem;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 	}
 	.kennzahlen div {
 		display: flex;

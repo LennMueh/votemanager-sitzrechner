@@ -50,14 +50,14 @@
 	.thema {
 		display: inline-flex;
 		border: 1px solid var(--rand);
-		border-radius: 99px;
+		border-radius: var(--radius-pille);
 		overflow: hidden;
 		flex: none;
 	}
 
 	button {
 		font: inherit;
-		font-size: 0.8rem;
+		font-size: var(--schrift-s);
 		min-height: 44px;
 		padding: 0.45rem 0.75rem;
 		border: 0;

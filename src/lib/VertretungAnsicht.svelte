@@ -335,12 +335,12 @@
 	}
 
 	h2 {
-		font-size: 1.35rem;
+		font-size: var(--schrift-xl);
 	}
 
 	h3 { margin-top: 1.75rem; }
 
-	.legende { margin: .5rem 0 0; font-size: .85rem; color: var(--text-3); }
+	.legende { margin: .5rem 0 0; font-size: var(--schrift-s); color: var(--text-3); }
 
 	.streit { color: var(--warn); }
 	.grundlage { color: var(--text-3); }
@@ -349,26 +349,26 @@
 		margin: 1.5rem 0 0;
 		padding-top: .75rem;
 		border-top: 1px solid var(--rand);
-		font-size: .8rem;
+		font-size: var(--schrift-s);
 		color: var(--text-3);
 	}
 
 	.behoerde {
 		margin: 0.15rem 0 0;
 		color: var(--text-2);
-		font-size: 0.9rem;
+		font-size: var(--schrift-m);
 	}
 
 	.stand {
 		text-align: right;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 		color: var(--text-2);
 		min-width: 190px;
 	}
 
 	.stand strong {
 		display: block;
-		font-size: 1.1rem;
+		font-size: var(--schrift-l);
 		color: var(--text);
 	}
 
@@ -376,7 +376,7 @@
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 	}
 	.beteiligung {
 		margin: 0.5rem 0 0;
@@ -386,12 +386,12 @@
 
 	.zwischenstand {
 		color: var(--text-2);
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 		margin: 0 0 0.75rem;
 	}
 
 	.ergebnissatz {
-		font-size: 1.05rem;
+		font-size: var(--schrift-l);
 	}
 
 	.legende {
@@ -407,20 +407,20 @@
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
-		font-size: 0.92rem;
+		font-size: var(--schrift-m);
 	}
 
 	.sitzzahl {
 		background: var(--flaeche-2);
 		border: 1px solid var(--rand);
-		border-radius: 99px;
+		border-radius: var(--radius-pille);
 		padding: 0 0.45rem;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 	}
 
 	.anteil {
 		color: var(--text-3);
-		font-size: 0.82rem;
+		font-size: var(--schrift-s);
 	}
 
 	.punkt {
@@ -458,7 +458,7 @@
 	table {
 		width: 100%;
 		border-collapse: collapse;
-		font-size: 0.9rem;
+		font-size: var(--schrift-m);
 	}
 
 	.tabelle { max-width: 100%; overflow-x: auto; scrollbar-gutter: stable; }
@@ -473,7 +473,7 @@
 	th {
 		color: var(--text-2);
 		font-weight: 600;
-		font-size: 0.8rem;
+		font-size: var(--schrift-s);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -484,7 +484,7 @@
 
 	.klein {
 		color: var(--text-2);
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 	}
 
 	tr.unbesetzt td {

@@ -463,7 +463,7 @@
 		border-top: 1px solid var(--rand);
 		background: var(--flaeche);
 		color: var(--text-3);
-		font-size: 0.9rem;
+		font-size: var(--schrift-m);
 		flex: none;
 	}
 
@@ -482,11 +482,11 @@
 
 	.leiste button {
 		padding: 0.35rem 0.7rem;
-		font-size: 0.8rem;
-		border-radius: 99px;
+		font-size: var(--schrift-s);
+		border-radius: var(--radius-pille);
 	}
 
-	.leiste button.icon { width: 44px; padding-inline: 0; font-size: 1.1rem; }
+	.leiste button.icon { width: 44px; padding-inline: 0; font-size: var(--schrift-l); }
 
 	.einstellung {
 		display: flex;
@@ -497,16 +497,16 @@
 
 	.einstellung > span {
 		color: var(--text-3);
-		font-size: 0.8rem;
+		font-size: var(--schrift-s);
 	}
 
 	.einstellung select {
 		font: inherit;
-		font-size: 0.8rem;
+		font-size: var(--schrift-s);
 		min-height: 44px;
 		padding: 0.35rem 0.5rem;
 		border: 1px solid var(--rand);
-		border-radius: 99px;
+		border-radius: var(--radius-pille);
 		background: var(--flaeche-2);
 		color: var(--text);
 	}

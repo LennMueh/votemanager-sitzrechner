@@ -71,7 +71,7 @@
 
 	.amtlich {
 		margin-top: 1.5rem;
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 		color: var(--text-2);
 		border-left: 3px solid var(--rand);
 		padding-left: 0.8rem;

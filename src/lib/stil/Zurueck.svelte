@@ -13,6 +13,6 @@
 		min-height: 44px;
 		margin-bottom: 1.25rem;
 		text-decoration: none;
-		font-size: 0.9rem;
+		font-size: var(--schrift-m);
 	}
 </style>

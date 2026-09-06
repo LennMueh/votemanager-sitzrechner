@@ -286,7 +286,7 @@
 	.startkarten { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
 	.startkarten a { display: grid; gap: .45rem; min-height: 8rem; padding: 1.25rem; text-decoration: none; }
 	.startkarten a:hover { border-color: var(--akzent); transform: translateY(-2px); }
-	.startkarten span { color: var(--text-2); font-size: .9rem; }
+	.startkarten span { color: var(--text-2); font-size: var(--schrift-m); }
 	.zurueck-start { display: inline-flex; min-height: 44px; align-items: center; margin: 1rem 0; }
 
 	header {
@@ -302,7 +302,7 @@
 		letter-spacing: -0.045em;
 	}
 
-	.kicker { margin: 0 0 .35rem; color: var(--akzent); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+	.kicker { margin: 0 0 .35rem; color: var(--akzent); font-size: var(--schrift-xs); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 
 	.unter {
 		margin: 0.25rem 0 0;
@@ -316,7 +316,7 @@
 		gap: 0.6rem;
 	}
 
-	.termin { display: grid; gap: .2rem; color: var(--text-2); font-size: .75rem; }
+	.termin { display: grid; gap: .2rem; color: var(--text-2); font-size: var(--schrift-xs); }
 
 	.knopf {
 		border: 1px solid var(--rand);
@@ -332,7 +332,7 @@
 	}
 
 	.ohnegewaehr {
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 		color: var(--text-2);
 		border-left: 3px solid var(--rand);
 		padding-left: 0.8rem;
@@ -357,7 +357,7 @@
 
 	.klein {
 		color: var(--text-3);
-		font-size: 0.85rem;
+		font-size: var(--schrift-s);
 	}
 
 	.suche {
@@ -380,12 +380,12 @@
 	.karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .75rem; }
 	.karten button, .zurueck { min-height: 64px; padding: 1rem; border: 1px solid var(--rand); border-radius: var(--radius); background: var(--flaeche); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 	.karten button { display: grid; gap: .3rem; }
-	.karten button span { color: var(--text-2); font-size: .82rem; }
+	.karten button span { color: var(--text-2); font-size: var(--schrift-s); }
 	.zurueck { min-height: 44px; padding: .55rem .8rem; }
-	.vergleich { display: inline-flex; margin-top: .45rem; font-size: .8rem; }
+	.vergleich { display: inline-flex; margin-top: .45rem; font-size: var(--schrift-s); }
 
 	h2 {
-		font-size: 0.8rem;
+		font-size: var(--schrift-s);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--text-2);
@@ -429,7 +429,7 @@
 	   der Trefferliste gibt es keine. */
 	.woher {
 		grid-column: 1 / -1;
-		font-size: 0.82rem;
+		font-size: var(--schrift-s);
 		color: var(--text-2);
 	}
 
@@ -437,7 +437,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
-		font-size: 0.82rem;
+		font-size: var(--schrift-s);
 		color: var(--text-2);
 	}
 

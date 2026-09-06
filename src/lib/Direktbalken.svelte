@@ -89,13 +89,13 @@
 	}
 
 	.werte strong {
-		font-size: 1.05rem;
+		font-size: var(--schrift-l);
 	}
 
 	.stimmen {
 		display: block;
 		color: var(--text-3);
-		font-size: 0.85em;
+		font-size: var(--schrift-s);
 	}
 
 	li.gewaehlt .name,
