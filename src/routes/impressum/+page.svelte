@@ -1,11 +1,12 @@
 <script lang="ts">
+	import Zurueck from '$lib/stil/Zurueck.svelte';
 	let { data } = $props();
 </script>
 
 <svelte:head><title>Impressum — Votemanager Viewer</title></svelte:head>
 
 <main>
-	<a class="zurueck" href="/">← Zur Übersicht</a>
+	<Zurueck href="/">← Zur Übersicht</Zurueck>
 
 	{#if data.html}
 		<article class="rechtstext">{@html data.html}</article>
@@ -25,12 +26,4 @@
 		padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 1.5rem) 4rem;
 	}
 
-	.zurueck {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
-		margin-bottom: 1.25rem;
-		text-decoration: none;
-		font-size: 0.9rem;
-	}
 </style>

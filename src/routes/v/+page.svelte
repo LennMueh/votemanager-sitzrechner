@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Zurueck from '$lib/stil/Zurueck.svelte';
 	import { page } from '$app/state';
 	import VertretungAnsicht from '$lib/VertretungAnsicht.svelte';
 	import { strom } from '$lib/strom';
@@ -42,7 +43,7 @@
 </script>
 
 <main aria-busy={laedt}>
-	<a class="zurueck" href="/{wahltag ? `?wahltag=${wahltag}` : ''}">← Alle Vertretungen</a>
+	<Zurueck href="/{wahltag ? `?wahltag=${wahltag}` : ''}">← Alle Vertretungen</Zurueck>
 
 	{#if fehler}
 		<p class="hinweis">{fehler}</p>
@@ -66,15 +67,6 @@
 		max-width: 980px;
 		margin: 0 auto;
 		padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 1.5rem) 4rem;
-	}
-
-	.zurueck {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
-		margin-bottom: 1.25rem;
-		text-decoration: none;
-		font-size: 0.9rem;
 	}
 
 	.amtlich {

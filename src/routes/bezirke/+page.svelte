@@ -5,6 +5,7 @@
 	// Bezirksübersicht), beschränkt auf das angezeigte Gebiet. Das Detail einer
 	// Zeile wird erst beim Aufklappen nachgeladen: diese Dokumente holt der
 	// Poller mit Priorität 45 und am Wahlabend entsprechend spät.
+	import Zurueck from '$lib/stil/Zurueck.svelte';
 	import { page } from '$app/state';
 	import { strom } from '$lib/strom';
 	import { stimmenverhaeltnis } from '$lib/nkwg';
@@ -105,7 +106,7 @@
 </script>
 
 <main aria-busy={laedt}>
-	<a class="zurueck" href={zurueck}>← Zurück zur Wahl</a>
+	<Zurueck href={zurueck}>← Zurück zur Wahl</Zurueck>
 
 	{#if fehler}
 		<p class="hinweis">{fehler}</p>
@@ -241,15 +242,6 @@
 		max-width: 1120px;
 		margin: 0 auto;
 		padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 1.5rem) 4rem;
-	}
-
-	.zurueck {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
-		margin-bottom: 1.25rem;
-		text-decoration: none;
-		font-size: 0.9rem;
 	}
 
 	header {
