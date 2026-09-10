@@ -32,6 +32,12 @@
 			if (!a.ok) throw new Error(j.fehler ?? a.statusText);
 			daten = j;
 			fehler = '';
+			// Rücksprung aus /v: `?behoerde=<ags>` öffnet deren Liste. Nur beim
+			// vollen Laden — bei jeder SSE-Nachführung risse es sonst die
+			// Navigation zurück, sobald jemand eine Ebene hochgegangen ist.
+			const ags = page.url.searchParams.get('behoerde');
+			const e = !still && ags ? j.eintraege.find((x: UebersichtEintrag) => x.ags === ags) : undefined;
+			if (e) [land, region, behoerde] = [e.land, e.region, e.ags];
 		} catch (e) {
 			fehler = String(e);
 		} finally {
@@ -124,6 +130,7 @@
 	function terminWechseln(gewaehlt: string) {
 		const parameter = new URLSearchParams(page.url.searchParams);
 		parameter.set('wahltag', gewaehlt);
+		parameter.delete('behoerde');
 		land = region = behoerde = '';
 		void goto(`${page.url.pathname}?${parameter}`);
 	}

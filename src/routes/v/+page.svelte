@@ -47,7 +47,11 @@
 </script>
 
 <main aria-busy={laedt}>
-	<Zurueck href="/{wahltag ? `?wahltag=${wahltag}` : ''}">← Alle Vertretungen</Zurueck>
+	<!-- Zurück in die Liste der eigenen Behörde, nicht bis zu den Bundesländern:
+	     die Startseite schlägt Land und Region über die AGS nach. -->
+	<Zurueck href={ergebnis
+		? `/?ansicht=wahlen&behoerde=${ergebnis.ref.ags}${wahltag ? `&wahltag=${wahltag}` : ''}`
+		: `/${wahltag ? `?wahltag=${wahltag}` : ''}`}>← {ergebnis?.ref.behoerde ?? 'Alle Vertretungen'}</Zurueck>
 
 	{#if fehler}
 		<p class="hinweis">{fehler}</p>
