@@ -15,6 +15,13 @@ metrics:
 crawler:
   contact: ""
   backfill: false
+  # Drossel gegenüber votemanager.kdo.de, den sich alle Behörden teilen. Sie gilt
+  # je Poller-Prozess — ein zweiter Poller verdoppelte also die Last beim Host,
+  # statt den Durchsatz innerhalb dieser Grenze zu erhöhen. Deshalb bleibt es bei
+  # genau einem Poller. Anheben nur nach Rücksprache mit KDO: fremde
+  # Infrastruktur ohne zugesicherte Last.
+  parallelProHost: 2
+  proSekunde: 20
 
 database:
   bundled: true

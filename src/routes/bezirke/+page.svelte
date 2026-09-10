@@ -12,6 +12,8 @@
 	import type { Wahlbezirke } from '$lib/server/daten';
 	import type { GebietsErgebnis } from '$lib/votemanager';
 	import Auszaehlbalken from '$lib/stil/Auszaehlbalken.svelte';
+	import SortKnopf from '$lib/stil/SortKnopf.svelte';
+	import { ariaSort, sortiere, type Sortierung } from '$lib/sortierung';
 
 	const abfrage = $derived(page.url.searchParams.toString());
 	const wahltag = $derived(page.url.searchParams.get('wahltag') ?? '');
@@ -23,6 +25,26 @@
 	type Detail = { erg?: GebietsErgebnis & { zeitpunkt: string }; fehler?: string };
 	let detail = $state<Record<string, Detail>>({});
 	let offen = $state<string[]>([]);
+
+	// Abgeleitet statt einmal sortiert: jedes Neuladen per SSE bringt neue
+	// Zeilen, und die gewählte Sortierung soll es überstehen. Parteispalten über
+	// ihr Label, nicht über die Position — die Spalten können sich verschieben.
+	let sortierung = $state<Sortierung>(null);
+	const zeilen = $derived.by(() => {
+		if (!daten || !sortierung) return daten?.bezirke ?? [];
+		const { spalte, absteigend } = sortierung;
+		const partei = daten.spalten.findIndex((s) => `p:${s.label}` === spalte);
+		return sortiere(
+			daten.bezirke,
+			(b) =>
+				spalte === 'name' ? b.name
+				: spalte === 'stand' ? Number(b.ausgezaehlt)
+				: spalte === 'berechtigte' ? b.beteiligung?.berechtigte
+				: spalte === 'beteiligung' ? b.beteiligung?.anteil
+				: b.stimmen[partei]?.anteil,
+			absteigend
+		);
+	});
 
 	const ref = $derived(daten?.ref);
 	const prozent = $derived(daten && daten.gesamt > 0 ? Math.round((daten.ausgezaehlt / daten.gesamt) * 100) : 0);
@@ -87,6 +109,7 @@
 		abfrage; // bei geänderter Wahl neu laden und alles Aufgeklappte vergessen
 		offen = [];
 		detail = {};
+		sortierung = null;
 		void laden();
 	});
 
@@ -153,15 +176,27 @@
 			<div class="tabelle" role="region" aria-label="Ergebnisse der Wahllokale" tabindex="-1"><table>
 				<thead>
 					<tr>
-						<th>Wahllokal</th>
-						<th>Stand</th>
-						<th class="r">Wahlberechtigte</th>
-						<th class="r">Beteiligung</th>
-						{#each daten.spalten as s (s.label)}<th class="r">{s.label}</th>{/each}
+						<th aria-sort={ariaSort(sortierung, 'name')}>
+							<SortKnopf bind:sortierung spalte="name">Wahllokal</SortKnopf>
+						</th>
+						<th aria-sort={ariaSort(sortierung, 'stand')}>
+							<SortKnopf bind:sortierung spalte="stand" absteigend>Stand</SortKnopf>
+						</th>
+						<th class="r" aria-sort={ariaSort(sortierung, 'berechtigte')}>
+							<SortKnopf bind:sortierung spalte="berechtigte" absteigend>Wahlberechtigte</SortKnopf>
+						</th>
+						<th class="r" aria-sort={ariaSort(sortierung, 'beteiligung')}>
+							<SortKnopf bind:sortierung spalte="beteiligung" absteigend>Beteiligung</SortKnopf>
+						</th>
+						{#each daten.spalten as s (s.label)}
+							<th class="r" aria-sort={ariaSort(sortierung, `p:${s.label}`)}>
+								<SortKnopf bind:sortierung spalte="p:{s.label}" absteigend>{s.label}</SortKnopf>
+							</th>
+						{/each}
 					</tr>
 				</thead>
 				<tbody>
-					{#each daten.bezirke as b (b.id)}
+					{#each zeilen as b (b.id)}
 						{@const auf = offen.includes(b.id)}
 						<tr>
 							<td>

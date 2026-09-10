@@ -36,12 +36,18 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			}
 
 			const heartbeat = setInterval(() => schreibe(controller, ': heartbeat\n\n'), 15_000);
+			// Wer gerade live zuschaut — die Zahl, auf die es am Wahlabend ankommt.
+			zaehle('sse_offen');
 			aufraeumen = () => {
 				clearInterval(heartbeat);
 				abmelden();
+				zaehle('sse_offen', -1);
 				try { controller.close(); } catch { /* bereits geschlossen */ }
 			};
-			request.signal.addEventListener('abort', aufraeumen, { once: true });
+			// Ein bereits abgebrochenes Signal feuert kein 'abort' mehr: ohne diese
+			// Prüfung liefen Heartbeat und Zähler eines früh getrennten Browsers weiter.
+			if (request.signal.aborted) aufraeumen();
+			else request.signal.addEventListener('abort', aufraeumen, { once: true });
 		}
 	});
 

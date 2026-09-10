@@ -16,7 +16,7 @@ export function crawlerKontakt(env: Record<string, string | undefined> = process
 export async function holeJson(
 	url: string,
 	stand: AbrufStand = {},
-	optionen: { kontakt?: string; fetch?: typeof fetch } = {}
+	optionen: { kontakt?: string; fetch?: typeof fetch; timeoutMs?: number } = {}
 ): Promise<Abruf> {
 	const headers = new Headers({
 		accept: 'application/json',
@@ -24,7 +24,14 @@ export async function holeJson(
 	});
 	if (stand.etag) headers.set('if-none-match', stand.etag);
 	if (stand.lastModified) headers.set('if-modified-since', stand.lastModified);
-	const antwort = await (optionen.fetch ?? fetch)(url, { headers });
+	// Ohne Frist hielt ein einziger hängender Abruf den ganzen Durchlauf an:
+	// einmal() wartet mit Promise.all auf alle hundert Aufgaben, und der Abruf
+	// belegte dabei einen der zwei Plätze beim gemeinsamen Host. Der Abbruch ist
+	// ein gewöhnlicher Fehler mit Backoff, keine endgültige Auskunft.
+	const antwort = await (optionen.fetch ?? fetch)(url, {
+		headers,
+		signal: AbortSignal.timeout(optionen.timeoutMs ?? 15_000)
+	});
 	const neu = {
 		etag: antwort.headers.get('etag') ?? stand.etag,
 		lastModified: antwort.headers.get('last-modified') ?? stand.lastModified

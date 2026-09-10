@@ -277,6 +277,19 @@ describe('Fehlerpfad des Pollers', () => {
 		expect(fehler).toHaveBeenCalledWith(aufgabe, expect.any(Error), expect.any(Date), false);
 	});
 
+	it('bricht einen hängenden Abruf ab, statt den Durchlauf anzuhalten', async () => {
+		// Ein Abruf ohne Frist hielt den ganzen Hunderter-Durchlauf an, weil
+		// einmal() mit Promise.all auf jede Aufgabe wartet — am Wahlabend der Takt
+		// für alle Vertretungen.
+		const haengt = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_, reject) =>
+			init?.signal?.addEventListener('abort', () => reject(init.signal!.reason))));
+		const abbruch = await holeJson('https://example.test/x', {}, {
+			kontakt: 'ops@example.test', fetch: haengt as unknown as typeof fetch, timeoutMs: 10
+		}).catch((e: unknown) => e);
+		expect(abbruch).toMatchObject({ name: 'TimeoutError' });
+		expect(endgueltig(abbruch)).toBe(false);
+	});
+
 	it('trägt den Statuscode am Fehler, nicht nur im Text', async () => {
 		const fehler = vi.fn();
 		await lauf(speicherMit(fehler), async () => new Response('weg', { status: 404 }));
