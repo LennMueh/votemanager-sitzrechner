@@ -5,6 +5,8 @@
 	import Direktbalken from './Direktbalken.svelte';
 	import type { VertretungErgebnis } from '$lib/server/daten';
 	import Auszaehlbalken from '$lib/stil/Auszaehlbalken.svelte';
+	import SortKnopf from '$lib/stil/SortKnopf.svelte';
+	import { ariaSort, sortiere, type Sortierung } from '$lib/sortierung';
 
 	// Detailansicht am Schreibtisch: Diagramm plus vollständige Tabelle.
 	// Die Beamer-Darstellung liegt in src/lib/praesentation/.
@@ -15,6 +17,14 @@
 		stand.erwartet > 0 ? Math.round((stand.eingegangen / stand.erwartet) * 100) : 0
 	);
 	const gewaehlte = $derived(ergebnis.verteilung?.sitze.filter((s) => s.name) ?? []);
+	// Ohne Wahl gilt die Reihenfolge der Verteilung. Unbesetzte Sitze laufen in
+	// einem eigenen Block und bleiben dadurch unten, egal wie sortiert wird.
+	let sortierung = $state<Sortierung>(null);
+	const gewaehlteSortiert = $derived.by(() => {
+		if (!sortierung) return gewaehlte;
+		const k = sortierung.spalte as 'partei' | 'name' | 'wahlbereich' | 'mandat' | 'stimmen';
+		return sortiere(gewaehlte, (s) => s[k], sortierung.absteigend);
+	});
 	const unbesetzt = $derived(ergebnis.verteilung?.sitze.filter((s) => s.unbesetzt) ?? []);
 	// Nach Wahlvorschlag gruppiert: erst dadurch hat die Farbe des unbesetzten
 	// Sitzes einen Namen daneben stehen — § 36 Abs. 7 trifft eine bestimmte Liste.
@@ -253,15 +263,27 @@
 			<div class="tabelle" role="region" aria-label="Voraussichtlich gewählte Personen"><table>
 			<thead>
 				<tr>
-					<th>Partei</th>
-					<th>Name</th>
-					{#if mehrereBereiche}<th>Wahlbereich</th>{/if}
-					<th>Mandat</th>
-					<th class="r">Stimmen</th>
+					<th aria-sort={ariaSort(sortierung, 'partei')}>
+						<SortKnopf bind:sortierung spalte="partei">Partei</SortKnopf>
+					</th>
+					<th aria-sort={ariaSort(sortierung, 'name')}>
+						<SortKnopf bind:sortierung spalte="name">Name</SortKnopf>
+					</th>
+					{#if mehrereBereiche}
+						<th aria-sort={ariaSort(sortierung, 'wahlbereich')}>
+							<SortKnopf bind:sortierung spalte="wahlbereich">Wahlbereich</SortKnopf>
+						</th>
+					{/if}
+					<th aria-sort={ariaSort(sortierung, 'mandat')}>
+						<SortKnopf bind:sortierung spalte="mandat">Mandat</SortKnopf>
+					</th>
+					<th class="r" aria-sort={ariaSort(sortierung, 'stimmen')}>
+						<SortKnopf bind:sortierung spalte="stimmen" absteigend>Stimmen</SortKnopf>
+					</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each gewaehlte as s, i (s.partei + '|' + s.name + i)}
+				{#each gewaehlteSortiert as s, i (s.partei + '|' + s.name + i)}
 					<tr>
 						<td><span class="punkt" style:background={s.farbe ?? 'var(--text-3)'}></span>{s.partei}</td>
 						<td>{s.name}</td>
