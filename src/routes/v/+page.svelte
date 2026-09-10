@@ -19,7 +19,11 @@
 	async function laden(still = false) {
 		if (!still) laedt = true;
 		try {
-			const a = await fetch(`/api/vertretung?${abfrage}`);
+			// Der Header hält die Nachführung aus der Aufrufzählung heraus.
+			const a = await fetch(
+				`/api/vertretung?${abfrage}`,
+				still ? { headers: { 'x-aktualisierung': '1' } } : undefined
+			);
 			const j = await a.json();
 			if (!a.ok) throw new Error(j.fehler ?? a.statusText);
 			ergebnis = j;

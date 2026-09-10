@@ -11,4 +11,21 @@ spec:
   endpoints:
     - port: metrics
       interval: {{ .Values.metrics.serviceMonitor.interval }}
+---
+# Je Web-Pod ein eigenes Ziel: die Zähler leben im Speicher des Pods, Grafana
+# summiert. Nach einem Neustart beginnen sie bei null — increase() und rate()
+# rechnen das heraus.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    {{- include "votemanager.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}{{- toYaml . | nindent 4 }}{{- end }}
+spec:
+  selector: { matchLabels: { app.kubernetes.io/component: web, app.kubernetes.io/instance: {{ .Release.Name }} } }
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
 {{- end }}
