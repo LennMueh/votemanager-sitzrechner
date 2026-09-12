@@ -420,9 +420,23 @@ Deshalb liegt die **Bezirks-Übersicht** bei Priorität 70 (`db.ts`, Migration
 `007`) und die **einzelnen Bezirks-Ergebnisse** bei 60 (Migration `008`). Die
 Übersicht ist ein einziges Dokument je Wahl und trägt den Auszählstand aller
 Wahllokale; die Einzeldokumente sind hunderte je Wahl, tragen aber als einzige
-den vollständigen Spaltensatz. Dass 60 vertretbar ist, liegt daran, dass ein
-Wahllokal-Ergebnis nach seiner Schnellmeldung nicht mehr wechselt: es wird
-einmal mit Nutzlast geholt, danach kostet es über ETag nur noch 304er.
+den vollständigen Spaltensatz.
+
+**Wahllokal-Ergebnisse laufen nicht im Takt, sondern über ein Tor** (Migration
+`009`, Spalte `pfad_stand.wahllokal`): geholt wird ein Wahllokal, sobald die
+Bezirksübersicht es als ausgezählt meldet (`statusProzent >= 100`) — einmal,
+mit der Priorität seiner Wahl —, danach Nachlauf. Ohne Stimmen wartet es auf 60
+mit einem Netz von drei Stunden (`wahllokalNachAbruf()`). Ein Wahllokal wechselt
+nach seiner Schnellmeldung nicht mehr (30.08.2026: 1,2 Stände je Pfad). Im
+30-s-Takt bekamen die rund 43.000 Wahllokale eines niedersächsischen Wahlabends
+nur die Reserve des Pollers: in der Simulation des 13.09.2026 fehlten um
+Mitternacht 41–66 % von ihnen, mit Tor in Lüneburg keins. Summenzeilen
+(`stimmbezirk: false`) sind keine Wahllokale — sie verlinken bis auf das
+Wahlgebiet selbst, und das darf nie in den Nachlauf fallen.
+
+Nach einem vollen Stapel (`STAPEL`) schläft die Poller-Schleife nicht mehr: die
+Sekunde Pause kostete am Wahlabend etwa ein Sechstel der Abrufe. Das Tempo
+begrenzt allein die Drossel.
 
 Aus demselben Grund gibt es **bewusst keine CI, die bei jedem Push die
 Golden Tests fährt**.

@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { db, erstellePollerSpeicher, pollerSperre, schliesseDb } from '../src/lib/server/db.ts';
 import { konfiguration } from '../src/lib/server/poller/config.ts';
-import { Poller } from '../src/lib/server/poller/index.ts';
+import { Poller, STAPEL } from '../src/lib/server/poller/index.ts';
 
 const einmalig = process.argv.includes('--once') || process.argv.includes('--einmalig');
 const bisLeer = process.argv.includes('--bis-leer');
@@ -34,7 +34,9 @@ try {
 		const anzahl = letzteAnzahl = await poller.einmal(jetztArgument ? new Date(jetztArgument) : new Date());
 		durchlaeufe++;
 		aufgaben += anzahl;
-		if (!einmalig && !(bisLeer && anzahl === 0)) await new Promise((resolve) => setTimeout(resolve, anzahl ? 1_000 : 10_000));
+		// Nach einem vollen Stapel wartet noch Arbeit: die Sekunde Pause kostete am
+		// Wahlabend etwa ein Sechstel der Abrufe. Das Tempo begrenzt die Drossel.
+		if (!einmalig && !(bisLeer && anzahl === 0) && anzahl < STAPEL) await new Promise((resolve) => setTimeout(resolve, anzahl ? 1_000 : 10_000));
 	} while (!einmalig && !(bisLeer && letzteAnzahl === 0));
 	if (probePruefen) {
 		const sql = db();

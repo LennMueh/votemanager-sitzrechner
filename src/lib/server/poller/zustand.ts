@@ -138,3 +138,32 @@ export const ENDGUELTIG_MS = 30 * 24 * 60 * MINUTE;
 export function fehlerBackoff(fehler: number, retryAfterMs?: number, deckel = 24 * 60 * MINUTE): number {
 	return Math.max(retryAfterMs ?? 0, Math.min(deckel, 30_000 * 2 ** Math.max(0, fehler - 1)));
 }
+
+/**
+ * Wartezeit eines Wahllokal-Ergebnisses, das noch nicht ausgezählt ist.
+ *
+ * Geholt wird es über das Tor im Übersichts-Zweig von erfolg() (db.ts), sobald die
+ * Bezirksübersicht „ausgezählt" meldet. Die drei Stunden sind nur ein Netz, falls
+ * die Übersicht ausbleibt: im 30-s-Takt wären die rund 43.000 wartenden
+ * Wahllokale eines niedersächsischen Wahlabends mehr, als der Poller am ganzen
+ * Abend abrufen kann.
+ */
+export const TOR_SICHERUNG_MS = 3 * 60 * MINUTE;
+
+/**
+ * Was nach dem Abruf eines Wahllokal-Ergebnisses gilt. Ein Wahllokal wechselt nach
+ * seiner Schnellmeldung nicht mehr (30.08.2026: 1,2 Stände je Pfad): mit Stimmen
+ * ist es erledigt und geht in den Nachlauf. Ohne Stimmen — noch nicht gemeldet
+ * oder 304 — wartet es wieder am Tor, zurück auf Priorität 60, damit es nicht mit
+ * der Priorität seiner Wahl im Takt hängen bleibt.
+ *
+ * `undefined` heißt: nicht zuständig, der gewöhnliche Übergang gilt.
+ */
+export function wahllokalNachAbruf(
+	zustand: Zustand,
+	stimmen: number | undefined
+): { zustand: Zustand; intervallMs: number; prioritaet: number } | undefined {
+	if (zustand !== 'geplant' && zustand !== 'vorlauf' && zustand !== 'wahlabend') return undefined;
+	if (stimmen && stimmen > 0) return { zustand: 'nachlauf', intervallMs: pruefIntervall('nachlauf')!, prioritaet: 60 };
+	return { zustand, intervallMs: TOR_SICHERUNG_MS, prioritaet: 60 };
+}

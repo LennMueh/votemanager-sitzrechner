@@ -1,0 +1,15 @@
+-- Wahllokal-Ergebnisse kennzeichnen. Sie laufen nicht mehr im Takt, sondern über
+-- das Tor im Übersichts-Zweig von erfolg() (db.ts): geholt wird ein Wahllokal,
+-- sobald die Bezirksübersicht es als ausgezählt meldet, einmal und mit der
+-- Priorität seiner Wahl. Im 30-s-Takt bekamen die rund 43.000 Wahllokale eines
+-- niedersächsischen Wahlabends nur die Reserve des Pollers; in der Simulation des
+-- 13.09.2026 fehlten um Mitternacht 41–66 % von ihnen.
+--
+-- Eine eigene Spalte statt eines Rückschlusses aus der Übersicht: Summenzeilen
+-- (stimmbezirk: false) verlinken auch auf Gebietsergebnisse, bis hin zum
+-- Wahlgebiet selbst. Als Wahllokal behandelt, fiele es nach der ersten
+-- Schnellmeldung in den Nachlauf — und mit ihm die Sitzrechnung.
+--
+-- Mit konstantem Standardwert ändert PostgreSQL ≥ 11 nur den Katalog; die rund
+-- 900.000 Zeilen werden nicht umgeschrieben. Bestehende Pfade bleiben false.
+ALTER TABLE pfad_stand ADD COLUMN IF NOT EXISTS wahllokal boolean NOT NULL DEFAULT false;

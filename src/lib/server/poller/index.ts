@@ -8,6 +8,9 @@ import { ENDGUELTIG_MS, fehlerBackoff, type Zustand } from './zustand.ts';
 /** Abstand zwischen zwei Nachernte-Beförderungen. */
 const BEFOERDERUNG_MS = 5 * 60_000;
 
+/** Aufgaben je Durchlauf. Ein voller Stapel heißt: es wartet noch Arbeit (scripts/poller.ts). */
+export const STAPEL = 100;
+
 export interface PollerAufgabe {
 	id: string;
 	url: string;
@@ -23,6 +26,8 @@ export interface PollerAufgabe {
 	/** Wahltag der Instanz als YYYY-MM-DD; fehlt bei der Wurzel mit termine.json. */
 	terminDatum?: string;
 	strukturGeladen?: boolean;
+	/** Wahllokal-Ergebnis: kommt über das Tor im Übersichts-Zweig, siehe wahllokalNachAbruf(). */
+	wahllokal?: boolean;
 }
 
 export interface PollerSpeicher {
@@ -130,7 +135,7 @@ export class Poller {
 			this.letzteBefoerderung = jetzt.getTime();
 			await this.speicher.nachernteBefoerdern?.(jetzt);
 		}
-		const aufgaben = await this.speicher.faellige(100, this.config.backfill);
+		const aufgaben = await this.speicher.faellige(STAPEL, this.config.backfill);
 		await Promise.all(aufgaben.map((aufgabe) => this.bearbeite(aufgabe, jetzt)));
 		return aufgaben.length;
 	}

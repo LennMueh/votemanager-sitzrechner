@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import { parseErgebnis } from '../votemanager.ts';
 import type { Behoerde, PollerAufgabe, PollerSpeicher } from './poller/index.ts';
 import { apiWurzel, termineUrl } from './poller/urls.ts';
-import { fehlerBackoff, naechsterZustand, pruefIntervall, type Zustand } from './poller/zustand.ts';
+import { fehlerBackoff, naechsterZustand, pruefIntervall, TOR_SICHERUNG_MS, wahllokalNachAbruf, type Zustand } from './poller/zustand.ts';
 
 let verbindung: ReturnType<typeof postgres> | undefined;
 
@@ -92,6 +92,7 @@ export async function erstellePollerSpeicher(
 					zustand_vor_fehler: Zustand | null;
 					termin_datum: string | null;
 					struktur_geladen: boolean;
+					wahllokal: boolean;
 				}>
 			>`
 			-- Der Host je Instanz, einmal statt je Zeile. Vorher stand der Ausdruck
@@ -179,7 +180,8 @@ export async function erstellePollerSpeicher(
 				(SELECT to_char(t.datum, 'YYYY-MM-DD') FROM termin t WHERE t.instanz_id = i.id
 					ORDER BY (t.datum < current_date), abs(t.datum - current_date) LIMIT 1) AS termin_datum,
 				EXISTS (SELECT 1 FROM pfad_stand w WHERE w.instanz_id = i.id
-					AND w.pfad LIKE '%/wahl.json' AND w.status IS NOT NULL) AS struktur_geladen
+					AND w.pfad LIKE '%/wahl.json' AND w.status IS NOT NULL) AS struktur_geladen,
+					p.wahllokal
 			FROM auswahl a JOIN pfad_stand p ON p.id = a.id
 			JOIN instanz i ON i.id = p.instanz_id`;
 			return zeilen.map((z) => ({
@@ -195,15 +197,22 @@ export async function erstellePollerSpeicher(
 				letzteAenderung: z.zuletzt_geaendert ?? undefined,
 				zustandVorFehler: z.zustand_vor_fehler ?? undefined,
 				terminDatum: z.termin_datum ?? undefined,
-				strukturGeladen: z.struktur_geladen
+				strukturGeladen: z.struktur_geladen,
+				wahllokal: z.wahllokal
 			}));
 		},
 
 		async erfolg(aufgabe, ergebnis) {
 			if (aufgabe.instanzId === undefined) throw new Error('Poller-Aufgabe ohne Instanz');
 			const instanzId = aufgabe.instanzId;
-			const zustand = dokumentZustand(aufgabe, ergebnis.inhalt, ergebnis.geprueft, ergebnis.geaendert);
-			const intervall = pruefIntervall(zustand) ?? 24 * 60 * 60_000;
+			const regel = dokumentZustand(aufgabe, ergebnis.inhalt, ergebnis.geprueft, ergebnis.geaendert);
+			// Wahllokal-Ergebnisse folgen dem Tor statt dem Takt (wahllokalNachAbruf()):
+			// mit Stimmen in den Nachlauf, sonst zurück auf 60 und warten.
+			const tor = aufgabe.wahllokal
+				? wahllokalNachAbruf(regel, ergebnis.geaendert && ergebnis.inhalt !== undefined ? stimmenSumme(ergebnis.inhalt) : undefined)
+				: undefined;
+			const zustand = tor?.zustand ?? regel;
+			const intervall = tor?.intervallMs ?? pruefIntervall(zustand) ?? 24 * 60 * 60_000;
 			await sql.begin(async (tx) => {
 				await tx`INSERT INTO host_stand (host, fehler_anzahl, naechster_abruf, zuletzt_erreichbar, letzter_fehler)
 					VALUES (${new URL(aufgabe.url).host}, 0, null, ${ergebnis.geprueft}, null)
@@ -215,6 +224,7 @@ export async function erstellePollerSpeicher(
 					zuletzt_geaendert = CASE WHEN ${ergebnis.geaendert} THEN ${ergebnis.geprueft} ELSE zuletzt_geaendert END,
 					naechste_pruefung = ${new Date(ergebnis.geprueft.getTime() + intervall)},
 					fehler_anzahl = 0, status = ${ergebnis.geaendert ? 200 : 304}, fehler = null,
+					prioritaet = coalesce(${tor?.prioritaet ?? null}::int, prioritaet),
 					zustand = ${zustand}, zustand_vor_fehler = null
 				WHERE id = ${aufgabe.id}`;
 				await tx`UPDATE instanz SET zustand=${zustand}, naechste_pruefung=${new Date(ergebnis.geprueft.getTime() + intervall)} WHERE id=${instanzId}`;
@@ -319,7 +329,7 @@ export async function erstellePollerSpeicher(
 						FROM termin t WHERE t.id=w.termin_id AND t.instanz_id=${instanzId}
 							AND w.wahl_id=${treffer[1]} AND w.gebiet_id=${treffer[2]}`;
 				} else if (/wahl_\d+\/uebersicht_.+_0\.json$/.test(aufgabe.pfad)) {
-					const zeilen = (ergebnis.inhalt as { tabelle?: { zeilen?: Array<{ name?: string; title?: string; link?: { id?: string; title?: string } }> } }).tabelle?.zeilen ?? [];
+					const zeilen = (ergebnis.inhalt as { tabelle?: { zeilen?: Array<{ name?: string; title?: string; statusProzent?: number; stimmbezirk?: boolean; link?: { id?: string; title?: string } }> } }).tabelle?.zeilen ?? [];
 					const treffer = aufgabe.pfad.match(/wahl_(\d+)\/uebersicht_(.+)_0\.json$/)!;
 					const [ebene] = await tx<{ id: number; art: string }[]>`SELECT id, art FROM uebersicht_ebene
 						WHERE instanz_id=${instanzId} AND wahl_id=${treffer[1]} AND ebene_id=${treffer[2]}`;
@@ -328,6 +338,27 @@ export async function erstellePollerSpeicher(
 							VALUES (${ebene.id}, ${z.link.id}, ${z.link.title ?? z.title ?? z.name ?? z.link.id})
 							ON CONFLICT (uebersicht_ebene_id, gebiet_id) DO UPDATE SET name=excluded.name`;
 						const url = new URL(`ergebnis_${z.link.id}_0.json`, aufgabe.url.replace(/uebersicht_.+_0\.json$/, ''));
+						if (ebene?.art === 'wahlbezirk' && z.stimmbezirk === true) {
+							// Das Tor: ein Wahllokal wird geholt, sobald die Übersicht es als
+							// ausgezählt meldet — einmal, mit der Priorität seiner Wahl —, und
+							// wartet sonst auf 60 (wahllokalNachAbruf()). Erneut ausgelöst wird
+							// höchstens alle fünf Minuten, damit ein Wahllokal ohne Stimmen
+							// nicht mit jeder Übersicht wiederkommt. Summenzeilen
+							// (stimmbezirk: false) bleiben draußen: sie verlinken auch auf das
+							// Wahlgebiet selbst, und das darf nie in den Nachlauf fallen.
+							const ausgezaehlt = Number(z.statusProzent ?? 0) >= 100;
+							const faellig = ausgezaehlt ? ergebnis.geprueft : new Date(ergebnis.geprueft.getTime() + TOR_SICHERUNG_MS);
+							await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung, wahllokal)
+								VALUES (${instanzId}, ${url.href}, ${zustand}, ${ausgezaehlt ? wieDasWahlgebiet(tx, instanzId, treffer[1]) : 60}, ${faellig}, true)
+								ON CONFLICT (instanz_id, pfad) DO UPDATE SET wahllokal = true,
+									prioritaet = CASE WHEN ${ausgezaehlt} AND pfad_stand.zustand IN ('geplant', 'vorlauf', 'wahlabend')
+										AND (pfad_stand.zuletzt_geprueft IS NULL OR pfad_stand.zuletzt_geprueft < now() - interval '5 minutes')
+										THEN excluded.prioritaet ELSE pfad_stand.prioritaet END,
+									naechste_pruefung = CASE WHEN ${ausgezaehlt} AND pfad_stand.zustand IN ('geplant', 'vorlauf', 'wahlabend')
+										AND (pfad_stand.zuletzt_geprueft IS NULL OR pfad_stand.zuletzt_geprueft < now() - interval '5 minutes')
+										THEN least(pfad_stand.naechste_pruefung, excluded.naechste_pruefung) ELSE pfad_stand.naechste_pruefung END`;
+							continue;
+						}
 						// 60 für die einzelnen Wahllokale: /bezirke baut seine Spalten aus ihnen,
 						// weil die Bezirksübersicht auf die vier stärksten Wahlvorschläge der
 						// ganzen Wahl plus „Sonstige“ kürzt. Vertretbar trotz hunderter Pfade je
@@ -525,6 +556,18 @@ export function deutschesDatum(wert: string): string {
 export function wieDasWahlgebiet(tx: ReturnType<typeof db>, instanzId: number, wahlId: string) {
 	return tx`coalesce((SELECT max(prioritaet) FROM pfad_stand
 		WHERE instanz_id=${instanzId} AND pfad LIKE ${`%/wahl_${wahlId}/ergebnis_%`} AND prioritaet >= 85), 90)`;
+}
+
+/** Stimmen eines Ergebnisdokuments; beim Wahllokal das Zeichen, dass es gemeldet hat. */
+function stimmenSumme(inhalt: unknown): number {
+	try {
+		return parseErgebnis(inhalt as never).vorschlaege.reduce(
+			(s, v) => s + v.listenstimmen + v.kandidaten.reduce((a, k) => a + k.stimmen, 0),
+			0
+		);
+	} catch {
+		return 0;
+	}
 }
 
 /**
