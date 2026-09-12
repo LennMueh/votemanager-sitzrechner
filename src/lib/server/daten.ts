@@ -10,6 +10,7 @@ import { rechtsstand } from '$lib/wahlrecht';
 import {
 	amtlicheGewaehlte,
 	bezirkeDesGebiets,
+	gehoertZumGebiet,
 	parseBezirksuebersicht,
 	parseErgebnis,
 	parseStand,
@@ -676,7 +677,9 @@ export async function berechneVertretung(
 		if (!gesamtZeile) throw new Error('Wahlgebietsergebnis fehlt noch');
 		const ref: VertretungRef = { instanzId: gesamtZeile.instanz_id, ags: gesamtZeile.ags, behoerde: gesamtZeile.behoerde, wahlId, gebietId, gebietName: gesamtZeile.gebiet_name, titel: gesamtZeile.titel, direktwahl: /(bürger?meister|landrat|stichwahl)/i.test(gesamtZeile.titel) };
 		const gesamt = parseErgebnis(gesamtZeile.inhalt as never);
-		const teile = zeilen.filter((z) => z !== gesamtZeile).map((z) => ({ id: z.pfad.match(/ergebnis_(.+)_0\.json$/)?.[1] ?? z.pfad, name: z.wahlbereich, ergebnis: parseErgebnis(z.inhalt as never) }));
+		// Nur Wahlbereiche dieses Wahlgebiets: ein Ortsrat teilt sich die Wahl-ID mit
+		// dem Stadtrat, und dessen Bereiche summieren sich nie auf den Ortsrat.
+		const teile = zeilen.filter((z) => z !== gesamtZeile && gehoertZumGebiet(gesamtZeile.inhalt as never, z.inhalt as never)).map((z) => ({ id: z.pfad.match(/ergebnis_(.+)_0\.json$/)?.[1] ?? z.pfad, name: z.wahlbereich, ergebnis: parseErgebnis(z.inhalt as never) }));
 		const summe = (v: typeof gesamt.vorschlaege) => v.reduce((s, x) => s + x.listenstimmen + x.kandidaten.reduce((a, k) => a + k.stimmen, 0), 0);
 		const bereicheVollstaendig = teile.length === 0 || teile.reduce((s, x) => s + summe(x.ergebnis.vorschlaege), 0) === summe(gesamt.vorschlaege);
 		const bereiche = teile.length && bereicheVollstaendig ? teile.map((x) => ({ id: x.id, name: x.name ?? x.id, vorschlaege: x.ergebnis.vorschlaege })) : [{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }];

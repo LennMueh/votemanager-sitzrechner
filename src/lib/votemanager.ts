@@ -545,6 +545,30 @@ export function bezirkeDesGebiets(roh: RohErgebnis): { ebeneId: string; ids: str
 	return { ebeneId: ids[0]?.match(/^(.*)_id_[^_]*$/)?.[1] ?? '', ids };
 }
 
+/**
+ * Gehört ein Wahlbereichs-Ergebnis zu **diesem** Wahlgebiet?
+ *
+ * Die Wahl-ID reicht nicht: ein Ortsrat teilt sie mit dem Stadtrat (Langenhagen,
+ * Hameln, Lüneburg 2021), eine Mitgliedsgemeinde mit ihrer Samtgemeinde — die
+ * Wahlbereichsebene gehört dann dem anderen, und die Summen-Gegenprobe schlug im
+ * Datenbankpfad für immer an (365 von 477 NI-Wahlen mit Wahlbereichen im Archiv).
+ *
+ * Fremd nur, wenn **beide** Zeichen es sagen: die Wahlbezirke des Bereichs liegen
+ * nicht in unseren (`gebietsverlinkung`, siehe bezirkeDesGebiets) *und* seine
+ * Bewerber treten bei uns nicht an. Fehlt eine Angabe — Kreistage haben keine
+ * Bezirksverlinkung, vor der Auszählung fehlen die Bewerber —, gilt er als unser.
+ * Einen echten Kreistag still als einen Bereich zu rechnen wäre falsch; einen
+ * fremden Bereich zu behalten, führt nur zur bekannten Warnung.
+ */
+export function gehoertZumGebiet(gesamt: RohErgebnis, teil: RohErgebnis): boolean {
+	const fremd = (unsere: string[], seine: string[]) => {
+		const menge = new Set(unsere);
+		return menge.size > 0 && seine.length > 0 && seine.some((x) => !menge.has(x));
+	};
+	const namen = (roh: RohErgebnis) => parseErgebnis(roh).vorschlaege.flatMap((v) => v.kandidaten.map((k) => k.name));
+	return !(fremd(bezirkeDesGebiets(gesamt).ids, bezirkeDesGebiets(teil).ids) && fremd(namen(gesamt), namen(teil)));
+}
+
 /** Eine Zeile der amtlichen Liste der Gewählten. */
 export interface AmtlicherSitz {
 	partei: string;

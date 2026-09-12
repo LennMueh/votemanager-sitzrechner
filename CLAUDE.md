@@ -120,6 +120,12 @@ mehrere Gemeinden eine Wahl-ID. Deshalb wird gegengerechnet: nur wenn die Summe
 der Wahlbereichsstimmen das Gesamtergebnis trifft, gelten sie. Sonst
 Ein-Wahlbereich-Fall (§ 36). **Diese Gegenprobe nicht entfernen.**
 
+Im Datenbankpfad (`berechneVertretung()`) filtert `gehoertZumGebiet()` vor der
+Gegenprobe fremde Bereiche aus: ein Ortsrat teilt sich die Wahl-ID mit dem
+Stadtrat, eine Mitgliedsgemeinde mit ihrer Samtgemeinde. Fremd ist ein Bereich
+nur, wenn Wahlbezirke **und** Bewerber es sagen. Ohne den Filter rechneten 365 von
+477 NI-Wahlen mit Wahlbereichen im Archiv nie.
+
 ## Sitzzahlen
 
 Die Zahl der zu vergebenden Sitze steht **nicht im Feed** — der `sitze`-Block

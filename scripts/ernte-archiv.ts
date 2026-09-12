@@ -25,7 +25,7 @@ import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { db } from '../src/lib/server/db.ts';
-import { amtlicheGewaehlte, parseErgebnis } from '../src/lib/votemanager.ts';
+import { amtlicheGewaehlte, gehoertZumGebiet, parseErgebnis } from '../src/lib/votemanager.ts';
 import type { Wahlvorschlag } from '../src/lib/nkwg.ts';
 
 const arg = (name: string, standard: string): string =>
@@ -119,7 +119,9 @@ for (const z of zeilen) {
 	// Ortsrat teilt sich die Wahl-ID mit dem Rat — die Ebene führt dann dessen
 	// Wahlbereiche, die mit dem Ortsrat nichts zu tun haben.
 	let bereiche = [{ id: 'wahlgebiet', name: z.titel, vorschlaege: erg.vorschlaege }];
-	const teile = (teileJeWahl.get(`${z.instanz_id}:${z.wahl_id}`) ?? []).filter((t) => t.id !== z.gebiet_id);
+	const teile = (teileJeWahl.get(`${z.instanz_id}:${z.wahl_id}`) ?? []).filter(
+		(t) => t.id !== z.gebiet_id && (!t.inhalt || gehoertZumGebiet(z.inhalt as never, t.inhalt as never))
+	);
 	if (teile.length) {
 		if (teile.some((t) => !t.inhalt)) { zaehl(`${z.land}: Wahlbereich ohne Dokument`); continue; }
 		const geladen = teile.map((t) => ({ id: t.id, name: t.name, vorschlaege: parseErgebnis(t.inhalt as never).vorschlaege }));
