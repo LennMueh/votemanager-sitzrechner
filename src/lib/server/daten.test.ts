@@ -10,6 +10,15 @@ describe('dynamischer Standardtermin', () => {
 		expect(waehleStandardtermin(['20210912', '20250914'], '20260826')).toBe('20250914');
 		expect(waehleStandardtermin([], '20260826')).toBe('');
 	});
+
+	it('behält den Wahltag bis zum Ende des Folgetags', () => {
+		expect(waehleStandardtermin(['20260913', '20260920'], '20260914')).toBe('20260913');
+		expect(waehleStandardtermin(['20260913', '20260920'], '20260915')).toBe('20260920');
+		// Ein eigener Termin am Folgetag geht vor.
+		expect(waehleStandardtermin(['20260913', '20260914'], '20260914')).toBe('20260914');
+		// Über den Monatswechsel.
+		expect(waehleStandardtermin(['20260930', '20261011'], '20261001')).toBe('20260930');
+	});
 });
 
 describe('Sitzzahlen-Tabellen', () => {

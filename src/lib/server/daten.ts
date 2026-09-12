@@ -300,6 +300,13 @@ export interface Uebersicht {
 
 export function waehleStandardtermin(wahltermine: string[], heute: string): string {
 	const sortiert = [...wahltermine].sort();
+	// Der Wahltag bleibt bis zum Ende des Folgetags Standard: ausgezählt wird über
+	// Mitternacht hinaus, und um 0:00 sprang die Übersicht sonst vom 13.09.2026
+	// (2.806 Einträge) auf den 20.09. (zwei). Ein eigener Termin am Folgetag geht vor.
+	const vortag = heute
+		? new Date(Date.UTC(+heute.slice(0, 4), +heute.slice(4, 6) - 1, +heute.slice(6, 8) - 1)).toISOString().slice(0, 10).replaceAll('-', '')
+		: '';
+	if (!sortiert.includes(heute) && vortag && sortiert.includes(vortag)) return vortag;
 	return sortiert.find((termin) => termin >= heute) ?? sortiert.at(-1) ?? '';
 }
 

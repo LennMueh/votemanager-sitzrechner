@@ -302,7 +302,7 @@ export async function erstellePollerSpeicher(
 						// erkannt, 35 heißen „Mitgliedsgemeinden". Ob das bei Samtgemeinden
 						// die Wahlbereiche nach § 36 sind, ist offen — bis dahin bleiben
 						// sie heiß, statt die Gegenprobe zu riskieren.
-						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${art === 'wahlbezirk' ? 70 : 75}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${art === 'wahlbereich' ? wieDasWahlgebiet(tx, instanzId, wahlId) : art === 'wahlbezirk' ? 70 : 75}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				} else if (/wahl_\d+\/ergebnis_.+_0\.json$/.test(aufgabe.pfad)) {
 					// Die amtliche Sitzzahl beim Archivieren festhalten, statt sie in
@@ -333,7 +333,7 @@ export async function erstellePollerSpeicher(
 						// ganzen Wahl plus „Sonstige“ kürzt. Vertretbar trotz hunderter Pfade je
 						// Wahl, weil ein Wahllokal-Ergebnis nach seiner Schnellmeldung nicht mehr
 						// wechselt: einmal mit Nutzlast, danach nur noch 304er über ETag.
-						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${ebene?.art === 'wahlbezirk' ? 60 : 85}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
+						await tx`INSERT INTO pfad_stand (instanz_id, pfad, zustand, prioritaet, naechste_pruefung) VALUES (${instanzId}, ${url.href}, ${zustand}, ${ebene?.art === 'wahlbereich' ? wieDasWahlgebiet(tx, instanzId, treffer[1]) : ebene?.art === 'wahlbezirk' ? 60 : 85}, ${ergebnis.geprueft}) ON CONFLICT (instanz_id, pfad) DO NOTHING`;
 					}
 				}
 			});
@@ -510,6 +510,21 @@ export function deutschesDatum(wert: string): string {
 	const [tag, monat, jahr] = datum.split('.');
 	if (!jahr || !monat || !tag) throw new Error(`Ungültiges Datum ${wert}`);
 	return `${jahr}-${monat.padStart(2, '0')}-${tag.padStart(2, '0')}`;
+}
+
+/**
+ * Priorität eines Wahlbereichspfads (Übersicht und Ergebnisse): die des
+ * Gebietsergebnisses derselben Wahl.
+ *
+ * Die Summenprobe in berechneVertretung() braucht Wahlgebiet und Wahlbereiche aus
+ * derselben Abrufrunde. Mit fester 85 hinter den rund 2.800 Gebietsergebnissen (90)
+ * ging sie in der Simulation des Wahlabends 13.09.2026 in 0–2 % der Zeit auf, mit
+ * geerbter Priorität in 72–87 %. Erben statt fest 90: eine per Hand gehobene Wahl
+ * (Lüneburg 95) nimmt ihre Bereiche mit, auch wenn die erst am Abend entstehen.
+ */
+export function wieDasWahlgebiet(tx: ReturnType<typeof db>, instanzId: number, wahlId: string) {
+	return tx`coalesce((SELECT max(prioritaet) FROM pfad_stand
+		WHERE instanz_id=${instanzId} AND pfad LIKE ${`%/wahl_${wahlId}/ergebnis_%`} AND prioritaet >= 85), 90)`;
 }
 
 /**
