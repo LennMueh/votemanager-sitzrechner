@@ -1,12 +1,15 @@
 {
 	"_hinweis": "Wie viele amtliche Endergebnisse die eigene Rechnung je Land trifft. Nur für Länder mit belegt:false in src/lib/wahlrecht/index.ts — belegte Länder werden Fall für Fall geprüft. Die Zahlen dürfen steigen, nie fallen; die Lücke zur Gesamtzahl ist die Arbeitsliste. Beim Anheben immer mitschreiben, warum.",
+	"_angehoben": {
+		"2026-09-12": "SN 12→14, ST 73→85: überzählige Sitze eines Wahlvorschlags gehen an die übrigen (ueberzaehligeSitze: 'weitergeben'), belegt am Archiv — SN 23 Fälle geheilt, ST 99 (2024/25) bei 11 gebrochenen von 2019."
+	},
 	"quoten": {
 		"BW": 60,
 		"HE": 56,
 		"MV": 6,
 		"NW": 148,
 		"SL": 277,
-		"SN": 12,
-		"ST": 73
+		"SN": 14,
+		"ST": 85
 	}
 }

@@ -149,6 +149,8 @@ const kurz = (l: RohLabel | string): string =>
 	typeof l === 'string' ? l : (l.labelKurz ?? l.labelLang ?? '');
 const lang = (l: RohLabel | string): string | undefined =>
 	typeof l === 'string' ? undefined : l.labelLang;
+/** „Wahlbereich Datzetal: Jan-Michael Martin" → „Jan-Michael Martin". */
+export const ohneBereich = (name: string): string => name.slice(name.lastIndexOf(': ') + 1).trim();
 
 // ---------------------------------------------------------------------------
 // Entdeckung: welche Vertretungen gibt es?
@@ -360,7 +362,10 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 		if (z.sub_zeilen?.length) {
 			hole(label, z.color, langLabel).kandidaten = z.sub_zeilen.map(
 				(s, i): Kandidat => ({
-					name: kurz(s.label),
+					// Mecklenburg-Vorpommern setzt Wahlbereich oder Wahlbezirk davor:
+					// „Wahlbereich Datzetal: Jan-Michael Martin". Ohne das Abschneiden
+					// traf dort kein einziger Name die amtliche Liste.
+					name: ohneBereich(kurz(s.label)),
 					stimmen: parseZahl(s.zahl),
 					listenplatz: i + 1
 				})

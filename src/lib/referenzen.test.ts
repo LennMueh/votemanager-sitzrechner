@@ -27,7 +27,9 @@ import { rechtsstand } from './wahlrecht';
 import quoten from '../../referenzen/quoten.json' with { type: 'json' };
 import type { Wahlbereich } from './nkwg';
 
-const WURZEL = join(import.meta.dirname, '..', '..', 'referenzen');
+// REFERENZEN=referenzen-archiv prüft gegen die lokale Vollernte aus dem Archiv
+// (scripts/ernte-archiv.ts); die Quoten gelten dort als Untergrenzen weiter.
+const WURZEL = process.env.REFERENZEN ?? join(import.meta.dirname, '..', '..', 'referenzen');
 
 interface Referenzfall {
 	kennung: string;

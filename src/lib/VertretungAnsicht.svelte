@@ -116,14 +116,10 @@
 		<p class="hinweis">{ergebnis.warnung}</p>
 	{/if}
 
-	<!-- Vorbehalt sichtbar machen: für welches Land die Rechnung noch nicht
-	     gegen amtliche Endergebnisse belegt ist, gehört auf die Seite und nicht
-	     nur in den Quelltext. -->
-	{#if ergebnis.recht && !ergebnis.recht.belegt}
-		<p class="hinweis">
-			Das Kommunalwahlrecht {ergebnis.recht.name}s ist noch nicht vollständig gegen amtliche
-			Endergebnisse geprüft.{ergebnis.recht.vorbehalt ? ` ${ergebnis.recht.vorbehalt}` : ''}
-		</p>
+	<!-- Was die Rechnung eines Landes nicht kann (Namen im Saarland, Teilortswahl
+	     in Baden-Württemberg …), gehört auf die Seite und nicht nur in den Quelltext. -->
+	{#if ergebnis.recht?.vorbehalt}
+		<p class="hinweis">{ergebnis.recht.vorbehalt}</p>
 	{/if}
 
 	<!-- Eine nicht amtlich bestätigte Sitzzahl ist eine begründete Erwartung, keine

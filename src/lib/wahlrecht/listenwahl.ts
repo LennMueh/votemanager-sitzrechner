@@ -36,7 +36,7 @@ import {
 	type Wahlvorschlag
 } from '$lib/nkwg';
 import { nimmGroesste } from './kern/auswahl';
-import { zuteilen, type Verfahren } from './kern/zuteilung';
+import { zuteilen, type Verfahren, type Zuteilung } from './kern/zuteilung';
 
 /** Wonach sich entscheidet, welche Bewerber eines Wahlvorschlags einziehen. */
 export type Personenauswahl = 'stimmen' | 'listenplatz';
@@ -48,6 +48,45 @@ export interface Listenwahlrecht {
 	sperrklausel?: number;
 	/** Für die Meldung von Losentscheiden, z. B. '§ 41 Abs. 1 S. 2 KWG SL'. */
 	rechtsgrundlageZuteilung: string;
+	/**
+	 * Sitze, die ein Wahlvorschlag mangels Bewerbern nicht besetzen kann. Ohne
+	 * Angabe bleiben sie unbesetzt (wie § 36 Abs. 7 NKWG). `weitergeben`: der
+	 * Vorschlag wird auf seine Bewerberzahl gedeckelt, der Rest unter den übrigen
+	 * neu verteilt. Welches Land welches tut, entscheiden die amtlichen
+	 * Endergebnisse — die Belegzahlen stehen am Rechtsstand in index.ts.
+	 */
+	ueberzaehligeSitze?: 'weitergeben';
+}
+
+/**
+ * Zuteilung mit Deckel: läuft ein Wahlvorschlag über, bekommt er genau so viele
+ * Sitze, wie er Bewerber hat, und die übrigen Sitze werden unter den anderen
+ * **neu verteilt** — so lange, bis keiner mehr überläuft. Neu verteilen statt
+ * „nächster Rest": bei Hare/Niemeyer ist das nicht dasselbe, und die amtlichen
+ * Ergebnisse folgen dem Neuverteilen (Ortschaftsrat Etingen 2024: FWG 4, nicht
+ * CDU 1). Bewerberzahl 0 heißt unbekannt (Saarland) und deckelt nicht.
+ */
+function zuteilenGedeckelt(
+	stimmen: Map<string, number>,
+	sitze: number,
+	recht: Listenwahlrecht,
+	bewerber: Map<string, number>
+): Zuteilung<string> {
+	if (recht.ueberzaehligeSitze !== 'weitergeben') return zuteilen(stimmen, sitze, recht.verfahren);
+	const fest = new Map<string, number>();
+	const offen = new Map(stimmen);
+	for (;;) {
+		const z = zuteilen(offen, sitze, recht.verfahren);
+		const voll = [...z.sitze].filter(([p, n]) => (bewerber.get(p) ?? 0) > 0 && n > bewerber.get(p)!);
+		// ponytail: der Grenzfall zählt nur aus der letzten Runde — ein Gleichstand,
+		// der erst über den Deckel entschieden hätte, wird nicht gemeldet.
+		if (!voll.length) return { sitze: new Map([...fest, ...z.sitze]), grenzfall: z.grenzfall };
+		for (const [p] of voll) {
+			fest.set(p, bewerber.get(p)!);
+			sitze -= bewerber.get(p)!;
+			offen.delete(p);
+		}
+	}
 }
 
 export function verteileListenwahl(
@@ -71,10 +110,15 @@ export function verteileListenwahl(
 		? stimmen.parteien.filter((p) => p.prozent >= recht.sperrklausel!)
 		: stimmen.parteien;
 
-	const verteilung = zuteilen(
+	const bewerberzahl = new Map<string, number>();
+	for (const b of bereiche)
+		for (const v of b.vorschlaege) bewerberzahl.set(v.partei, (bewerberzahl.get(v.partei) ?? 0) + v.kandidaten.length);
+
+	const verteilung = zuteilenGedeckelt(
 		new Map(zugelassen.map((p) => [p.partei, p.stimmen])),
 		sitzeGesamt,
-		recht.verfahren
+		recht,
+		bewerberzahl
 	);
 
 	if (verteilung.grenzfall) {

@@ -20,7 +20,7 @@ import { verteileListenwahl } from './listenwahl';
 import { D_HONDT, HARE_NIEMEYER, SAINTE_LAGUE, type Verfahren } from './kern/zuteilung';
 import type { Wahlbereich } from '$lib/nkwg';
 
-const WURZEL = join(import.meta.dirname, '..', '..', '..', 'referenzen');
+const WURZEL = process.env.REFERENZEN ?? join(import.meta.dirname, '..', '..', '..', 'referenzen');
 const ALLE: Verfahren[] = [HARE_NIEMEYER, D_HONDT, SAINTE_LAGUE];
 
 interface Fall {

@@ -62,7 +62,11 @@ Basis: `https://votemanager.kdo.de/<YYYYMMDD>/<AGS>/api/praesentation/`
 - Ein `ergebnis_*.json` hat je Partei **drei Zeilen**, erkannt an den Suffixen
   „ - Summe Partei- und Kandidaten-Stimmen", „ - Stimmen für die Partei",
   „ - Summe Kandidaten-Stimmen". Die Kandidaten stehen in `sub_zeilen` **in
-  Listenplatz-Reihenfolge**.
+  Listenplatz-Reihenfolge** — aber nicht bei jedem Host: manche sortieren nach
+  Stimmen. Dann stimmen die Sitze, Listensitze gehen aber an die falschen
+  Personen (siehe „Der Korpus entscheidet"). Mecklenburg-Vorpommern setzt
+  außerdem den Wahlbereich vor den Namen („Wahlbereich Datzetal: …");
+  `ohneBereich()` schneidet ihn ab.
 - **Einzelwahlvorschläge sehen völlig anders aus**: eine einzelne Zeile
   `"Alexander Cohn, Einzelbewerber Cohn"` (Person, Komma, Wahlvorschlag). Sie
   werden erst nach dem Durchlauf erkannt — gibt es Parteizeilen, sind Restzeilen
@@ -239,8 +243,15 @@ das. Kein stiller Rückfall auf das NKWG in einem Land, für das es nicht gilt.
 ### Der Korpus entscheidet, nicht die Vermutung
 
 In `referenzen/` liegen rund 785 eingefrorene **amtliche Endergebnisse** aus acht
-Ländern, jedes mit der amtlichen Liste der Gewählten. Damit wird nicht geglaubt,
-sondern nachgerechnet:
+Ländern, jedes mit der amtlichen Liste der Gewählten. Das k3s-Archiv hat
+zwölfmal so viele (9.829, Stand 12.09.2026); gegen die wird lokal geprüft, ohne
+sie einzuchecken (40 MB):
+
+    DATABASE_URL=… npm run ernte-archiv -- --ziel=referenzen-archiv   # gitignored, mit NI
+    REFERENZEN=referenzen-archiv npx vitest run src/lib/referenzen.test.ts src/lib/wahlrecht
+
+Die Quoten gelten dort als Untergrenzen weiter; NI ist dort Fall für Fall rot
+(siehe unten). Damit wird nicht geglaubt, sondern nachgerechnet:
 
 - `src/lib/wahlrecht/verfahren.test.ts` stellt alle drei Zuteilungsverfahren
   gegen den Korpus. Das hinterlegte Verfahren muss die meisten Fälle treffen.
@@ -252,9 +263,13 @@ sondern nachgerechnet:
   die Arbeitsliste des Landes.
 
 `npm run ernte-archiv` erntet neu aus PostgreSQL (`DATABASE_URL` nötig).
-**Niedersachsen bleibt ausgenommen**: § 37 NKWG verteilt über Wahlbereiche, ein
-Referenzfall braucht dort die Wahlbereichs-Dokumente. Die 53 NI-Fälle stammen aus
-der Netzernte (`npm run ernte`) und sind vollständig.
+**Nach `referenzen/` kommt Niedersachsen nie**: die 53 NI-Fälle stammen aus der
+Netzernte (`npm run ernte`) und sind vollständig. In jedes andere Ziel kommt es
+mit, die Wahlbereiche gegengeprüft wie in `holeWahlbereiche()`. Im Archiv trifft
+NI 1.892/2.318, die Sitze 2.260/2.318. Die Lücke liegt nicht im NKWG: 345 der
+358 Namensabweichungen haben Hosts, deren `sub_zeilen` nach Stimmen statt nach
+Listenplatz sortiert sind (vor allem 2021, etwa Kreistag Helmstedt), die übrigen
+Sitzabweichungen sind Einzelbewerberzeilen älterer Feeds (Ilsede 2015/16).
 
 ### Drei Tabellenformen im Feed
 
