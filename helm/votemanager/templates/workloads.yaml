@@ -76,6 +76,13 @@ spec:
       labels: { app.kubernetes.io/component: poller, app.kubernetes.io/instance: {{ .Release.Name }} }
     spec:
       securityContext: {{- include "votemanager.podSecurityContext" . | nindent 8 }}
+      # Mit dem Standard ndots:5 hängt der Resolver an „votemanager.kdo.de" erst
+      # jede Suchdomäne an — auch die vom Knoten geerbte „fritz.box" — und jeder
+      # Abruf fragte den Router nach votemanager.kdo.de.fritz.box. Mit ndots:2
+      # gilt ein Name mit zwei Punkten als vollständig. Nicht 1: musl (Alpine)
+      # lässt die Suchliste dann ganz aus, und ein PostgreSQL-Host der Form
+      # „dienst.namespace" würde nicht mehr gefunden.
+      dnsConfig: { options: [{ name: ndots, value: "2" }] }
       initContainers:
         - name: migrate
           image: {{ include "votemanager.image" . | quote }}
