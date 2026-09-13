@@ -63,8 +63,13 @@ Basis: `https://votemanager.kdo.de/<YYYYMMDD>/<AGS>/api/praesentation/`
   „ - Summe Partei- und Kandidaten-Stimmen", „ - Stimmen für die Partei",
   „ - Summe Kandidaten-Stimmen". Die Kandidaten stehen in `sub_zeilen` **in
   Listenplatz-Reihenfolge** — aber nicht bei jedem Host: manche sortieren nach
-  Stimmen. Dann stimmen die Sitze, Listensitze gehen aber an die falschen
-  Personen (siehe „Der Korpus entscheidet"). Mecklenburg-Vorpommern setzt
+  Stimmen, **Lüneburg seit 2026 jede Liste** (2021 noch Stimmzettelfolge).
+  `parseErgebnis()` erkennt das je Dokument (jede Liste fallend, mindestens eine
+  mit drei Bewerbern und verschiedenen Stimmen) und setzt
+  `listenfolgeUnbekannt`; die Listensitze bleiben dann ohne Namen, bis das
+  amtliche Endergebnis sie liefert. Ohne die Erkennung stimmten die Sitze, die
+  Listensitze gingen aber an die Nächststärkeren und sähen aus wie weitere
+  Personenwahl-Sitze (siehe „Der Korpus entscheidet"). Mecklenburg-Vorpommern setzt
   außerdem den Wahlbereich vor den Namen („Wahlbereich Datzetal: …");
   `ohneBereich()` schneidet ihn ab.
 - **Einzelwahlvorschläge sehen völlig anders aus**: eine einzelne Zeile

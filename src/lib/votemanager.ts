@@ -325,6 +325,8 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 	// entscheidet sich erst nach dem Durchlauf: bei einer Ratswahl sind es
 	// Einzelwahlvorschläge, bei einer Direktwahl die Bewerber selbst.
 	const sonstige: RohZeile[] = [];
+	// Listen der Drei-Zeilen-Form, für die Prüfung auf Sortierung nach Stimmen.
+	const listen: Wahlvorschlag[] = [];
 
 	for (const z of zeilen) {
 		const label = kurz(z.label);
@@ -346,6 +348,7 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 					listenplatz: i + 1
 				})
 			);
+			if (v.kandidaten.length >= 2) listen.push(v);
 			continue;
 		}
 		if (label.endsWith(S_GESAMT)) continue; // redundant, ergibt sich aus Liste + Bewerbern
@@ -374,6 +377,21 @@ export function parseErgebnis(roh: RohErgebnis): GebietsErgebnis {
 		}
 
 		sonstige.push(z);
+	}
+
+	// Nicht jeder Host liefert die Listenfolge: Lüneburg sortiert seit 2026 jede
+	// Liste absteigend nach Stimmen (2021 noch Stimmzettelfolge). Dann ist der
+	// Index kein Listenplatz, und § 36 Abs. 6 gäbe die Listensitze an die
+	// Nächststärkeren — sie sähen aus wie weitere Personenwahl-Sitze. Erkannt
+	// wird je Dokument, weil die Sortierung eine Einstellung des Hosts ist; ein
+	// Nullstand vor der Auszählung sagt dabei nichts.
+	// ponytail: eine echte Listenfolge, die zufällig fallend ist, verliert ihre
+	// Listennamen — sicher, weil nichts erfunden wird.
+	const fallend = (v: Wahlvorschlag) => v.kandidaten.every((k, i, a) => i === 0 || a[i - 1].stimmen >= k.stimmen);
+	const aussagekraeftig = (v: Wahlvorschlag) =>
+		v.kandidaten.length >= 3 && v.kandidaten.some((k) => k.stimmen !== v.kandidaten[0].stimmen);
+	if (listen.some(aussagekraeftig) && listen.every(fallend)) {
+		for (const v of listen) v.listenfolgeUnbekannt = true;
 	}
 
 	if (nachPartei.size > 0) {

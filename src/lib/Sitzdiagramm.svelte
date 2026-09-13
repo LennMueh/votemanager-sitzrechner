@@ -82,7 +82,7 @@
 			<title
 				>{p.sitz.partei} — {p.sitz.unbesetzt
 					? 'unbesetzt'
-					: `${p.sitz.name} (${p.sitz.mandat})`}</title
+					: `${p.sitz.name ?? 'Person offen'} (${p.sitz.mandat})`}</title
 			>
 		</circle>
 	{/each}

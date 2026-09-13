@@ -36,6 +36,11 @@ export interface Wahlvorschlag {
 	kandidaten: Kandidat[];
 	/** Einzelwahlvorschlag nach § 37 Abs. 1: keine Liste, nur eine Person. */
 	einzelbewerber?: boolean;
+	/**
+	 * Die Bewerber stehen nach Stimmen, nicht nach Listenplatz — `listenplatz`
+	 * ist dann nur der Rang. Listensitze bleiben ohne Namen.
+	 */
+	listenfolgeUnbekannt?: boolean;
 }
 
 export interface Wahlbereich {
@@ -339,7 +344,8 @@ function verteileAufBewerber(
 			offen = listenSitze - i;
 			break;
 		}
-		sitze.push(basis(k, 'liste', `Listenplatz ${k.listenplatz}`));
+		// Ohne Listenfolge ist sicher, dass der Sitz besetzt wird, nicht aber von wem.
+		sitze.push(v.listenfolgeUnbekannt ? basis(undefined, 'liste', 'Liste') : basis(k, 'liste', `Listenplatz ${k.listenplatz}`));
 	}
 
 	return { sitze, offen, losentscheide, losfaelle };

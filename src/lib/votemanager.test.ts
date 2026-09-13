@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gehoertZumGebiet, ohneBereich, parseErgebnis } from './votemanager';
+import { verteileSitze } from './nkwg';
 
 /** Ein Ergebnisdokument mit Bewerbern und Wahlbezirks-Verlinkung. */
 const dok = (bezirke: string[], bewerber: string[]) =>
@@ -46,5 +47,34 @@ describe('Bewerbernamen', () => {
 			}
 		} as never);
 		expect(erg.vorschlaege[0].kandidaten[0]).toEqual({ name: 'Jan-Michael Martin', stimmen: 320, listenplatz: 1 });
+	});
+});
+
+describe('Listenfolge', () => {
+	/** Drei-Zeilen-Form, Bewerber in der übergebenen Reihenfolge. */
+	const formA = (liste: number, bewerber: [string, number][]) =>
+		parseErgebnis({
+			Komponente: {
+				tabelle: {
+					zeilen: [
+						{ label: 'SPD - Stimmen für die Partei', zahl: String(liste) },
+						{ label: 'SPD - Summe Kandidaten-Stimmen', zahl: '0', sub_zeilen: bewerber.map(([n, z]) => ({ label: { labelKurz: n }, zahl: String(z) })) }
+					]
+				}
+			}
+		} as never);
+
+	it('erkennt nach Stimmen sortierte Bewerber (Lüneburg 2026) und lässt die Listensitze ohne Namen', () => {
+		const erg = formA(1000, [['Anna', 500], ['Bert', 300], ['Carl', 100], ['Dora', 50]]);
+		expect(erg.vorschlaege[0].listenfolgeUnbekannt).toBe(true);
+		// 950 Bewerber- zu 1000 Listenstimmen: § 36 Abs. 4 teilt 2 zu 2.
+		const sitze = verteileSitze([{ id: 'x', name: 'x', vorschlaege: erg.vorschlaege }], 4).sitze;
+		expect(sitze.filter((s) => s.art === 'personenwahl').map((s) => s.name)).toEqual(['Anna', 'Bert']);
+		expect(sitze.filter((s) => s.art === 'liste').map((s) => s.name)).toEqual([undefined, undefined]);
+	});
+
+	it('lässt eine echte Listenfolge und einen Nullstand unangetastet', () => {
+		expect(formA(1000, [['Anna', 100], ['Bert', 500], ['Carl', 300]]).vorschlaege[0].listenfolgeUnbekannt).toBeUndefined();
+		expect(formA(0, [['Anna', 0], ['Bert', 0], ['Carl', 0]]).vorschlaege[0].listenfolgeUnbekannt).toBeUndefined();
 	});
 });

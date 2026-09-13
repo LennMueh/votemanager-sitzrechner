@@ -17,6 +17,8 @@
 		farbe?: string;
 		sitze: number;
 		mitglieder: Sitz[];
+		/** Besetzte Sitze ohne Namen: Listensitze, deren Listenfolge der Feed nicht nennt. */
+		ohneName: number;
 		weg: string[];
 	}
 
@@ -31,6 +33,7 @@
 				// erst auflisten — sonst stehen hier 45 leere Zeilen. Die Überschrift
 				// trägt Partei und Sitzzahl bereits.
 				mitglieder: verteilung.sitze.filter((s) => s.partei === p.partei && (s.name || s.unbesetzt)),
+				ohneName: verteilung.sitze.filter((s) => s.partei === p.partei && !s.name && !s.unbesetzt).length,
 				weg: weg.filter((w) => w.partei === p.partei).map((w) => w.name)
 			}))
 	);
@@ -68,6 +71,11 @@
 					</li>
 				{/each}
 			</ul>
+			{/if}
+
+			<!-- Nur neben Namen: im Saarland sind alle Sitze namenlos, die Überschrift genügt. -->
+			{#if g.ohneName && g.mitglieder.length}
+				<p class="offen">+ {g.ohneName} {g.ohneName === 1 ? 'Listensitz' : 'Listensitze'}, Person offen</p>
 			{/if}
 
 			{#if g.weg.length}
@@ -213,10 +221,14 @@
 		background: color-mix(in srgb, var(--akzent) 16%, transparent);
 	}
 
-	.weg {
+	.weg, .offen {
 		margin: calc(0.3rem * var(--skala)) 0 0;
 		color: var(--warn);
 		font-size: calc(0.78rem * var(--skala));
+	}
+
+	.offen {
+		color: var(--text-3);
 	}
 
 	@media (max-width: 680px) {

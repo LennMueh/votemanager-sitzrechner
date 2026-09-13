@@ -482,6 +482,9 @@ export interface VertretungErgebnis {
 	stale?: boolean;
 }
 
+const LISTENFOLGE_UNBEKANNT =
+	'votemanager veröffentlicht die Bewerber dieser Wahl nach Stimmen statt in Listenfolge — die Listensitze bleiben ohne Namen, bis das amtliche Endergebnis vorliegt.';
+
 /**
  * Mandatsart aus dem Wortlaut des Landes ableiten.
  *
@@ -690,6 +693,12 @@ export async function berechneVertretung(
 		const summe = (v: typeof gesamt.vorschlaege) => v.reduce((s, x) => s + x.listenstimmen + x.kandidaten.reduce((a, k) => a + k.stimmen, 0), 0);
 		const bereicheVollstaendig = teile.length === 0 || teile.reduce((s, x) => s + summe(x.ergebnis.vorschlaege), 0) === summe(gesamt.vorschlaege);
 		const bereiche = teile.length && bereicheVollstaendig ? teile.map((x) => ({ id: x.id, name: x.name ?? x.id, vorschlaege: x.ergebnis.vorschlaege })) : [{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }];
+		// Die Sortierung nach Stimmen ist eine Einstellung des Hosts: zeigt sie
+		// sich am Gesamtergebnis, gilt sie auch für Wahlbereiche mit kurzen Listen.
+		const listenfolgeUnbekannt = gesamt.vorschlaege.some((v) => v.listenfolgeUnbekannt);
+		if (listenfolgeUnbekannt) {
+			for (const b of bereiche) for (const v of b.vorschlaege) if (v.kandidaten.length >= 2) v.listenfolgeUnbekannt = true;
+		}
 		const erg: VertretungErgebnis = {
 			ref,
 			stand: gesamt.stand,
@@ -722,6 +731,8 @@ export async function berechneVertretung(
 		erg.stimmverhaeltnis = stimmenverhaeltnis([
 			{ id: gebietId, name: ref.titel, vorschlaege: gesamt.vorschlaege }
 		]);
+		// Die Zweige ohne Verteilung überschreiben das mit ihrer eigenen Warnung.
+		if (listenfolgeUnbekannt) erg.warnung = LISTENFOLGE_UNBEKANNT;
 
 		/**
 		 * Letzter Schritt vor jeder Rückgabe: liegt die amtliche Liste der
@@ -744,9 +755,9 @@ export async function berechneVertretung(
 			erg.gegenprobe = gegenprobe(erg.verteilung, amtlicheVert);
 			erg.verteilung = amtlicheVert;
 			erg.verteilungAmtlich = true;
-			// Die Warnung „keine Sitzverteilung verfügbar" gilt nicht mehr, wenn die
-			// amtliche Liste da ist — sie stammt aus dem Zweig ohne Sitzzahl.
-			if (erg.warnung?.startsWith('Für diese Auswahl ist keine Sitzverteilung')) erg.warnung = undefined;
+			// Die Warnungen „keine Sitzverteilung verfügbar" und „Listenfolge
+			// unbekannt" gelten nicht mehr, wenn die amtliche Liste da ist.
+			if (erg.warnung?.startsWith('Für diese Auswahl ist keine Sitzverteilung') || erg.warnung === LISTENFOLGE_UNBEKANNT) erg.warnung = undefined;
 			return erg;
 		};
 
