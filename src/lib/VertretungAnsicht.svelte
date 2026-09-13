@@ -26,6 +26,9 @@
 		return sortiere(gewaehlte, (s) => s[k], sortierung.absteigend);
 	});
 	const unbesetzt = $derived(ergebnis.verteilung?.sitze.filter((s) => s.unbesetzt) ?? []);
+	// Besetzt, aber ohne Namen: Listensitze, deren Listenfolge der Feed nicht nennt.
+	// Bei Wahlbereichen zeigt die Zeile, aus welchem Bereich die Liste zieht.
+	const offen = $derived(ergebnis.verteilung?.sitze.filter((s) => !s.name && !s.unbesetzt) ?? []);
 	// Nach Wahlvorschlag gruppiert: erst dadurch hat die Farbe des unbesetzten
 	// Sitzes einen Namen daneben stehen — § 36 Abs. 7 trifft eine bestimmte Liste.
 	const unbesetztJePartei = $derived.by(() => {
@@ -288,6 +291,15 @@
 						<td class="r zahl">{fmt.format(s.stimmen ?? 0)}</td>
 					</tr>
 				{/each}
+				{#each offen as s, i (s.partei + '|' + s.wahlbereich + i)}
+					<tr class="offen">
+						<td><span class="punkt" style:background={s.farbe ?? 'var(--text-3)'}></span>{s.partei}</td>
+						<td>Person offen</td>
+						{#if mehrereBereiche}<td class="klein">{s.wahlbereich ?? ''}</td>{/if}
+						<td class="klein">{s.mandat}</td>
+						<td class="r zahl">—</td>
+					</tr>
+				{/each}
 				{#each unbesetzt as s, i (s.partei + i)}
 					<tr class="unbesetzt">
 						<td><span class="punkt leer" style:--farbe={s.farbe ?? 'var(--text-3)'}></span>{s.partei || '—'}</td>
@@ -505,7 +517,8 @@
 		font-size: var(--schrift-s);
 	}
 
-	tr.unbesetzt td {
+	tr.unbesetzt td,
+	tr.offen td {
 		color: var(--text-3);
 		font-style: italic;
 	}

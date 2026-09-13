@@ -17,7 +17,11 @@
 		farbe?: string;
 		sitze: number;
 		mitglieder: Sitz[];
-		/** Besetzte Sitze ohne Namen: Listensitze, deren Listenfolge der Feed nicht nennt. */
+		/**
+		 * Besetzte Sitze ohne Namen: Listensitze, deren Listenfolge der Feed nicht
+		 * nennt — je Wahlbereich gezählt, damit sichtbar bleibt, woher sie kommen.
+		 */
+		offen: { bereich?: string; anzahl: number }[];
 		ohneName: number;
 		weg: string[];
 	}
@@ -33,10 +37,31 @@
 				// erst auflisten — sonst stehen hier 45 leere Zeilen. Die Überschrift
 				// trägt Partei und Sitzzahl bereits.
 				mitglieder: verteilung.sitze.filter((s) => s.partei === p.partei && (s.name || s.unbesetzt)),
-				ohneName: verteilung.sitze.filter((s) => s.partei === p.partei && !s.name && !s.unbesetzt).length,
+				...offenJeBereich(verteilung.sitze.filter((s) => s.partei === p.partei && !s.name && !s.unbesetzt)),
 				weg: weg.filter((w) => w.partei === p.partei).map((w) => w.name)
 			}))
 	);
+
+	// Im Saarland sind alle Sitze namenlos, dort genügt die Überschrift. Gilt für
+	// die ganze Vertretung, nicht je Partei: sonst verlöre eine Liste ganz ohne
+	// Namen (Kreistag Lüneburg 2026: Die Linke, 5 Sitze) ihre Wahlbereiche.
+	const mitNamen = $derived(verteilung.sitze.some((s) => s.name));
+
+	function offenJeBereich(sitze: Sitz[]): Pick<Gruppe, 'offen' | 'ohneName'> {
+		const m = new Map<string | undefined, number>();
+		for (const s of sitze) m.set(s.wahlbereich, (m.get(s.wahlbereich) ?? 0) + 1);
+		return { offen: [...m].map(([bereich, anzahl]) => ({ bereich, anzahl })), ohneName: sitze.length };
+	}
+
+	/**
+	 * „1. Hansestadt Lüneburg Nord" → „Wahlbereich 1": die vollen Namen reichen
+	 * bis 60 Zeichen und sprengen die Kachel.
+	 * ponytail: ohne vorangestellte Nummer steht der volle Name da.
+	 */
+	const kurzBereich = (b: string) => {
+		const nr = b.match(/^(\d+)\./)?.[1];
+		return nr ? `Wahlbereich ${nr}` : b;
+	};
 
 	/** Kennzeichen der Mandatsart — Wort plus Form, nie nur Farbe. */
 	function kennzeichen(s: Sitz): string {
@@ -73,9 +98,13 @@
 			</ul>
 			{/if}
 
-			<!-- Nur neben Namen: im Saarland sind alle Sitze namenlos, die Überschrift genügt. -->
-			{#if g.ohneName && g.mitglieder.length}
-				<p class="offen">+ {g.ohneName} {g.ohneName === 1 ? 'Listensitz' : 'Listensitze'}, Person offen</p>
+			{#if g.ohneName && mitNamen}
+				<p class="offen">
+					{g.mitglieder.length ? '+ ' : ''}{g.ohneName} {g.ohneName === 1 ? 'Listensitz' : 'Listensitze'}, Person offen
+					{#if g.offen.some((o) => o.bereich)}
+						<br />{g.offen.map((o) => `${kurzBereich(o.bereich ?? '')}: ${o.anzahl}`).join(' · ')}
+					{/if}
+				</p>
 			{/if}
 
 			{#if g.weg.length}
